@@ -3,5 +3,6 @@ drift/contents/
 .agents/
 .serena/
 .github/
+.vscode/
 docs/
 *.md

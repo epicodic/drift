@@ -4,12 +4,13 @@
 // without any gaps (docs §2.1, requirements 5 and 12).
 
 import { Column } from './column';
-import { columnOffsets, columnRect, virtualWidth, Rect } from './coordinates';
+import { columnOffsets, columnRect, virtualWidth, Rect, ResizeEdge } from './coordinates';
 
 export class Grid {
     private readonly ordered: Column[] = [];
     private focusedColumnId: number | null = null;
     private nextId = 1;
+    private originX = 0;
 
     constructor(
         private readonly height: number,
@@ -52,8 +53,13 @@ export class Grid {
         this.focusedColumnId = next ? next.id : null;
     }
 
-    resizeColumn(id: number, width: number): void {
-        this.requireColumn(id).setWidth(width);
+    resizeColumn(id: number, width: number, edge: ResizeEdge = 'right'): void {
+        const column = this.requireColumn(id);
+        const delta = width - column.width;
+        column.setWidth(width);
+        if (edge === 'left') {
+            this.originX -= delta;
+        }
     }
 
     moveColumn(id: number, toIndex: number): void {
@@ -74,9 +80,13 @@ export class Grid {
         return virtualWidth(this.widths(), this.gap);
     }
 
+    contentLeft(): number {
+        return this.originX;
+    }
+
     columnRect(id: number): Rect {
         const index = this.requireIndex(id);
-        const offset = columnOffsets(this.widths(), this.gap)[index];
+        const offset = columnOffsets(this.widths(), this.gap, this.originX)[index];
         return columnRect(offset, this.ordered[index].width, this.height);
     }
 

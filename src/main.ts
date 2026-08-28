@@ -4,6 +4,7 @@
 // over the tested pure modules (core/, viewport/) and the KWin adapters (docs §8).
 
 import { DEFAULT_SETTINGS } from './config/settings';
+import { rectsEqualRounded, resizedEdge, Rect } from './core/coordinates';
 import { Grid } from './core/grid';
 import { registerShortcuts } from './input/shortcuts';
 import { GeometrySync } from './kwin/geometry-sync';
@@ -22,6 +23,7 @@ export function init(root: QmlObject): void {
     const viewport = new Viewport(area.width);
     const geometrySync = new GeometrySync(area);
     const windowsByColumn = new Map<number, WindowAdapter>();
+    const disconnectByColumn = new Map<number, () => void>();
 
     const animator = new Animator(
         createQmlTimer(root),
@@ -33,11 +35,11 @@ export function init(root: QmlObject): void {
         },
     );
 
-    function render(): void {
-        viewport.setContentWidth(grid.virtualWidth());
+    function render(excludeWindowId?: string): void {
+        viewport.setContentGeometry(grid.contentLeft(), grid.virtualWidth());
         for (const column of grid.columns()) {
             const win = windowsByColumn.get(column.id);
-            if (win) {
+            if (win && win.id !== excludeWindowId) {
                 geometrySync.apply(win, grid.columnRect(column.id), viewport.offset());
             }
         }
@@ -61,12 +63,36 @@ export function init(root: QmlObject): void {
         return null;
     }
 
+    function onWindowGeometryChanged(win: WindowAdapter, oldReal: Rect): void {
+        const columnId = columnOf(win.id);
+        if (columnId === null) {
+            return;
+        }
+        const newReal = win.frameGeometry();
+        if (rectsEqualRounded(oldReal, newReal)) {
+            return;
+        }
+        if (geometrySync.isEcho(win.id, newReal)) {
+            return;
+        }
+        if (Math.round(newReal.width) === Math.round(oldReal.width)) {
+            return; // width-only step: ignore pure moves and height-only changes
+        }
+        grid.resizeColumn(columnId, Math.round(newReal.width), resizedEdge(oldReal, newReal));
+        render(win.isInteractiveResize() ? win.id : undefined);
+    }
+
     workspaceAdapter.onWindowAdded((win) => {
         if (!win.isTileable()) {
             return;
         }
-        const column = grid.addColumn(settings.defaultColumnWidth);
+        const width = Math.round(win.frameGeometry().width) || settings.defaultColumnWidth;
+        const column = grid.addColumn(width);
         windowsByColumn.set(column.id, win);
+        disconnectByColumn.set(
+            column.id,
+            win.onFrameGeometryChanged((oldReal) => onWindowGeometryChanged(win, oldReal)),
+        );
         render();
         revealFocused();
     });
@@ -76,6 +102,12 @@ export function init(root: QmlObject): void {
         if (columnId === null) {
             return;
         }
+        const disconnect = disconnectByColumn.get(columnId);
+        if (disconnect) {
+            disconnect();
+        }
+        disconnectByColumn.delete(columnId);
+        geometrySync.forget(win.id);
         windowsByColumn.delete(columnId);
         grid.removeColumn(columnId);
         render();

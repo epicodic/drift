@@ -9,10 +9,10 @@ export interface Rect {
     height: number;
 }
 
-/** Cumulative x-offset of each column, starting at 0, with `gap` between columns. */
-export function columnOffsets(widths: readonly number[], gap: number): number[] {
+/** Cumulative x-offset of each column, starting at `origin`, with `gap` between columns. */
+export function columnOffsets(widths: readonly number[], gap: number, origin = 0): number[] {
     const offsets: number[] = [];
-    let cursor = 0;
+    let cursor = origin;
     for (let i = 0; i < widths.length; i++) {
         offsets.push(cursor);
         cursor += widths[i] + gap;
@@ -32,4 +32,22 @@ export function virtualWidth(widths: readonly number[], gap: number): number {
 /** Full-height rect for a column at `offset`. Columns always span the whole height. */
 export function columnRect(offset: number, width: number, height: number): Rect {
     return { x: offset, y: 0, width, height };
+}
+
+export type ResizeEdge = 'left' | 'right';
+
+/** Which border moved between two geometries of the same window: a changed left
+ * edge (x) means the left border was dragged, otherwise the right border moved. */
+export function resizedEdge(oldRect: Rect, newRect: Rect): ResizeEdge {
+    return Math.round(newRect.x) !== Math.round(oldRect.x) ? 'left' : 'right';
+}
+
+/** Rect equality after rounding — KWin/Wayland can report fractional geometry. */
+export function rectsEqualRounded(a: Rect, b: Rect): boolean {
+    return (
+        Math.round(a.x) === Math.round(b.x) &&
+        Math.round(a.y) === Math.round(b.y) &&
+        Math.round(a.width) === Math.round(b.width) &&
+        Math.round(a.height) === Math.round(b.height)
+    );
 }
