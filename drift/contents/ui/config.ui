@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+    <class>KWin::DriftConfigForm</class>
+    <widget class="QWidget" name="KWin::DriftConfigForm">
+        <property name="windowTitle">
+            <string>Drift</string>
+        </property>
+        <layout class="QFormLayout">
+            <item row="0" column="0">
+                <widget class="QLabel" name="label_marginBottom">
+                    <property name="text">
+                        <string>Bottom margin:</string>
+                    </property>
+                </widget>
+            </item>
+            <item row="0" column="1">
+                <widget class="QSpinBox" name="kcfg_marginBottom">
+                    <property name="toolTip">
+                        <string>Space reserved at the bottom of the screen, e.g. to keep a taskbar visible</string>
+                    </property>
+                    <property name="suffix">
+                        <string> px</string>
+                    </property>
+                    <property name="maximum">
+                        <number>999</number>
+                    </property>
+                    <property name="value">
+                        <number>0</number>
+                    </property>
+                </widget>
+            </item>
+        </layout>
+    </widget>
+    <resources/>
+</ui>
