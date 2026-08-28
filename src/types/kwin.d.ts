@@ -17,6 +17,11 @@ interface QSize {
     height: number;
 }
 
+interface QPoint {
+    x: number;
+    y: number;
+}
+
 /** A KWin/Qt signal. Handlers are connected and disconnected, not awaited. */
 interface Signal<Handler> {
     connect(handler: Handler): void;
@@ -42,12 +47,15 @@ interface Window {
     readonly move: boolean;
     readonly resize: boolean;
     readonly frameGeometryChanged: Signal<(oldGeometry: QRect) => void>;
+    readonly interactiveMoveResizeStarted: Signal<() => void>;
+    readonly interactiveMoveResizeFinished: Signal<() => void>;
 }
 
 /** The KWin workspace singleton (capitalized under declarativescript, docs §4). */
 interface WorkspaceApi {
     readonly screens: Output[];
     readonly virtualScreenGeometry: QRect;
+    readonly cursorPos: QPoint;
     activeWindow: Window | null;
     readonly windowAdded: Signal<(window: Window) => void>;
     readonly windowRemoved: Signal<(window: Window) => void>;
