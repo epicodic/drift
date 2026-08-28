@@ -4,7 +4,7 @@
 // without any gaps (docs §2.1, requirements 5 and 12).
 
 import { Column } from './column';
-import { columnOffsets, columnRect, virtualWidth, Rect, ResizeEdge } from './coordinates';
+import { columnOffsets, columnRect, virtualWidth, Rect, ResizeEdge, nearestInsertionIndex } from './coordinates';
 
 export class Grid {
     private readonly ordered: Column[] = [];
@@ -88,6 +88,15 @@ export class Grid {
         const index = this.requireIndex(id);
         const offset = columnOffsets(this.widths(), this.gap, this.originX)[index];
         return columnRect(offset, this.ordered[index].width, this.height);
+    }
+
+    /** Insertion index — a valid `moveColumn` target — closest to `virtualX`,
+     * considering every column except `excludeId` (the one being dragged). */
+    insertionIndexForX(excludeId: number, virtualX: number): number {
+        const others = this.ordered.filter((column) => column.id !== excludeId);
+        const widths = others.map((column) => column.width);
+        const offsets = columnOffsets(widths, this.gap, this.originX);
+        return nearestInsertionIndex(offsets, widths, virtualX);
     }
 
     indexOf(id: number): number {
