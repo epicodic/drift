@@ -51,6 +51,36 @@ describe('Grid — geometry', () => {
     });
 });
 
+describe('Grid — insertion index for a drag position', () => {
+    it('returns 0 when the dragged column is the only column', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        expect(grid.insertionIndexForX(a.id, 999)).toBe(0);
+    });
+
+    it('finds the closest boundary among the other columns', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        grid.addColumn(300);
+        const b = grid.addColumn(500);
+        grid.addColumn(200);
+        // with b excluded: a at [0,300), c at [310,510) -> boundaries [0, 310, 510]
+        expect(grid.insertionIndexForX(b.id, 50)).toBe(0);
+        expect(grid.insertionIndexForX(b.id, 200)).toBe(1); // b's original slot
+        expect(grid.insertionIndexForX(b.id, 450)).toBe(2);
+    });
+
+    it('combines with moveColumn to reorder based on a drop position', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        grid.addColumn(500); // b
+        const c = grid.addColumn(200);
+        const targetIndex = grid.insertionIndexForX(c.id, 50);
+        grid.moveColumn(c.id, targetIndex);
+        expect(grid.columns().map((col) => col.id)).toEqual([3, 1, 2]);
+        expect(grid.columnRect(a.id).x).toBe(210); // a shifted right to make room for c
+    });
+});
+
 describe('Grid — resizing shifts neighbors', () => {
     it('shifts downstream columns when a column widens', () => {
         const grid = new Grid(HEIGHT, GAP);
