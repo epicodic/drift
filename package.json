@@ -1,0 +1,30 @@
+{
+    "name": "drift",
+    "version": "0.1.0",
+    "description": "Scrollable tiling for KDE Plasma / KWin",
+    "type": "module",
+    "private": true,
+    "scripts": {
+        "build": "rollup -c",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "lint": "eslint . && prettier --check . && qmllint drift/contents/ui/main.qml",
+        "lint:fix": "eslint . --fix && prettier --write .",
+        "package:install": "npm run build && (kpackagetool6 --type=KWin/Script --install=./drift || kpackagetool6 --type=KWin/Script --upgrade=./drift)",
+        "package:remove": "kpackagetool6 --type=KWin/Script --remove=drift"
+    },
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "@rollup/plugin-typescript": "^12.3.0",
+        "eslint": "^10.9.1",
+        "eslint-config-prettier": "^10.1.8",
+        "globals": "^17.11.0",
+        "prettier": "^3.9.6",
+        "rollup": "^4.63.1",
+        "tslib": "^2.8.1",
+        "typescript": "^6.0.3",
+        "typescript-eslint": "^8.68.0",
+        "vitest": "^4.1.11"
+    }
+}

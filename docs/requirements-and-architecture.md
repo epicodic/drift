@@ -59,12 +59,12 @@ Naming journey (for context, not needed by implementers): considered KDE/KWin-th
 
 These are confirmed facts about the KWin scripting environment that directly shape the architecture:
 
-- KWin scripts can be written in **JavaScript** (`X-Plasma-API: javascript`) or **QML** (`X-Plasma-API: declarativescript`). In practice, the established large tiling projects (Polonium, Krohnkite, Karousel) are written in **TypeScript**, transpiled to a single `main.js`. Drift follows this pattern.
+- KWin scripts can be written in **JavaScript** (`X-Plasma-API: javascript`) or **QML** (`X-Plasma-API: declarativescript`). The established large tiling projects (Polonium, Krohnkite, Karousel) are written in **TypeScript**, transpiled to a single `main.js`. Drift follows this pattern, but packages as `declarativescript` with a thin QML host (see the timer note below and §6.2).
 - A KWin script package **must** follow the fixed structure `<scriptname>/contents/code/main.js` (or `main.qml`) plus a `metadata.json` in the top-level folder. This is not a convention — KWin looks for the script at this exact path.
 - KWin scripts run inside a `QJSEngine` embedded **in the compositor process itself**. There is no sandbox, no separate process, no async I/O, and everything runs on KWin's own thread. A poorly written script can stall frame delivery — this is a real performance risk for anything continuous like scroll animation.
 - **Window manipulation happens exclusively through the window's writable geometry property (`win.frameGeometry = Qt.rect(x, y, width, height)` in KWin 6; `geometry` remains as a related accessor).** There is no camera/viewport transform API exposed to normal window-management scripts. A separate, lower-level Effects API exists for true compositor-level visual transforms, but it has a different API surface and is a much larger undertaking (closer to a C++/QML compositor effect than a window-management script).
 - **Consequence:** Drift's "viewport" is a pure software fiction. Scrolling is simulated by recomputing and re-setting `win.frameGeometry` for every affected window on every animation tick. There is no cheaper GPU-side camera pan available to us at the window-script level.
-- Animation timing is driven by a Qt timer obtained from within the script (e.g. a QML `Timer`/Qt timer object — there is no first-class JS `QTimer` constructor guaranteed across versions, so the exact acquisition path must be pinned down in `viewport/animator.ts`). It provides repeated or delayed callbacks; there is no `requestAnimationFrame` equivalent — we drive our own tick rate and are responsible for keeping per-tick work cheap.
+- Animation timing is driven by a Qt timer obtained from within the script. A pure-JS window-management script (`X-Plasma-API: javascript`) has **no** timer primitive at all: the [KWin scripting API](https://develop.kde.org/docs/plasma/kwin/api/) global functions list contains no `setTimeout`/`setInterval`/`QTimer`, and `QJSEngine` does not provide one. The timer therefore comes from **QML hosting**: the package is `declarativescript` with a small `contents/ui/main.qml` that creates a QML `Timer` (via `Qt.createQmlObject`) and injects it into the bundled logic (this is why Karousel/Krohnkite are QML-hosted). There is no `requestAnimationFrame` equivalent — we drive our own tick rate and are responsible for keeping per-tick work cheap.
 - `workspace.screens` exposes the list of monitors/outputs; `workspace.virtualScreenGeometry` exposes the combined coordinate space across all outputs. This combined space is pixel-continuous even though real monitors have physical bezels — a naive viewport calculation can visually "cut" a window across a monitor boundary.
 - KWin 6 renamed/removed several APIs relative to KWin 5 (e.g., `Client` → `Window`, global `KWin.` prefix dropped from many functions like `registerShortcut`). Drift targets KWin 6 / Plasma 6 (Wayland) only.
 
@@ -96,36 +96,43 @@ These are consciously deferred, not forgotten:
 
 ## 6. Architecture
 
-Target module layout (KWin's mandatory `contents/code/` packaging structure applies):
+Target module layout. The tree below is the **logical architecture**; on disk the TypeScript sources live under `src/` and Rollup bundles them into the single `main.js` that KWin's mandatory `contents/code/` packaging structure requires:
 
 ```
-drift/
-├── metadata.json
+drift/                              # Installable KWin package (kpackagetool6 --type=KWin/Script)
+├── metadata.json                   # X-Plasma-API: declarativescript, MainScript: ui/main.qml
 ├── contents/
+│   ├── ui/
+│   │   └── main.qml                # Thin QML host: owns a QML Timer, boots the bundle (docs §6.2)
 │   └── code/
-│       ├── main.ts                 # Entry point, wiring between modules
-│       ├── core/
-│       │   ├── grid.ts             # Pure data model: columns/rows, virtual positions — no KWin dependency
-│       │   ├── column.ts           # Column logic: order, width (vertical tiling within a column: later)
-│       │   └── coordinates.ts      # Virtual coordinate system; growth/shrink of the virtual area
-│       ├── kwin/
-│       │   ├── window-adapter.ts   # Wraps KWin Window objects (geometry get/set, signals)
-│       │   ├── workspace-adapter.ts# Wraps the KWin workspace singleton (screens, virtual screen geometry)
-│       │   └── geometry-sync.ts    # Translates virtual grid positions into real win.geometry calls
-│       ├── viewport/
-│       │   ├── viewport.ts         # Current visible offset into the virtual area
-│       │   └── animator.ts         # QTimer-driven smooth-scroll animation
-│       ├── input/
-│       │   ├── shortcuts.ts        # registerShortcut() bindings
-│       │   ├── mouse.ts            # Mouse wheel, edge-hover
-│       │   └── drag.ts             # Window dragging → reorder events
-│       ├── rules/
-│       │   └── window-rules.ts     # Per-app auto-float / auto-placement rules
-│       ├── ui/
-│       │   ├── Minimap.qml         # Visual overlay
-│       │   └── minimap-model.ts    # Data source for the minimap, reads from core/grid.ts
-│       └── config/
-│           └── settings.ts         # readConfig() wrapper, defaults
+│       └── main.js                 # Rollup build artifact — bundled from src/, never hand-edited
+
+src/                                # TypeScript sources (the module tree is the architecture)
+├── main.ts                         # Entry point, wiring between modules
+├── types/
+│   └── kwin.d.ts                   # Hand-written ambient declarations for the KWin API surface
+├── core/
+│   ├── grid.ts                     # Pure data model: columns/rows, virtual positions — no KWin dependency
+│   ├── column.ts                   # Column logic: order, width (vertical tiling within a column: later)
+│   └── coordinates.ts              # Virtual coordinate system; growth/shrink of the virtual area
+├── kwin/
+│   ├── window-adapter.ts           # Wraps KWin Window objects (frameGeometry get/set, signals)
+│   ├── workspace-adapter.ts        # Wraps the KWin workspace singleton (screens, virtual screen geometry)
+│   └── geometry-sync.ts            # Translates virtual grid positions into real win.frameGeometry calls
+├── viewport/
+│   ├── viewport.ts                 # Current visible offset into the virtual area
+│   └── animator.ts                 # Timer-driven smooth-scroll animation
+├── input/
+│   ├── shortcuts.ts                # registerShortcut() bindings
+│   ├── mouse.ts                    # Mouse wheel, edge-hover
+│   └── drag.ts                     # Window dragging → reorder events
+├── rules/
+│   └── window-rules.ts             # Per-app auto-float / auto-placement rules
+├── ui/
+│   ├── Minimap.qml                 # Visual overlay
+│   └── minimap-model.ts            # Data source for the minimap, reads from core/grid.ts
+└── config/
+    └── settings.ts                 # readConfig() wrapper, defaults
 ```
 
 ### 6.1 Design principles
@@ -135,6 +142,19 @@ drift/
 - **`viewport/` is a standalone concept, deliberately not merged into `core/`.** The "camera" (what's currently visible) is separate from the layout (where things logically are). This mirrors how a real scrollable-tiling compositor like Niri separates layout state from camera state — except here, because there's no compositor-level camera API, `geometry-sync.ts` has to repeatedly translate virtual → real coordinates for every visible (and near-visible) window on every viewport change.
 - **`input/` is split by input source** (shortcuts, mouse, drag), each translating raw input into the same set of high-level domain events (e.g., `focusMove`, `windowMove`, `viewportScroll`) consumed by `core/` and `viewport/`. This keeps input handling and domain logic decoupled — a deliberate contrast to Karousel's very large, flat shortcut table.
 - **`rules/` and `ui/` exist as first-class modules from the start** of real feature work (not bolted on later), reflecting that window rules and the minimap are firm requirements, not nice-to-haves.
+
+### 6.2 Build & tooling
+
+The toolchain is chosen to match the established KWin tiling projects while keeping the module boundaries above genuinely enforceable:
+
+- **Language / bundler: TypeScript → Rollup (IIFE).** Sources use normal ES `import`/`export`; Rollup (`@rollup/plugin-typescript`) bundles them into a single `drift/contents/code/main.js`. QML exposes a JavaScript resource's **top-level declarations** to `import "..." as Drift`, so the Rollup `output.footer` re-exposes the entry as a top-level `function init(root)` (a plain `var` from the IIFE is not reliably visible); the QML host then calls `Drift.init(qmlBase)`. This mirrors the working Karousel/Krohnkite builds. (Karousel uses `tsc --outFile` with `namespace`s, which fights the clean module boundaries we want in §6.1, so Drift does not follow it there.)
+- **Packaging: `declarativescript` + QML host.** Because the plain-JS API has no timer (§4), the package is QML-hosted: `metadata.json` sets `X-Plasma-API: declarativescript` and `X-Plasma-MainScript: ui/main.qml`. The host is a minimal `Item { id: qmlBase }` that imports the bundle and calls `Drift.init(qmlBase)` in `Component.onCompleted`, passing itself as the parent for runtime QML objects. Under `declarativescript` the API differs from plain-JS scripts: the globals are capitalised (`Workspace`, `KWin.readConfig`, `Options`), logging is `console.log` (not `print`), the animation `Timer` and each `ShortcutHandler` are created with `Qt.createQmlObject(..., qmlBase)`, and window geometry is `frameGeometry` set via `Qt.rect`. All of this is isolated in `kwin/`, `input/`, and `types/kwin.d.ts`; `core/` and `viewport/` stay KWin-free.
+- **Compile target: ES2019.** Modern syntax (optional chaining, etc.) is written freely and down-levelled by the compiler, keeping the emitted `main.js` safe for the embedded engine regardless of the exact ECMAScript version it supports.
+- **KWin API types: hand-written, self-owned.** A single `src/types/kwin.d.ts` declares only the API surface actually used, mirroring Karousel's `extern/global.d.ts` and Krohnkite's own declarations. No third-party types package, so version-fragile API assumptions stay explicit and contained (§6.1).
+- **Tests: Vitest.** Only `core/` and other pure functions are unit-tested (KWin-free); `*.test.ts` files sit beside the code they cover.
+- **Lint / format: ESLint (`typescript-eslint`) + Prettier + `qmllint`**, configured to the [coding conventions](coding-conventions.md) (4-space indent, 120-column, single quotes, kebab-case filenames).
+- **Package manager / scripts: npm.** `npm run build`, `npm test`, `npm run lint`, and `npm run package:install` (which wraps `kpackagetool6 --type=KWin/Script`).
+- **Reloading a declarative script requires a fresh session.** On Wayland, KWin only reliably (re)instantiates a `declarativescript` package on login. `kpackagetool6 --upgrade` plus `reconfigure` or D-Bus `loadDeclarativeScript` does **not** dependably re-run the QML host, and KWin emits no journald log for script errors — so the development loop is: `npm run package:install`, then log out and back in, then verify. Budget for this; do not trust live-reload feedback.
 
 ---
 
@@ -146,7 +166,7 @@ drift/
 
 ### 7.1 In scope for the spike
 
-- Minimal build/packaging setup: `metadata.json`, `main.ts`, TypeScript build chain, install workflow.
+- Minimal build/packaging setup: `metadata.json`, `main.ts`, the TypeScript → Rollup build chain, and the `kpackagetool6` install workflow (see §6.2 for the locked toolchain).
 - `core/grid.ts` — full implementation: columns placed side by side, virtual positions.
 - `core/coordinates.ts` — full implementation: growing/shrinking virtual area.
 - `core/column.ts` — reduced: width + position only, no vertical tiling yet.
