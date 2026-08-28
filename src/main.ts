@@ -6,6 +6,7 @@
 import { loadSettings } from './config/settings';
 import { rectsEqualRounded, resizedEdge, Rect } from './core/coordinates';
 import { Grid } from './core/grid';
+import { registerDragReorder } from './input/drag';
 import { registerShortcuts } from './input/shortcuts';
 import { GeometrySync } from './kwin/geometry-sync';
 import { createQmlTimer } from './kwin/qml-timer';
@@ -89,10 +90,18 @@ export function init(root: QmlObject): void {
         const width = Math.round(win.frameGeometry().width) || settings.defaultColumnWidth;
         const column = grid.addColumn(width);
         windowsByColumn.set(column.id, win);
-        disconnectByColumn.set(
-            column.id,
-            win.onFrameGeometryChanged((oldReal) => onWindowGeometryChanged(win, oldReal)),
-        );
+        const disconnectGeometry = win.onFrameGeometryChanged((oldReal) => onWindowGeometryChanged(win, oldReal));
+        const disconnectDrag = registerDragReorder(win, column.id, {
+            grid,
+            viewport,
+            workspaceAdapter,
+            area,
+            render,
+        });
+        disconnectByColumn.set(column.id, () => {
+            disconnectGeometry();
+            disconnectDrag();
+        });
         render();
         revealFocused();
     });
