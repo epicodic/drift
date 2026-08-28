@@ -29,12 +29,22 @@ describe('Viewport — scrolling and clamping', () => {
         expect(viewport.offset()).toBe(2000);
     });
 
-    it('re-clamps the current offset when the content shrinks', () => {
+    it('keeps the camera fixed when the content shrinks under it (layout is separate from the camera)', () => {
         const viewport = new Viewport(1000);
         viewport.setContentWidth(3000);
         viewport.scrollTo(2000);
-        viewport.setContentWidth(1500); // maxOffset now 500
+        viewport.setContentWidth(1500); // content shrank under the camera; maxOffset now 500
+        expect(viewport.offset()).toBe(2000); // camera unchanged — a resize must not pan the view
+        viewport.scrollBy(0); // the next explicit scroll re-clamps to the new bounds
         expect(viewport.offset()).toBe(500);
+    });
+
+    it('does not pan the view when content is trimmed from the right while pinned to the right edge', () => {
+        const viewport = new Viewport(1000);
+        viewport.setContentGeometry(0, 2500); // content [0, 2500], maxOffset 1500
+        viewport.scrollTo(1500); // pinned to the right edge
+        viewport.setContentGeometry(0, 2300); // shrink an interior column by 200
+        expect(viewport.offset()).toBe(1500); // left-anchored content stays put on screen
     });
 });
 

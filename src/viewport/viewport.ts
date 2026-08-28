@@ -25,7 +25,9 @@ export class Viewport {
     setContentGeometry(left: number, width: number): void {
         this.contentLeft = left;
         this.contentWidth = width;
-        this.offsetX = this.clamp(this.offsetX);
+        // The camera is deliberately separate from the layout: a content change
+        // (e.g. a resize) records the new bounds but never pans the view. Any
+        // out-of-bounds offset is corrected on the next explicit scroll action.
     }
 
     scrollTo(offset: number): void {
