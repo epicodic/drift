@@ -55,7 +55,12 @@ export class Animator {
     }
 
     animate(from: number, to: number, durationMs: number): void {
-        if (from === to || durationMs <= 0) {
+        if (from === to) {
+            this.animation = null;
+            this.timer.stop();
+            return;
+        }
+        if (durationMs <= 0) {
             this.finish(to);
             return;
         }
