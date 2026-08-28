@@ -39,7 +39,9 @@ interface Window {
     readonly deleted: boolean;
     readonly minSize: QSize;
     readonly maxSize: QSize;
-    readonly frameGeometryChanged: Signal<() => void>;
+    readonly move: boolean;
+    readonly resize: boolean;
+    readonly frameGeometryChanged: Signal<(oldGeometry: QRect) => void>;
 }
 
 /** The KWin workspace singleton (capitalized under declarativescript, docs §4). */

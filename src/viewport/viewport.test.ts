@@ -67,3 +67,33 @@ describe('Viewport — revealing a column (focus scroll)', () => {
         expect(viewport.offset()).toBe(2000);
     });
 });
+
+describe('Viewport — content that starts left of zero', () => {
+    it('clamps the low end to the content-left, not to zero', () => {
+        const viewport = new Viewport(1000);
+        viewport.setContentGeometry(-200, 3000); // content spans [-200, 2800]
+        viewport.scrollTo(-500);
+        expect(viewport.offset()).toBe(-200);
+    });
+
+    it('clamps the high end to content-left + width - viewportWidth', () => {
+        const viewport = new Viewport(1000);
+        viewport.setContentGeometry(-200, 3000); // maxOffset = -200 + 3000 - 1000
+        viewport.scrollTo(9000);
+        expect(viewport.offset()).toBe(1800);
+    });
+
+    it('reveals a column that sits left of zero', () => {
+        const viewport = new Viewport(1000);
+        viewport.setContentGeometry(-200, 3000);
+        viewport.scrollTo(500); // view [500, 1500]
+        expect(viewport.offsetToReveal(-100, 200)).toBe(-100);
+    });
+
+    it('setContentWidth keeps the origin at zero', () => {
+        const viewport = new Viewport(1000);
+        viewport.setContentWidth(3000);
+        viewport.scrollTo(-50);
+        expect(viewport.offset()).toBe(0);
+    });
+});

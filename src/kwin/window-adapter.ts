@@ -37,7 +37,20 @@ export class WindowAdapter {
         return this.window.maxSize.width;
     }
 
-    onFrameGeometryChanged(handler: () => void): void {
-        this.window.frameGeometryChanged.connect(handler);
+    isInteractiveResize(): boolean {
+        return this.window.resize;
+    }
+
+    onFrameGeometryChanged(handler: (oldGeometry: Rect) => void): () => void {
+        const wrapped = (oldGeometry: QRect): void => {
+            handler({
+                x: oldGeometry.x,
+                y: oldGeometry.y,
+                width: oldGeometry.width,
+                height: oldGeometry.height,
+            });
+        };
+        this.window.frameGeometryChanged.connect(wrapped);
+        return () => this.window.frameGeometryChanged.disconnect(wrapped);
     }
 }

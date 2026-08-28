@@ -5,6 +5,7 @@
 export class Viewport {
     private offsetX = 0;
     private contentWidth = 0;
+    private contentLeft = 0;
 
     constructor(private viewportWidth: number) {}
 
@@ -18,6 +19,11 @@ export class Viewport {
     }
 
     setContentWidth(width: number): void {
+        this.setContentGeometry(0, width);
+    }
+
+    setContentGeometry(left: number, width: number): void {
+        this.contentLeft = left;
         this.contentWidth = width;
         this.offsetX = this.clamp(this.offsetX);
     }
@@ -48,10 +54,10 @@ export class Viewport {
     }
 
     private maxOffset(): number {
-        return Math.max(0, this.contentWidth - this.viewportWidth);
+        return Math.max(this.contentLeft, this.contentLeft + this.contentWidth - this.viewportWidth);
     }
 
     private clamp(offset: number): number {
-        return Math.min(Math.max(offset, 0), this.maxOffset());
+        return Math.min(Math.max(offset, this.contentLeft), this.maxOffset());
     }
 }

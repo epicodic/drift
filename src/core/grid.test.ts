@@ -62,6 +62,45 @@ describe('Grid — resizing shifts neighbors', () => {
     });
 });
 
+describe('Grid — content origin and edge-aware resizing', () => {
+    it('starts with a content-left of 0', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        grid.addColumn(300);
+        expect(grid.contentLeft()).toBe(0);
+    });
+
+    it('right-border resize grows rightward and shifts only right neighbors', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(500);
+        grid.resizeColumn(a.id, 400, 'right');
+        expect(grid.contentLeft()).toBe(0);
+        expect(grid.columnRect(a.id).x).toBe(0);
+        expect(grid.columnRect(b.id).x).toBe(410);
+    });
+
+    it('left-border resize holds the right edge and slides the strip left', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300); // a.x = 0
+        const b = grid.addColumn(500); // b.x = 310, right edge = 810
+        grid.resizeColumn(b.id, 600, 'left'); // +100 on the left border
+        expect(grid.contentLeft()).toBe(-100);
+        expect(grid.columnRect(a.id).x).toBe(-100); // left neighbor slid left
+        const rectB = grid.columnRect(b.id);
+        expect(rectB.x).toBe(210);
+        expect(rectB.x + rectB.width).toBe(810); // right edge unchanged
+        expect(grid.virtualWidth()).toBe(910);
+    });
+
+    it('defaults to right-border semantics when no edge is given', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        grid.addColumn(500);
+        grid.resizeColumn(a.id, 400);
+        expect(grid.contentLeft()).toBe(0);
+    });
+});
+
 describe('Grid — removing columns closes the gap', () => {
     it('shifts neighbors left to fill the gap', () => {
         const grid = new Grid(HEIGHT, GAP);
