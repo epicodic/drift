@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { columnOffsets, virtualWidth, columnRect, resizedEdge, rectsEqualRounded } from './coordinates';
+import {
+    columnOffsets,
+    virtualWidth,
+    columnRect,
+    resizedEdge,
+    rectsEqualRounded,
+    nearestInsertionIndex,
+} from './coordinates';
 
 describe('virtualWidth', () => {
     it('is 0 for an empty strip', () => {
@@ -82,5 +89,36 @@ describe('rectsEqualRounded', () => {
         const a = { x: 100, y: 0, width: 300, height: 1080 };
         const b = { x: 100, y: 0, width: 360, height: 1080 };
         expect(rectsEqualRounded(a, b)).toBe(false);
+    });
+});
+
+describe('nearestInsertionIndex', () => {
+    it('returns 0 when there are no other columns', () => {
+        expect(nearestInsertionIndex([], [], 999)).toBe(0);
+    });
+
+    it('picks the only boundary before a single column', () => {
+        // one other column at [0, 300): boundaries are [0, 300]
+        expect(nearestInsertionIndex([0], [300], 50)).toBe(0);
+    });
+
+    it('picks the only boundary after a single column', () => {
+        expect(nearestInsertionIndex([0], [300], 250)).toBe(1);
+    });
+
+    it('picks the closest of several boundaries', () => {
+        // three columns: [0,300), [310,810), [820,1020) -> boundaries [0, 310, 820, 1020]
+        const offsets = [0, 310, 820];
+        const widths = [300, 500, 200];
+        expect(nearestInsertionIndex(offsets, widths, 150)).toBe(0); // closer to 0 than 310
+        expect(nearestInsertionIndex(offsets, widths, 200)).toBe(1); // closer to 310 than 0
+        expect(nearestInsertionIndex(offsets, widths, 1000)).toBe(3); // closer to 1020 than 820
+    });
+
+    it('keeps the earlier index on an exact tie', () => {
+        const offsets = [0, 310];
+        const widths = [300, 200];
+        // boundaries [0, 310, 510]; midpoint between 0 and 310 is 155, equidistant
+        expect(nearestInsertionIndex(offsets, widths, 155)).toBe(0);
     });
 });
