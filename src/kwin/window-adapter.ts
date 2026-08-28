@@ -41,6 +41,20 @@ export class WindowAdapter {
         return this.window.resize;
     }
 
+    isInteractiveMove(): boolean {
+        return this.window.move;
+    }
+
+    onInteractiveMoveResizeStarted(handler: () => void): () => void {
+        this.window.interactiveMoveResizeStarted.connect(handler);
+        return () => this.window.interactiveMoveResizeStarted.disconnect(handler);
+    }
+
+    onInteractiveMoveResizeFinished(handler: () => void): () => void {
+        this.window.interactiveMoveResizeFinished.connect(handler);
+        return () => this.window.interactiveMoveResizeFinished.disconnect(handler);
+    }
+
     onFrameGeometryChanged(handler: (oldGeometry: Rect) => void): () => void {
         const wrapped = (oldGeometry: QRect): void => {
             handler({
