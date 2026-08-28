@@ -56,6 +56,13 @@ interface WorkspaceApi {
 
 declare const Workspace: WorkspaceApi;
 
+/** Reads a value declared in the package's config/main.xml (docs §5). Backed by kwinrc. */
+interface KWinApi {
+    readConfig<T>(key: string, defaultValue: T): T;
+}
+
+declare const KWin: KWinApi;
+
 /** Base for any QML object built at runtime via `Qt.createQmlObject`. */
 interface QmlObject {
     destroy(): void;

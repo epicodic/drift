@@ -3,7 +3,7 @@
 // animation `Timer` and shortcut handlers). Everything below is integration wiring
 // over the tested pure modules (core/, viewport/) and the KWin adapters (docs §8).
 
-import { DEFAULT_SETTINGS } from './config/settings';
+import { loadSettings } from './config/settings';
 import { rectsEqualRounded, resizedEdge, Rect } from './core/coordinates';
 import { Grid } from './core/grid';
 import { registerShortcuts } from './input/shortcuts';
@@ -15,11 +15,11 @@ import { Animator } from './viewport/animator';
 import { Viewport } from './viewport/viewport';
 
 export function init(root: QmlObject): void {
-    const settings = DEFAULT_SETTINGS;
+    const settings = loadSettings();
     const workspaceAdapter = new WorkspaceAdapter();
     const area = workspaceAdapter.combinedGeometry();
 
-    const grid = new Grid(area.height, settings.columnGap);
+    const grid = new Grid(Math.max(1, area.height - settings.bottomMargin), settings.columnGap);
     const viewport = new Viewport(area.width);
     const geometrySync = new GeometrySync(area);
     const windowsByColumn = new Map<number, WindowAdapter>();
