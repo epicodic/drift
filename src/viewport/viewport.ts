@@ -40,13 +40,26 @@ export class Viewport {
 
     /** Minimal offset that brings [rectX, rectX + rectWidth] fully into view. */
     offsetToReveal(rectX: number, rectWidth: number): number {
+        if (this.contentWidth <= this.viewportWidth) {
+            return this.offsetX;
+        }
         const viewLeft = this.offsetX;
         const viewRight = this.offsetX + this.viewportWidth;
+        const rectRight = rectX + rectWidth;
+        if (rectWidth >= this.viewportWidth) {
+            if (rectRight <= viewLeft) {
+                return this.clamp(rectRight - this.viewportWidth);
+            }
+            if (rectX >= viewRight) {
+                return this.clamp(rectX);
+            }
+            return this.offsetX;
+        }
         if (rectX < viewLeft) {
             return this.clamp(rectX);
         }
-        if (rectX + rectWidth > viewRight) {
-            return this.clamp(rectX + rectWidth - this.viewportWidth);
+        if (rectRight > viewRight) {
+            return this.clamp(rectRight - this.viewportWidth);
         }
         return this.offsetX;
     }
