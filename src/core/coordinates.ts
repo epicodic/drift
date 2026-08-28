@@ -51,3 +51,25 @@ export function rectsEqualRounded(a: Rect, b: Rect): boolean {
         Math.round(a.height) === Math.round(b.height)
     );
 }
+
+/** Which insertion index among `offsets`/`widths` has a boundary closest to `x`.
+ * Boundaries are each column's left edge plus the last column's right edge, so the
+ * result is a valid `toIndex` for inserting a column into that same ordered list. */
+export function nearestInsertionIndex(offsets: readonly number[], widths: readonly number[], x: number): number {
+    if (offsets.length === 0) {
+        return 0;
+    }
+    const lastIndex = offsets.length - 1;
+    const boundaries = offsets.slice();
+    boundaries.push(offsets[lastIndex] + widths[lastIndex]);
+    let bestIndex = 0;
+    let bestDistance = Infinity;
+    for (let i = 0; i < boundaries.length; i++) {
+        const distance = Math.abs(x - boundaries[i]);
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            bestIndex = i;
+        }
+    }
+    return bestIndex;
+}
