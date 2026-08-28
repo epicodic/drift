@@ -1,0 +1,13 @@
+{
+    "KPackageStructure": "KWin/Script",
+    "KPlugin": {
+        "Id": "drift",
+        "Name": "Drift",
+        "Description": "Scrollable tiling for KDE Plasma",
+        "Icon": "preferences-system-windows",
+        "Version": "0.1.0"
+    },
+    "X-Plasma-API": "declarativescript",
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-MainScript": "ui/main.qml"
+}

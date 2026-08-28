@@ -1,0 +1,7 @@
+node_modules/
+drift/contents/
+.agents/
+.serena/
+.github/
+docs/
+*.md
