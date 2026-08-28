@@ -96,7 +96,7 @@ describe('Animator', () => {
         expect(timer.stopped).toBe(true);
     });
 
-    it('finishes immediately without starting the timer when start equals end', () => {
+    it('cancels without updating when start equals end', () => {
         const timer = new FakeTimer();
         const updates: number[] = [];
         const animator = new Animator(
@@ -108,7 +108,24 @@ describe('Animator', () => {
 
         animator.animate(50, 50, 200);
         expect(timer.started).toBe(false);
-        expect(updates).toEqual([50]);
+        expect(updates).toEqual([]);
+        expect(animator.isAnimating()).toBe(false);
+    });
+
+    it('does not update when an animation target is already at the current value', () => {
+        const timer = new FakeTimer();
+        const updates: number[] = [];
+        const animator = new Animator(
+            timer,
+            () => 0,
+            16,
+            (value) => updates.push(value),
+        );
+
+        animator.animate(200, 200, 200);
+
+        expect(timer.started).toBe(false);
+        expect(updates).toEqual([]);
         expect(animator.isAnimating()).toBe(false);
     });
 });
