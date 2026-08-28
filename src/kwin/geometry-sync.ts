@@ -15,6 +15,12 @@ export function toRealRect(virtualRect: Rect, area: Rect, viewportOffsetX: numbe
     };
 }
 
+/** Maps a real screen x-coordinate (e.g. the cursor position) into virtual strip
+ * coordinates — the inverse of `toRealRect`'s x mapping. */
+export function toVirtualX(realX: number, area: Rect, viewportOffsetX: number): number {
+    return realX - area.x + viewportOffsetX;
+}
+
 export class GeometrySync {
     private readonly lastApplied = new Map<string, Rect>();
 
