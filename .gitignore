@@ -1,3 +1,4 @@
 .serena/
+_playground/
 node_modules/
 drift/contents/code/main.js

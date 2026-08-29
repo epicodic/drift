@@ -5,7 +5,14 @@ import globals from 'globals';
 
 export default tseslint.config(
     {
-        ignores: ['drift/contents/code/main.js', 'node_modules/**', '.agents/**', '.serena/**', '.github/**'],
+        ignores: [
+            'drift/contents/code/main.js',
+            'node_modules/**',
+            '.agents/**',
+            '.serena/**',
+            '.github/**',
+            '_playground/**',
+        ],
     },
     js.configs.recommended,
     ...tseslint.configs.recommended,
