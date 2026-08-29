@@ -40,6 +40,8 @@ interface Window {
     readonly internalId: string;
     readonly caption: string;
     readonly normalWindow: boolean;
+    readonly transient: boolean;
+    readonly fullScreen: boolean;
     readonly skipTaskbar: boolean;
     readonly deleted: boolean;
     readonly minSize: QSize;
