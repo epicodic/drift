@@ -15,9 +15,15 @@ export class WindowAdapter {
         return this.window.caption;
     }
 
-    /** A normal, managed, top-level window that Drift should tile. */
+    /** A normal, non-transient, non-fullscreen window that Drift should tile. */
     isTileable(): boolean {
-        return this.window.normalWindow && !this.window.skipTaskbar && !this.window.deleted;
+        return (
+            this.window.normalWindow &&
+            !this.window.transient &&
+            !this.window.fullScreen &&
+            !this.window.skipTaskbar &&
+            !this.window.deleted
+        );
     }
 
     frameGeometry(): Rect {
