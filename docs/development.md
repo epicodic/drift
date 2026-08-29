@@ -27,8 +27,9 @@ Naming and formatting conventions are in [`docs/coding-conventions.md`](coding-c
 ## Dev / Reload Workflow
 
 1. `make install` (or `npm run package:install`) builds and installs/upgrades the script via `kpackagetool6 --type=KWin/Script`.
-2. Enable "Drift" under System Settings → Window Management → KWin Scripts, if not already enabled.
-3. **KWin only reloads a script's QML/JS on a full KWin restart, which normally means logging out and back in.**
-   There is no hot-reload; iterate by rebuilding, reinstalling, then logging out/in to see changes.
-4. `console.log` output from `src/main.ts` and the adapters appears in KWin's debug output (`journalctl --user -f -u plasma-kwin_wayland` or equivalent, depending on session type).
+2. Enable "Drift" under System Settings → Window Management → KWin Scripts, if not already enabled (or run `make enable`).
+3. **KWin only reloads a script's QML/JS on a full KWin restart.**
+   There is no hot-reload; `qdbus6 org.kde.KWin /KWin reconfigure` (used by `make enable`/`make disable`) does **not** re-run the QML host.
+   `make restart-kwin` replaces the running compositor in place (`kwin_wayland --replace` / `kwin_x11 --replace`), which is faster to iterate with than logging out and back in — verify it actually reloads Drift before relying on it exclusively.
+4. `console.log` output from `src/main.ts` and the adapters appears in KWin's debug output (`journalctl --user -f -u plasma-kwin_wayland` or equivalent, depending on session type) — debug logging for `kwin_scripting`/`js` must be enabled first (e.g. `QT_LOGGING_RULES=kwin_*.debug=true;js.debug=true`).
 5. `make uninstall` (or `npm run package:remove`) removes the installed script.
