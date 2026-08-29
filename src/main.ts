@@ -8,6 +8,7 @@ import { rectsEqualRounded, resizedEdge, Rect } from './core/coordinates';
 import { Grid } from './core/grid';
 import { registerDragReorder } from './input/drag';
 import { registerShortcuts } from './input/shortcuts';
+import { createDebugConsole } from './kwin/debug-console';
 import { GeometrySync } from './kwin/geometry-sync';
 import { createQmlTimer } from './kwin/qml-timer';
 import { WindowAdapter } from './kwin/window-adapter';
@@ -23,6 +24,7 @@ export function init(root: QmlObject): void {
     const grid = new Grid(Math.max(1, area.height - settings.bottomMargin), settings.columnGap);
     const viewport = new Viewport(area.width);
     const geometrySync = new GeometrySync(area);
+    const debugConsole = createDebugConsole(root);
     const windowsByColumn = new Map<number, WindowAdapter>();
     const disconnectByColumn = new Map<number, () => void>();
 
@@ -143,6 +145,9 @@ export function init(root: QmlObject): void {
         focusRight: () => {
             grid.focusRight();
             revealFocused();
+        },
+        toggleDebugConsole: () => {
+            debugConsole.toggle();
         },
     });
 

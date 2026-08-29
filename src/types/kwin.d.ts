@@ -94,6 +94,12 @@ interface QmlShortcutHandler extends QmlObject {
     readonly activated: Signal<() => void>;
 }
 
+/** The dynamically-created debug console overlay (`Rectangle` root). */
+interface QmlDebugOverlay extends QmlObject {
+    lines: string;
+    visible: boolean;
+}
+
 /** Subset of the QML `Qt` object exposed to scripts. */
 interface QtNamespace {
     rect(x: number, y: number, width: number, height: number): QRect;
