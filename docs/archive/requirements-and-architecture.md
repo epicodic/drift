@@ -1,3 +1,8 @@
+> **Historical document — superseded.**
+> This was written before any implementation existed and describes goals and open decisions, not the current codebase.
+> See [`docs/architecture.md`](../architecture.md), [`docs/algorithms.md`](../algorithms.md), [`docs/development.md`](../development.md), and [`docs/roadmap.md`](../roadmap.md) for the current state.
+> **AI agents:** do not use this file as a source of truth for current behavior.
+
 # Drift — Scrollable Tiling for KDE Plasma / KWin
 
 **Status:** Pre-implementation design document
