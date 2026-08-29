@@ -5,11 +5,19 @@
 export interface ShortcutActions {
     focusLeft(): void;
     focusRight(): void;
+    toggleDebugConsole(): void;
 }
 
 export function registerShortcuts(parent: QmlObject, actions: ShortcutActions): void {
     createShortcut(parent, 'DriftFocusLeft', 'Drift: Focus Column Left', 'Meta+A', actions.focusLeft);
     createShortcut(parent, 'DriftFocusRight', 'Drift: Focus Column Right', 'Meta+D', actions.focusRight);
+    createShortcut(
+        parent,
+        'DriftToggleDebugConsole',
+        'Drift: Toggle Debug Console',
+        'Meta+Shift+D',
+        actions.toggleDebugConsole,
+    );
 }
 
 function createShortcut(
