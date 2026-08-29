@@ -1,6 +1,6 @@
 # Debug Console Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use skills:subagent-driven-development (recommended) or skills:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use skills:subagent-driven-development (recommended) or skills:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add an on-screen (top-left OSD) debug console that any module can append lines to via a `debug(...args)` function, toggled with `Meta+Shift+D`.
 
@@ -20,7 +20,7 @@
 - Create: `src/debug.ts`
 - Test: `src/debug.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 // src/debug.test.ts
@@ -96,12 +96,12 @@ describe('debug', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 `npm test`
 Expected: FAIL — `src/debug.ts` does not exist yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```ts
 // src/debug.ts
@@ -138,19 +138,19 @@ function formatArgs(args: unknown[]): string {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 `npm test`
 Expected: PASS (all `src/debug.test.ts` cases green, plus the existing suite unaffected).
 
-- [ ] **Step 5: Coding-guideline follow-up checklist (mandatory before task completion)**
+- [x] **Step 5: Coding-guideline follow-up checklist (mandatory before task completion)**
 
-- [ ] Conventions file read: `docs/coding-conventions.md`
-- [ ] Naming: `camelCase` functions (`debug`, `setDebugSink`, `formatArgs`), `PascalCase` type (`DebugSink`), `UPPER_SNAKE_CASE` constant (`MAX_LINES`) — matches project rules
-- [ ] No KWin dependency introduced in this file (pure module, per design spec)
-- [ ] `npm run typecheck` passes
-- [ ] `npm test` passes (run directly, not piped through `tail`/`head`)
-- [ ] Any convention violations fixed before moving to next task
+- [x] Conventions file read: `docs/coding-conventions.md`
+- [x] Naming: `camelCase` functions (`debug`, `setDebugSink`, `formatArgs`), `PascalCase` type (`DebugSink`), `UPPER_SNAKE_CASE` constant (`MAX_LINES`) — matches project rules
+- [x] No KWin dependency introduced in this file (pure module, per design spec)
+- [x] `npm run typecheck` passes
+- [x] `npm test` passes (run directly, not piped through `tail`/`head`)
+- [x] Any convention violations fixed before moving to next task
 
 ---
 
@@ -159,7 +159,7 @@ Expected: PASS (all `src/debug.test.ts` cases green, plus the existing suite una
 **Files:**
 - Modify: `src/types/kwin.d.ts` (add new interface near `QmlTimer`/`QmlShortcutHandler`)
 
-- [ ] **Step 1: Add the interface**
+- [x] **Step 1: Add the interface**
 
 Add this directly after the existing `QmlShortcutHandler` interface (do not remove or reorder existing interfaces):
 
@@ -171,18 +171,18 @@ interface QmlDebugOverlay extends QmlObject {
 }
 ```
 
-- [ ] **Step 2: Verify**
+- [x] **Step 2: Verify**
 
 `npm run typecheck`
 Expected: PASS — this is a pure ambient type addition, nothing references it yet.
 
-- [ ] **Step 3: Coding-guideline follow-up checklist (mandatory before task completion)**
+- [x] **Step 3: Coding-guideline follow-up checklist (mandatory before task completion)**
 
-- [ ] Conventions file read: `docs/coding-conventions.md`
-- [ ] Interface named `PascalCase`, properties `camelCase` — matches project rules
-- [ ] Placed alongside the other `Qml*` interfaces, consistent with existing file organization
-- [ ] `npm run typecheck` passes
-- [ ] Any convention violations fixed before moving to next task
+- [x] Conventions file read: `docs/coding-conventions.md`
+- [x] Interface named `PascalCase`, properties `camelCase` — matches project rules
+- [x] Placed alongside the other `Qml*` interfaces, consistent with existing file organization
+- [x] `npm run typecheck` passes
+- [x] Any convention violations fixed before moving to next task
 
 ---
 
@@ -193,7 +193,7 @@ Expected: PASS — this is a pure ambient type addition, nothing references it y
 
 (No test file — untested glue, matching `src/kwin/qml-timer.ts` and `src/input/shortcuts.ts`, both of which have no test files, per the design spec.)
 
-- [ ] **Step 1: Write the implementation**
+- [x] **Step 1: Write the implementation**
 
 ```ts
 // src/kwin/debug-console.ts
@@ -245,19 +245,19 @@ export function createDebugConsole(parent: QmlObject): DebugConsole {
 }
 ```
 
-- [ ] **Step 2: Verify**
+- [x] **Step 2: Verify**
 
 `npm run typecheck` and `npm run lint`
 Expected: PASS. (`Qt.createQmlObject` return type is `QmlObject`; the `as QmlDebugOverlay` cast matches the existing cast style in `qml-timer.ts`/`shortcuts.ts`.)
 
-- [ ] **Step 3: Coding-guideline follow-up checklist (mandatory before task completion)**
+- [x] **Step 3: Coding-guideline follow-up checklist (mandatory before task completion)**
 
-- [ ] Conventions file read: `docs/coding-conventions.md`
-- [ ] Lowercase kebab-case filename (`debug-console.ts`), `camelCase` function/variable names, `PascalCase` interface — matches project rules
-- [ ] KWin API access confined to `kwin/` adapter module — matches project rules
-- [ ] `npm run typecheck` passes
-- [ ] `npm run lint` passes
-- [ ] Any convention violations fixed before moving to next task
+- [x] Conventions file read: `docs/coding-conventions.md`
+- [x] Lowercase kebab-case filename (`debug-console.ts`), `camelCase` function/variable names, `PascalCase` interface — matches project rules
+- [x] KWin API access confined to `kwin/` adapter module — matches project rules
+- [x] `npm run typecheck` passes
+- [x] `npm run lint` passes
+- [x] Any convention violations fixed before moving to next task
 
 ---
 
@@ -267,7 +267,7 @@ Expected: PASS. (`Qt.createQmlObject` return type is `QmlObject`; the `as QmlDeb
 - Modify: `src/input/shortcuts.ts`
 - Modify: `src/main.ts`
 
-- [ ] **Step 1: Extend `ShortcutActions` and register the new shortcut**
+- [x] **Step 1: Extend `ShortcutActions` and register the new shortcut**
 
 In `src/input/shortcuts.ts`, change:
 
@@ -307,7 +307,7 @@ export function registerShortcuts(parent: QmlObject, actions: ShortcutActions): 
 
 Leave `createShortcut` itself unchanged.
 
-- [ ] **Step 2: Wire it up in `main.ts`**
+- [x] **Step 2: Wire it up in `main.ts`**
 
 In `src/main.ts`, add the import next to the other adapter imports:
 
@@ -341,21 +341,21 @@ Update the `registerShortcuts` call to add the new action:
     });
 ```
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 `npm run typecheck`, `npm test`, `npm run lint`, `npm run build`
 Expected: all PASS. No existing test should reference `ShortcutActions` directly (it's only glue), so the interface extension should not break any test file — confirm with `npm test` output.
 
-- [ ] **Step 4: Coding-guideline follow-up checklist (mandatory before task completion)**
+- [x] **Step 4: Coding-guideline follow-up checklist (mandatory before task completion)**
 
-- [ ] Conventions file read: `docs/coding-conventions.md`
-- [ ] `camelCase` for the new method/action (`toggleDebugConsole`) — matches project rules
-- [ ] No KWin API access added outside `kwin/`/`input/` adapter modules — matches project rules
-- [ ] `npm run typecheck` passes
-- [ ] `npm test` passes
-- [ ] `npm run lint` passes
-- [ ] `npm run build` passes
-- [ ] Any convention violations fixed before moving to next task
+- [x] Conventions file read: `docs/coding-conventions.md`
+- [x] `camelCase` for the new method/action (`toggleDebugConsole`) — matches project rules
+- [x] No KWin API access added outside `kwin/`/`input/` adapter modules — matches project rules
+- [x] `npm run typecheck` passes
+- [x] `npm test` passes
+- [x] `npm run lint` passes
+- [x] `npm run build` passes
+- [x] Any convention violations fixed before moving to next task
 
 ---
 
@@ -363,7 +363,7 @@ Expected: all PASS. No existing test should reference `ShortcutActions` directly
 
 **Files:** none (verification only)
 
-- [ ] **Step 1: Run the full quality gate**
+- [x] **Step 1: Run the full quality gate**
 
 ```
 npm run typecheck
@@ -374,18 +374,18 @@ npm run build
 
 Expected: all four PASS, with no output truncated (do not pipe through `tail`/`head` — read full output).
 
-- [ ] **Step 2: Confirm no stray formatting drift**
+- [x] **Step 2: Confirm no stray formatting drift**
 
 `git status --short` and `git diff --stat`
 Expected: only the files listed in Tasks 1–4 are modified (per repo memory, a background process has occasionally reformatted an unrelated `{}` into `{ }` in whichever file was most recently touched — catch and revert any such stray change here).
 
-- [ ] **Step 3: Reinstall the package for live testing**
+- [x] **Step 3: Reinstall the package for live testing**
 
 `npm run package:install`
 Expected: succeeds (installs or upgrades the KWin script package).
 
-- [ ] **Step 4: Coding-guideline follow-up checklist (mandatory before task completion)**
+- [x] **Step 4: Coding-guideline follow-up checklist (mandatory before task completion)**
 
-- [ ] All four quality-gate commands re-confirmed passing in this task's own terminal output (not reused from an earlier task)
-- [ ] `git status --short` shows only expected files
-- [ ] Manual live verification noted as pending a login-cycle (per repo memory on declarativescript reload constraints) — not blocking commit, but flag to the user
+- [x] All four quality-gate commands re-confirmed passing in this task's own terminal output (not reused from an earlier task)
+- [x] `git status --short` shows only expected files
+- [x] Manual live verification noted as pending a login-cycle (per repo memory on declarativescript reload constraints) — not blocking commit, but flag to the user
