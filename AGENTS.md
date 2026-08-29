@@ -50,6 +50,11 @@ Keep KWin API access isolated from core logic.
 No project copyright-header policy is currently defined.
 Do not add copyright headers to new files unless the project establishes a policy later.
 
+## Archived Documentation
+
+`docs/archive/` holds historical, superseded documents kept for reference.
+Do not use files in `docs/archive/` as a source of truth for current behavior.
+
 
 ## Communication Style
 
