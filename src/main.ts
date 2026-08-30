@@ -43,9 +43,6 @@ export function init(root: QmlObject): void {
     function render(excludeWindowId?: string): void {
         viewport.setContentGeometry(grid.contentLeft(), grid.virtualWidth());
         for (const column of grid.columns()) {
-            if (column.hidden) {
-                continue;
-            }
             const win = windowsByColumn.get(column.id);
             if (win && win.id !== excludeWindowId) {
                 geometrySync.apply(win, grid.columnRect(column.id), viewport.offset());
@@ -61,8 +58,7 @@ export function init(root: QmlObject): void {
                 id: win?.id ?? '(none)',
                 title: win?.caption ?? '',
                 columnId: column.id,
-                hidden: column.hidden,
-                virtual: column.hidden ? { x: 0, y: 0, width: column.width, height: 0 } : grid.columnRect(column.id),
+                virtual: grid.columnRect(column.id),
                 real: win?.frameGeometry() ?? { x: 0, y: 0, width: 0, height: 0 },
             };
         });
@@ -97,7 +93,7 @@ export function init(root: QmlObject): void {
 
     function onWindowGeometryChanged(win: WindowAdapter, oldReal: Rect): void {
         const columnId = columnOf(win.id);
-        if (columnId === null || grid.isHidden(columnId)) {
+        if (columnId === null) {
             return;
         }
         const newReal = win.frameGeometry();
@@ -114,19 +110,6 @@ export function init(root: QmlObject): void {
         render(win.isInteractiveResize() ? win.id : undefined);
     }
 
-    function onMinimizedChanged(win: WindowAdapter): void {
-        const columnId = columnOf(win.id);
-        if (columnId === null) {
-            return;
-        }
-        if (win.isMinimized()) {
-            grid.hideColumn(columnId);
-        } else {
-            grid.showColumn(columnId);
-        }
-        render();
-    }
-
     workspaceAdapter.onWindowAdded((win) => {
         if (!win.isTileable()) {
             return;
@@ -134,11 +117,7 @@ export function init(root: QmlObject): void {
         const width = Math.round(win.frameGeometry().width) || settings.defaultColumnWidth;
         const column = grid.addColumn(width);
         windowsByColumn.set(column.id, win);
-        if (win.isMinimized()) {
-            grid.hideColumn(column.id);
-        }
         const disconnectGeometry = win.onFrameGeometryChanged((oldReal) => onWindowGeometryChanged(win, oldReal));
-        const disconnectMinimized = win.onMinimizedChanged(() => onMinimizedChanged(win));
         const disconnectDrag = registerDragReorder(win, column.id, {
             grid,
             viewport,
@@ -148,7 +127,6 @@ export function init(root: QmlObject): void {
         });
         disconnectByColumn.set(column.id, () => {
             disconnectGeometry();
-            disconnectMinimized();
             disconnectDrag();
         });
         render();
