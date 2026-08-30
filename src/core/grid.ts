@@ -49,14 +49,14 @@ export class Grid {
         return column;
     }
 
+    /** Removes a column and reassigns focus to the nearest visible column. */
     removeColumn(id: number): void {
         const index = this.requireIndex(id);
         this.ordered.splice(index, 1);
         if (this.focusedColumnId !== id) {
             return;
         }
-        // Prefer the right neighbor (now at the same index), else the left, else none.
-        const next = this.ordered[index] ?? this.ordered[index - 1] ?? null;
+        const next = this.nearestVisibleFrom(index);
         this.focusedColumnId = next ? next.id : null;
     }
 
@@ -146,6 +146,21 @@ export class Grid {
 
     private visibleWidths(): number[] {
         return this.visibleColumns().map((column) => column.width);
+    }
+
+    /** Nearest visible column at or after `index`, else nearest visible before it, else null. */
+    private nearestVisibleFrom(index: number): Column | null {
+        for (let i = index; i < this.ordered.length; i++) {
+            if (!this.ordered[i].hidden) {
+                return this.ordered[i];
+            }
+        }
+        for (let i = index - 1; i >= 0; i--) {
+            if (!this.ordered[i].hidden) {
+                return this.ordered[i];
+            }
+        }
+        return null;
     }
 
     private moveFocus(step: number): Column | null {

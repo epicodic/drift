@@ -257,6 +257,31 @@ describe('Grid — removing columns closes the gap', () => {
     });
 });
 
+describe('Grid — removing a column skips hidden neighbors when reassigning focus', () => {
+    it('moves focus past a hidden right neighbor to the next visible column', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        grid.addColumn(300); // a
+        const b = grid.addColumn(500);
+        const c = grid.addColumn(200);
+        const d = grid.addColumn(150);
+        grid.hideColumn(c.id);
+        grid.setFocus(b.id);
+        grid.removeColumn(b.id);
+        expect(grid.focusedColumn()).toBe(d);
+    });
+
+    it('falls back to a visible left neighbor when every right neighbor is hidden', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(500);
+        const c = grid.addColumn(200);
+        grid.hideColumn(c.id);
+        grid.setFocus(b.id);
+        grid.removeColumn(b.id);
+        expect(grid.focusedColumn()).toBe(a);
+    });
+});
+
 describe('Grid — focus navigation', () => {
     it('moves focus left and right without wrapping', () => {
         const grid = new Grid(HEIGHT, GAP);
