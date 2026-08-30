@@ -4,29 +4,17 @@
 
 export class Viewport {
     private offsetX = 0;
-    private contentSize = 0;
-    private contentOrigin = 0;
+    private contentWidth = 0;
+    private contentLeft = 0;
 
-    constructor(private width: number) {}
+    constructor(private viewportWidth: number) { }
 
     offset(): number {
         return this.offsetX;
     }
 
-    viewportWidth(): number {
-        return this.width;
-    }
-
-    contentLeft(): number {
-        return this.contentOrigin;
-    }
-
-    contentWidth(): number {
-        return this.contentSize;
-    }
-
     setViewportWidth(width: number): void {
-        this.width = width;
+        this.viewportWidth = width;
         this.offsetX = this.clamp(this.offsetX);
     }
 
@@ -35,8 +23,8 @@ export class Viewport {
     }
 
     setContentGeometry(left: number, width: number): void {
-        this.contentOrigin = left;
-        this.contentSize = width;
+        this.contentLeft = left;
+        this.contentWidth = width;
         // The camera is deliberately separate from the layout: a content change
         // (e.g. a resize) records the new bounds but never pans the view. Any
         // out-of-bounds offset is corrected on the next explicit scroll action.
@@ -52,26 +40,13 @@ export class Viewport {
 
     /** Minimal offset that brings [rectX, rectX + rectWidth] fully into view. */
     offsetToReveal(rectX: number, rectWidth: number): number {
-        if (this.contentSize <= this.width) {
-            return this.offsetX;
-        }
         const viewLeft = this.offsetX;
-        const viewRight = this.offsetX + this.width;
-        const rectRight = rectX + rectWidth;
-        if (rectWidth >= this.width) {
-            if (rectRight <= viewLeft) {
-                return this.clamp(rectRight - this.width);
-            }
-            if (rectX >= viewRight) {
-                return this.clamp(rectX);
-            }
-            return this.offsetX;
-        }
+        const viewRight = this.offsetX + this.viewportWidth;
         if (rectX < viewLeft) {
             return this.clamp(rectX);
         }
-        if (rectRight > viewRight) {
-            return this.clamp(rectRight - this.width);
+        if (rectX + rectWidth > viewRight) {
+            return this.clamp(rectX + rectWidth - this.viewportWidth);
         }
         return this.offsetX;
     }
@@ -81,10 +56,10 @@ export class Viewport {
     }
 
     private maxOffset(): number {
-        return Math.max(this.contentOrigin, this.contentOrigin + this.contentSize - this.width);
+        return Math.max(this.contentLeft, this.contentLeft + this.contentWidth - this.viewportWidth);
     }
 
     private clamp(offset: number): number {
-        return Math.min(Math.max(offset, this.contentOrigin), this.maxOffset());
+        return Math.min(Math.max(offset, this.contentLeft), this.maxOffset());
     }
 }

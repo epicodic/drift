@@ -8,7 +8,6 @@ export interface WindowDebugRow {
     id: string;
     title: string;
     columnId: number;
-    hidden: boolean;
     virtual: Rect;
     real: Rect;
 }
@@ -31,16 +30,14 @@ export function formatDebugState(
         `content=[${camera.contentLeft}..${camera.contentLeft + camera.contentWidth}]`;
     const windowLines = rows.map(
         (row) =>
-            `col ${row.columnId} (win ${row.id} "${row.title}")${row.hidden ? ' [minimized]' : ''}: ` +
+            `col ${row.columnId} (win ${row.id} "${row.title}"): ` +
             `virtual=${formatRect(row.virtual)} real=${formatRect(row.real)}`,
     );
     return gridLine.concat([cameraLine], windowLines).join('\n');
 }
 
 function formatGridLine(grid: GridDebugState): string {
-    const columns = grid.columns
-        .map((column) => `${column.id}:${column.width}${column.hidden ? '(hidden)' : ''}`)
-        .join(',');
+    const columns = grid.columns.map((column) => `${column.id}:${column.width}`).join(',');
     return `grid: focused=${grid.focusedColumnId} nextId=${grid.nextId} originX=${grid.originX} columns=[${columns}]`;
 }
 
