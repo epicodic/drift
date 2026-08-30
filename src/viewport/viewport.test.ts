@@ -109,12 +109,21 @@ describe('Viewport — revealing a column (focus scroll)', () => {
         expect(viewport.offsetToReveal(100, 400)).toBe(0);
     });
 
-    it('does not move the camera when the entire resized strip fits the viewport', () => {
+    it('re-clamps a stale offset once the resized strip fits the viewport', () => {
         const viewport = new Viewport(1000);
         viewport.setContentGeometry(0, 2000);
         viewport.scrollTo(200);
         viewport.setContentGeometry(100, 800); // content [100, 900], narrower than the viewport
-        expect(viewport.offsetToReveal(100, 400)).toBe(200);
+        // The old offset (200) would leave the content's left edge (100) scrolled out of view.
+        expect(viewport.offsetToReveal(100, 400)).toBe(100);
+    });
+
+    it('re-clamps a stale offset even when only one column remains', () => {
+        const viewport = new Viewport(5120);
+        viewport.setContentGeometry(0, 6000); // wide content, e.g. several columns
+        viewport.scrollTo(1288); // camera legitimately panned right
+        viewport.setContentGeometry(0, 2270); // columns closed, one narrow column remains
+        expect(viewport.offsetToReveal(0, 2270)).toBe(0);
     });
 
     it('reveals the nearest edge when an oversized column is completely right of the viewport', () => {
