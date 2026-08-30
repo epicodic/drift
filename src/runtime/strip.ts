@@ -138,6 +138,7 @@ export class Strip {
             hideColumn: (columnId) => this.grid.hideColumn(columnId),
             showColumn: (columnId) => this.grid.showColumn(columnId),
             render: (excludeWindowId) => this.render(excludeWindowId),
+            revealFocused: () => this.revealFocused(),
         };
     }
 }

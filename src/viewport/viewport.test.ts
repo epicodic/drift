@@ -84,16 +84,23 @@ describe('Viewport — revealing a column (focus scroll)', () => {
         expect(viewport.offsetToReveal(1500, 300)).toBe(800);
     });
 
-    it('does not move when an oversized column already overlaps the viewport', () => {
+    it('moves to fully cover the viewport when an oversized column only partially overlaps it', () => {
         const viewport = new Viewport(1000);
         viewport.setContentWidth(3000);
-        expect(viewport.offsetToReveal(100, 1200)).toBe(0);
+        expect(viewport.offsetToReveal(100, 1200)).toBe(100);
     });
 
-    it('does not move when a screen-wide column already overlaps the viewport', () => {
+    it('moves to fully cover the viewport when a screen-wide column only partially overlaps it', () => {
         const viewport = new Viewport(1000);
         viewport.setContentWidth(3000);
-        expect(viewport.offsetToReveal(100, 1000)).toBe(0);
+        expect(viewport.offsetToReveal(100, 1000)).toBe(100);
+    });
+
+    it('does not move when an oversized column already fully covers the viewport', () => {
+        const viewport = new Viewport(1000);
+        viewport.setContentWidth(3000);
+        viewport.scrollTo(150); // view [150,1150], within column [100,1300]
+        expect(viewport.offsetToReveal(100, 1200)).toBe(150);
     });
 
     it('does not move when a visible column follows a left-edge resize in narrow content', () => {
