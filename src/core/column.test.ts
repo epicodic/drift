@@ -24,3 +24,18 @@ describe('Column', () => {
         expect(() => column.setWidth(0)).toThrow();
     });
 });
+
+describe('Column — hidden flag', () => {
+    it('starts visible', () => {
+        const column = new Column(1, 300);
+        expect(column.hidden).toBe(false);
+    });
+
+    it('toggles hidden via setHidden', () => {
+        const column = new Column(1, 300);
+        column.setHidden(true);
+        expect(column.hidden).toBe(true);
+        column.setHidden(false);
+        expect(column.hidden).toBe(false);
+    });
+});
