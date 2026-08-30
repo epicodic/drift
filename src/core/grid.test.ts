@@ -70,15 +70,15 @@ describe('Grid — geometry', () => {
 });
 
 describe('Grid — hiding and showing columns', () => {
-    it('excludes a hidden column from virtualWidth and neighbor offsets, closing the gap', () => {
+    it('hides a column with 1px hidden gap to prevent taskbar confusion', () => {
         const grid = new Grid(HEIGHT, GAP);
         const a = grid.addColumn(300);
         const b = grid.addColumn(500);
         const c = grid.addColumn(200);
         grid.hideColumn(b.id);
-        expect(grid.virtualWidth()).toBe(510); // 300 + gap(10) + 200 — b contributes nothing
+        expect(grid.virtualWidth()).toBe(521); // 300 + gap(10) + 1(hidden b) + gap(10) + 200
         expect(grid.columnRect(a.id).x).toBe(0);
-        expect(grid.columnRect(c.id).x).toBe(310); // c shifts left to fill b's gap
+        expect(grid.columnRect(c.id).x).toBe(321); // c maintains proper gap with a via hidden b's 1px
     });
 
     it('keeps the hidden column in columns() at its original position', () => {
