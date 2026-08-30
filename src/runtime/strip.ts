@@ -64,7 +64,7 @@ export class Strip {
 
     revealFocused(): void {
         const focused = this.grid.focusedColumn();
-        if (focused === null) {
+        if (focused === null || focused.hidden) {
             return;
         }
         const rect = this.grid.columnRect(focused.id);

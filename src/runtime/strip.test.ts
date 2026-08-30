@@ -27,7 +27,7 @@ interface FakeWindow {
     };
 }
 
-function fakeWindow(id: string, width = 800): FakeWindow {
+function fakeWindow(id: string, options: { width?: number; minimized?: boolean } = {}): FakeWindow {
     const disconnects = {
         frameGeometry: vi.fn(),
         minimized: vi.fn(),
@@ -38,9 +38,9 @@ function fakeWindow(id: string, width = 800): FakeWindow {
     const adapter = {
         id,
         caption: id,
-        frameGeometry: () => ({ x: 0, y: 0, width, height: 1000 }),
+        frameGeometry: () => ({ x: 0, y: 0, width: options.width ?? 800, height: 1000 }),
         setFrameGeometry,
-        isMinimized: () => false,
+        isMinimized: () => options.minimized ?? false,
         isInteractiveResize: () => false,
         isInteractiveMove: () => false,
         onFrameGeometryChanged: () => disconnects.frameGeometry,
@@ -52,6 +52,14 @@ function fakeWindow(id: string, width = 800): FakeWindow {
 }
 
 describe('Strip', () => {
+    it('adds an already-minimized window without throwing and keeps it hidden', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1', { minimized: true });
+
+        expect(() => strip.addWindow(win.adapter)).not.toThrow();
+        expect(win.setFrameGeometry).not.toHaveBeenCalled();
+    });
+
     it('applies real geometry to a newly added window', () => {
         const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1');
