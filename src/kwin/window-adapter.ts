@@ -6,7 +6,7 @@ import { Rect } from '../core/coordinates';
 import { DEBUG_CONSOLE_WINDOW_TITLE } from './debug-console';
 
 export class WindowAdapter {
-    constructor(private readonly window: Window) { }
+    constructor(private readonly window: Window) {}
 
     get id(): string {
         return this.window.internalId;
