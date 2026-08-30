@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { debug, setDebugSink, resetDebugBuffer } from './debug';
+import { debug, setDebugSink, setDebugState, resetDebugBuffer } from './debug';
 
 describe('debug', () => {
     beforeEach(() => {
@@ -45,6 +45,29 @@ describe('debug', () => {
         debug('line 1');
         debug('line 2');
         expect(received[received.length - 1]).toBe('line 1\nline 2');
+    });
+
+    it('shows only the state when no log lines exist', () => {
+        const received: string[] = [];
+        setDebugSink((text) => received.push(text));
+        setDebugState('camera: offset=0');
+        expect(received[received.length - 1]).toBe('camera: offset=0');
+    });
+
+    it('combines the state above the log, separated by a blank line', () => {
+        const received: string[] = [];
+        debug('log line');
+        setDebugState('camera: offset=0');
+        setDebugSink((text) => received.push(text));
+        expect(received[received.length - 1]).toBe('camera: offset=0\n\nlog line');
+    });
+
+    it('clears the state on resetDebugBuffer', () => {
+        const received: string[] = [];
+        setDebugState('camera: offset=0');
+        resetDebugBuffer();
+        setDebugSink((text) => received.push(text));
+        expect(received[received.length - 1]).toBe('');
     });
 
     it('drops the oldest line once more than 50 lines are buffered', () => {

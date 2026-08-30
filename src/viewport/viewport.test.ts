@@ -6,6 +6,20 @@ describe('Viewport — scrolling and clamping', () => {
         expect(new Viewport(1000).offset()).toBe(0);
     });
 
+    it('exposes the viewport width', () => {
+        const viewport = new Viewport(1000);
+        expect(viewport.viewportWidth()).toBe(1000);
+        viewport.setViewportWidth(1200);
+        expect(viewport.viewportWidth()).toBe(1200);
+    });
+
+    it('exposes the content geometry', () => {
+        const viewport = new Viewport(1000);
+        viewport.setContentGeometry(50, 3000);
+        expect(viewport.contentLeft()).toBe(50);
+        expect(viewport.contentWidth()).toBe(3000);
+    });
+
     it('clamps scrolling to a non-negative offset', () => {
         const viewport = new Viewport(1000);
         viewport.setContentWidth(3000);
