@@ -21,6 +21,40 @@ export class WorkspaceAdapter {
         return Workspace.cursorPos.x;
     }
 
+    currentActivity(): string {
+        return Workspace.currentActivity;
+    }
+
+    /** The id of the current virtual desktop. */
+    currentDesktop(): string {
+        return Workspace.currentDesktop.id;
+    }
+
+    activities(): string[] {
+        return Workspace.activities;
+    }
+
+    /** The ids of all virtual desktops. */
+    desktops(): string[] {
+        return Workspace.desktops.map((desktop) => desktop.id);
+    }
+
+    onCurrentActivityChanged(handler: () => void): void {
+        Workspace.currentActivityChanged.connect(handler);
+    }
+
+    onCurrentDesktopChanged(handler: () => void): void {
+        Workspace.currentDesktopChanged.connect(handler);
+    }
+
+    onActivitiesChanged(handler: () => void): void {
+        Workspace.activitiesChanged.connect(handler);
+    }
+
+    onDesktopsChanged(handler: () => void): void {
+        Workspace.desktopsChanged.connect(handler);
+    }
+
     screens(): ScreenInfo[] {
         return Workspace.screens.map((output) => ({ name: output.name, geometry: toRect(output.geometry) }));
     }
