@@ -6,6 +6,14 @@ and as `CLAUDE.md` via symlink for Claude Code.
 
 ---
 
+## Approval Rules (MANDATORY)
+
+- Never implement a fix or any code change without first informing the user what you are about to do and getting their go-ahead.
+- When debugging, as soon as you believe you know the root cause, stop and discuss it with the user before making any changes.
+- Never commit anything without asking the user first.
+
+---
+
 ## Build & Test
 
 This repository targets a KDE Plasma 6 / KWin addon.

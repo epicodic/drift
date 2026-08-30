@@ -50,12 +50,20 @@ export class WindowAdapter {
         return this.window.minimized;
     }
 
+    isFullScreen(): boolean {
+        return this.window.fullScreen;
+    }
+
     activities(): string[] {
         return this.window.activities;
     }
 
     desktops(): KwinDesktop[] {
         return this.window.desktops;
+    }
+
+    output(): Output {
+        return this.window.output;
     }
 
     /** The window's single activity+desktop, or null unless it is on exactly one of each. */
@@ -112,5 +120,10 @@ export class WindowAdapter {
     onMinimizedChanged(handler: () => void): () => void {
         this.window.minimizedChanged.connect(handler);
         return () => this.window.minimizedChanged.disconnect(handler);
+    }
+
+    onFullScreenChanged(handler: () => void): () => void {
+        this.window.fullScreenChanged.connect(handler);
+        return () => this.window.fullScreenChanged.disconnect(handler);
     }
 }

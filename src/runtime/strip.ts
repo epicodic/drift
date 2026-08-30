@@ -16,7 +16,12 @@ import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import { Animator, type Timer } from '../viewport/animator';
 import { Viewport } from '../viewport/viewport';
 import { ColumnRegistry } from './column-registry';
-import { onMinimizedChanged, onWindowGeometryChanged, type WindowEventDeps } from './window-events';
+import {
+    onFullScreenChanged,
+    onMinimizedChanged,
+    onWindowGeometryChanged,
+    type WindowEventDeps,
+} from './window-events';
 import { SignalManager } from '../utils/signal-manager';
 
 export class Strip {
@@ -25,6 +30,10 @@ export class Strip {
     private readonly geometrySync: GeometrySync;
     private readonly animator: Animator;
     private readonly registry = new ColumnRegistry();
+    // Tracks fullscreen state per column, updated only by the window's fullScreenChanged
+    // signal (never by re-reading the live property from an unrelated render() call — KWin's
+    // own docs warn the property is only reliably observed via its notify signal).
+    private readonly fullScreenColumns = new Set<number>();
 
     constructor(
         private readonly area: Rect,
@@ -53,7 +62,7 @@ export class Strip {
                 continue;
             }
             const win = this.registry.get(column.id);
-            if (win && win.id !== excludeWindowId) {
+            if (win && win.id !== excludeWindowId && !this.fullScreenColumns.has(column.id)) {
                 this.geometrySync.apply(win, this.grid.columnRect(column.id), this.viewport.offset());
             }
         }
@@ -83,8 +92,12 @@ export class Strip {
         if (win.isMinimized()) {
             this.grid.hideColumn(column.id);
         }
+        if (win.isFullScreen()) {
+            this.fullScreenColumns.add(column.id);
+        }
         signals.add(win.onFrameGeometryChanged((oldReal) => onWindowGeometryChanged(win, oldReal, this.eventDeps())));
         signals.add(win.onMinimizedChanged(() => onMinimizedChanged(win, this.eventDeps())));
+        signals.add(win.onFullScreenChanged(() => onFullScreenChanged(win, this.eventDeps())));
         signals.add(
             registerDragReorder(win, column.id, {
                 grid: this.grid,
@@ -105,6 +118,7 @@ export class Strip {
         }
         this.registry.delete(columnId);
         this.geometrySync.forget(win.id);
+        this.fullScreenColumns.delete(columnId);
         this.grid.removeColumn(columnId);
         this.render();
         this.revealFocused();
@@ -137,8 +151,16 @@ export class Strip {
             resizeColumn: (columnId, width, edge) => this.grid.resizeColumn(columnId, width, edge),
             hideColumn: (columnId) => this.grid.hideColumn(columnId),
             showColumn: (columnId) => this.grid.showColumn(columnId),
+            setFullScreen: (columnId, fullScreen) => {
+                if (fullScreen) {
+                    this.fullScreenColumns.add(columnId);
+                } else {
+                    this.fullScreenColumns.delete(columnId);
+                }
+            },
             render: (excludeWindowId) => this.render(excludeWindowId),
             revealFocused: () => this.revealFocused(),
+            isFullScreenGeometry: (win) => this.workspaceAdapter.isFullScreenGeometry(win),
         };
     }
 }
