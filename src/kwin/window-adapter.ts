@@ -50,6 +50,34 @@ export class WindowAdapter {
         return this.window.minimized;
     }
 
+    activities(): string[] {
+        return this.window.activities;
+    }
+
+    desktops(): KwinDesktop[] {
+        return this.window.desktops;
+    }
+
+    /** The window's single activity+desktop, or null unless it is on exactly one of each. */
+    singleAssignment(): { activity: string; desktop: string } | null {
+        const activities = this.window.activities;
+        const desktops = this.window.desktops;
+        if (activities.length !== 1 || desktops.length !== 1) {
+            return null;
+        }
+        return { activity: activities[0], desktop: desktops[0].id };
+    }
+
+    onActivitiesChanged(handler: () => void): () => void {
+        this.window.activitiesChanged.connect(handler);
+        return () => this.window.activitiesChanged.disconnect(handler);
+    }
+
+    onDesktopsChanged(handler: () => void): () => void {
+        this.window.desktopsChanged.connect(handler);
+        return () => this.window.desktopsChanged.disconnect(handler);
+    }
+
     isInteractiveResize(): boolean {
         return this.window.resize;
     }
