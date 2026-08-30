@@ -29,7 +29,7 @@ export class Controller {
     }
 
     start(): void {
-        initWorkspaceSignals(this.windowManager, this.workspaceAdapter);
+        initWorkspaceSignals(this.windowManager, this.stripManager, this.workspaceAdapter);
         registerShortcuts(this.root, {
             focusLeft: () => this.stripManager.activeStrip().focusLeft(),
             focusRight: () => this.stripManager.activeStrip().focusRight(),
