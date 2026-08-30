@@ -6,6 +6,9 @@
 import { Column } from './column';
 import { columnOffsets, columnRect, virtualWidth, Rect, ResizeEdge, nearestInsertionIndex } from './coordinates';
 
+/** Width in pixels allocated to hidden columns for layout spacing (prevents taskbar confusion). */
+const HIDDEN_COLUMN_WIDTH = 1;
+
 export interface GridDebugState {
     focusedColumnId: number | null;
     nextId: number;
@@ -99,7 +102,7 @@ export class Grid {
     }
 
     virtualWidth(): number {
-        return virtualWidth(this.visibleWidths(), this.gap);
+        return virtualWidth(this.layoutWidths(), this.gap);
     }
 
     contentLeft(): number {
@@ -111,9 +114,8 @@ export class Grid {
         if (column.hidden) {
             throw new Error(`Column ${id} is hidden`);
         }
-        const visible = this.visibleColumns();
-        const index = visible.indexOf(column);
-        const offset = columnOffsets(this.visibleWidths(), this.gap, this.originX)[index];
+        const index = this.indexOf(id);
+        const offset = columnOffsets(this.layoutWidths(), this.gap, this.originX)[index];
         return columnRect(offset, column.width, this.height);
     }
 
@@ -146,12 +148,9 @@ export class Grid {
         };
     }
 
-    private visibleColumns(): Column[] {
-        return this.ordered.filter((column) => !column.hidden);
-    }
-
-    private visibleWidths(): number[] {
-        return this.visibleColumns().map((column) => column.width);
+    /** Widths for layout calculations: visible columns use their width, hidden use HIDDEN_COLUMN_WIDTH. */
+    private layoutWidths(): number[] {
+        return this.ordered.map((column) => (column.hidden ? HIDDEN_COLUMN_WIDTH : column.width));
     }
 
     /** Nearest visible column at or after `index`, else nearest visible before it, else null. */
