@@ -34,6 +34,12 @@ interface Output {
     readonly geometry: QRect;
 }
 
+/** A KWin virtual desktop. `Workspace.desktops` and `Window.desktops` expose these. */
+interface KwinDesktop {
+    readonly id: string;
+    readonly name: string;
+}
+
 /** A managed window. Geometry is set by assigning `frameGeometry` (docs §4). */
 interface Window {
     frameGeometry: QRect;
@@ -50,8 +56,12 @@ interface Window {
     readonly move: boolean;
     readonly resize: boolean;
     readonly minimized: boolean;
+    readonly activities: string[];
+    readonly desktops: KwinDesktop[];
     readonly frameGeometryChanged: Signal<(oldGeometry: QRect) => void>;
     readonly minimizedChanged: Signal<() => void>;
+    readonly activitiesChanged: Signal<() => void>;
+    readonly desktopsChanged: Signal<() => void>;
     readonly interactiveMoveResizeStarted: Signal<() => void>;
     readonly interactiveMoveResizeFinished: Signal<() => void>;
 }
@@ -65,6 +75,14 @@ interface WorkspaceApi {
     readonly windowAdded: Signal<(window: Window) => void>;
     readonly windowRemoved: Signal<(window: Window) => void>;
     readonly windowActivated: Signal<(window: Window | null) => void>;
+    readonly currentActivity: string;
+    currentDesktop: KwinDesktop;
+    readonly activities: string[];
+    readonly desktops: KwinDesktop[];
+    readonly currentActivityChanged: Signal<() => void>;
+    readonly currentDesktopChanged: Signal<() => void>;
+    readonly activitiesChanged: Signal<() => void>;
+    readonly desktopsChanged: Signal<() => void>;
 }
 
 declare const Workspace: WorkspaceApi;
