@@ -118,12 +118,18 @@ export class Grid {
     }
 
     /** Insertion index — a valid `moveColumn` target — closest to `virtualX`,
-     * considering every column except `excludeId` (the one being dragged). */
+     * considering every VISIBLE column except `excludeId` (the one being dragged),
+     * then mapped back to a real index in the full ordered list. */
     insertionIndexForX(excludeId: number, virtualX: number): number {
-        const others = this.ordered.filter((column) => column.id !== excludeId);
-        const widths = others.map((column) => column.width);
+        const remaining = this.ordered.filter((column) => column.id !== excludeId);
+        const visibleRemaining = remaining.filter((column) => !column.hidden);
+        const widths = visibleRemaining.map((column) => column.width);
         const offsets = columnOffsets(widths, this.gap, this.originX);
-        return nearestInsertionIndex(offsets, widths, virtualX);
+        const visibleIndex = nearestInsertionIndex(offsets, widths, virtualX);
+        if (visibleIndex >= visibleRemaining.length) {
+            return remaining.length;
+        }
+        return remaining.indexOf(visibleRemaining[visibleIndex]);
     }
 
     indexOf(id: number): number {

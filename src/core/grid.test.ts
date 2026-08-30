@@ -160,6 +160,19 @@ describe('Grid — insertion index for a drag position', () => {
     });
 });
 
+describe('Grid — insertion index skips hidden columns', () => {
+    it('excludes a hidden column from boundary candidates and maps back to the full ordered index', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        grid.addColumn(300); // visible, [0,300)
+        const b = grid.addColumn(500); // hidden — contributes no space
+        const c = grid.addColumn(200);
+        grid.hideColumn(b.id);
+        // with c excluded and b hidden: only a occupies space, boundaries are [0, 300]
+        expect(grid.insertionIndexForX(c.id, 50)).toBe(0); // before a -> ordered index 0
+        expect(grid.insertionIndexForX(c.id, 400)).toBe(2); // past a -> ordered index 2 (end, after hidden b)
+    });
+});
+
 describe('Grid — resizing shifts neighbors', () => {
     it('shifts downstream columns when a column widens', () => {
         const grid = new Grid(HEIGHT, GAP);
