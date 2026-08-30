@@ -153,9 +153,13 @@ export class Grid {
             return null;
         }
         const current = this.indexOf(this.focusedColumnId);
-        const target = Math.min(Math.max(current + step, 0), this.ordered.length - 1);
-        this.focusedColumnId = this.ordered[target].id;
-        return this.ordered[target];
+        for (let target = current + step; target >= 0 && target < this.ordered.length; target += step) {
+            if (!this.ordered[target].hidden) {
+                this.focusedColumnId = this.ordered[target].id;
+                return this.ordered[target];
+            }
+        }
+        return this.columnById(this.focusedColumnId);
     }
 
     private columnById(id: number): Column | null {
