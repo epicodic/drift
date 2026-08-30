@@ -50,10 +50,14 @@ Every focus change triggers `revealFocused()`, which asks the viewport for the m
 | [`src/kwin/`](../src/kwin) | The only code that touches the live KWin API: `WindowAdapter`, `WorkspaceAdapter`, `GeometrySync`, and `createQmlTimer`. Thin by design; only `toRealRect`/`toVirtualX` and `GeometrySync`'s echo tracking are unit-tested. |
 | [`src/input/`](../src/input) | Wires KWin interaction events (drag lifecycle, global shortcuts) to `core`/`viewport` calls. |
 | [`src/config/`](../src/config) | Settings defaults and `kwinrc` config loading. |
-| [`src/main.ts`](../src/main.ts) | Entry point (`init`) called by the QML host. Wires all of the above together; contains no logic of its own. |
+| [`src/runtime/`](../src/runtime) | Orchestration layer that composes the pure modules and adapters: `Controller` (root), `Strip` (one surface = `Grid` + `Viewport` + `Animator` + `ColumnRegistry`), and the `StripManager`/`WindowManager` seams for future Plasma Activities support. Also holds the extracted `window-events` handlers and `workspace-signals` registration. |
+| [`src/utils/`](../src/utils) | Small cross-cutting helpers: `SignalManager`, which tracks adapter disconnect thunks and tears them all down in one call. |
+| [`src/debug/`](../src/debug) | Debug-console snapshot builders (`debugRows`/`debugCamera`); the debug output channel itself remains in `src/debug.ts`. |
+| [`src/main.ts`](../src/main.ts) | Entry point (`init`) called by the QML host. Constructs and starts the `Controller`; contains no logic of its own. |
 
 Design principle: `core/` and `viewport/` never import from `kwin/`.
 All KWin API access is isolated to `kwin/`, so the layout and animation logic can be unit-tested without a running compositor.
+The `runtime/` layer is where the whole application is composed: it draws on the `kwin/` adapters and the `input/` bindings, which `core/` and `viewport/` never do.
 
 ## Data Flow
 
