@@ -6,6 +6,20 @@ describe('Viewport — scrolling and clamping', () => {
         expect(new Viewport(1000).offset()).toBe(0);
     });
 
+    it('exposes the viewport width', () => {
+        const viewport = new Viewport(1000);
+        expect(viewport.viewportWidth()).toBe(1000);
+        viewport.setViewportWidth(1200);
+        expect(viewport.viewportWidth()).toBe(1200);
+    });
+
+    it('exposes the content geometry', () => {
+        const viewport = new Viewport(1000);
+        viewport.setContentGeometry(50, 3000);
+        expect(viewport.contentLeft()).toBe(50);
+        expect(viewport.contentWidth()).toBe(3000);
+    });
+
     it('clamps scrolling to a non-negative offset', () => {
         const viewport = new Viewport(1000);
         viewport.setContentWidth(3000);
@@ -68,6 +82,45 @@ describe('Viewport — revealing a column (focus scroll)', () => {
         viewport.setContentWidth(3000);
         viewport.scrollTo(800); // view [800,1800]
         expect(viewport.offsetToReveal(1500, 300)).toBe(800);
+    });
+
+    it('does not move when an oversized column already overlaps the viewport', () => {
+        const viewport = new Viewport(1000);
+        viewport.setContentWidth(3000);
+        expect(viewport.offsetToReveal(100, 1200)).toBe(0);
+    });
+
+    it('does not move when a screen-wide column already overlaps the viewport', () => {
+        const viewport = new Viewport(1000);
+        viewport.setContentWidth(3000);
+        expect(viewport.offsetToReveal(100, 1000)).toBe(0);
+    });
+
+    it('does not move when a visible column follows a left-edge resize in narrow content', () => {
+        const viewport = new Viewport(1000);
+        viewport.setContentGeometry(100, 800); // content [100, 900], narrower than the viewport
+        expect(viewport.offsetToReveal(100, 400)).toBe(0);
+    });
+
+    it('does not move the camera when the entire resized strip fits the viewport', () => {
+        const viewport = new Viewport(1000);
+        viewport.setContentGeometry(0, 2000);
+        viewport.scrollTo(200);
+        viewport.setContentGeometry(100, 800); // content [100, 900], narrower than the viewport
+        expect(viewport.offsetToReveal(100, 400)).toBe(200);
+    });
+
+    it('reveals the nearest edge when an oversized column is completely right of the viewport', () => {
+        const viewport = new Viewport(1000);
+        viewport.setContentWidth(3000);
+        expect(viewport.offsetToReveal(1500, 1200)).toBe(1500);
+    });
+
+    it('reveals the nearest edge when an oversized column is completely left of the viewport', () => {
+        const viewport = new Viewport(1000);
+        viewport.setContentWidth(3000);
+        viewport.scrollTo(1500); // view [1500,2500]
+        expect(viewport.offsetToReveal(0, 1200)).toBe(200);
     });
 
     it('revealColumn applies the clamped target offset', () => {
