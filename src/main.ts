@@ -58,6 +58,7 @@ export function init(root: QmlObject): void {
                 id: win?.id ?? '(none)',
                 title: win?.caption ?? '',
                 columnId: column.id,
+                hidden: column.hidden,
                 virtual: grid.columnRect(column.id),
                 real: win?.frameGeometry() ?? { x: 0, y: 0, width: 0, height: 0 },
             };
