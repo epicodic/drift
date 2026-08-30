@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEBUG_CONSOLE_WINDOW_TITLE } from './debug-console';
 import { WindowAdapter } from './window-adapter';
 
 function createWindow(overrides: Partial<Window> = {}): Window {
@@ -8,6 +9,7 @@ function createWindow(overrides: Partial<Window> = {}): Window {
         caption: 'Window',
         normalWindow: true,
         skipTaskbar: false,
+        onScreenDisplay: false,
         deleted: false,
         minSize: { width: 0, height: 0 },
         maxSize: { width: 1920, height: 1080 },
@@ -31,6 +33,18 @@ describe('WindowAdapter.isTileable', () => {
 
     it('rejects fullscreen windows', () => {
         const window = createWindow({ fullScreen: true });
+
+        expect(new WindowAdapter(window).isTileable()).toBe(false);
+    });
+
+    it('rejects on-screen-display windows', () => {
+        const window = createWindow({ onScreenDisplay: true });
+
+        expect(new WindowAdapter(window).isTileable()).toBe(false);
+    });
+
+    it('rejects the debug console window by title', () => {
+        const window = createWindow({ caption: DEBUG_CONSOLE_WINDOW_TITLE });
 
         expect(new WindowAdapter(window).isTileable()).toBe(false);
     });

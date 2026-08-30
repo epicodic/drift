@@ -3,6 +3,7 @@
 // Untestable without a live compositor (docs §8) — kept deliberately thin.
 
 import { Rect } from '../core/coordinates';
+import { DEBUG_CONSOLE_WINDOW_TITLE } from './debug-console';
 
 export class WindowAdapter {
     constructor(private readonly window: Window) {}
@@ -22,7 +23,9 @@ export class WindowAdapter {
             !this.window.transient &&
             !this.window.fullScreen &&
             !this.window.skipTaskbar &&
-            !this.window.deleted
+            !this.window.onScreenDisplay &&
+            !this.window.deleted &&
+            this.window.caption !== DEBUG_CONSOLE_WINDOW_TITLE
         );
     }
 
