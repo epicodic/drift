@@ -5,8 +5,9 @@
 
 import { loadSettings } from './config/settings';
 import { rectsEqualRounded, resizedEdge, Rect } from './core/coordinates';
+import { formatDebugState, WindowDebugRow } from './core/debug-format';
 import { Grid } from './core/grid';
-import { debug } from './debug';
+import { setDebugState } from './debug';
 import { registerDragReorder } from './input/drag';
 import { registerShortcuts } from './input/shortcuts';
 import { createDebugConsole } from './kwin/debug-console';
@@ -26,7 +27,6 @@ export function init(root: QmlObject): void {
     const viewport = new Viewport(area.width);
     const geometrySync = new GeometrySync(area);
     const debugConsole = createDebugConsole(root);
-    debug('hello world'); // TEMPORARY: live-verification of the OSD console, remove after testing
     const windowsByColumn = new Map<number, WindowAdapter>();
     const disconnectByColumn = new Map<number, () => void>();
 
@@ -48,6 +48,29 @@ export function init(root: QmlObject): void {
                 geometrySync.apply(win, grid.columnRect(column.id), viewport.offset());
             }
         }
+        setDebugState(formatDebugState(debugRows(), debugCamera(), grid.debugState()));
+    }
+
+    function debugRows(): WindowDebugRow[] {
+        return grid.columns().map((column) => {
+            const win = windowsByColumn.get(column.id);
+            return {
+                id: win?.id ?? '(none)',
+                title: win?.caption ?? '',
+                columnId: column.id,
+                virtual: grid.columnRect(column.id),
+                real: win?.frameGeometry() ?? { x: 0, y: 0, width: 0, height: 0 },
+            };
+        });
+    }
+
+    function debugCamera() {
+        return {
+            offset: viewport.offset(),
+            viewportWidth: viewport.viewportWidth(),
+            contentLeft: viewport.contentLeft(),
+            contentWidth: viewport.contentWidth(),
+        };
     }
 
     function revealFocused(): void {
@@ -88,7 +111,6 @@ export function init(root: QmlObject): void {
     }
 
     workspaceAdapter.onWindowAdded((win) => {
-        console.log('Drift: windowAdded', win.caption, 'tileable=' + win.isTileable()); // TEMPORARY: OSD-overlay-capture diagnostic
         if (!win.isTileable()) {
             return;
         }

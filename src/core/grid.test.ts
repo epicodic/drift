@@ -13,6 +13,24 @@ describe('Grid — empty state', () => {
     });
 });
 
+describe('Grid — debugState', () => {
+    it('reports focus, id counter, origin, and columns with widths', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        grid.addColumn(500);
+        grid.setFocus(a.id);
+        expect(grid.debugState()).toEqual({
+            focusedColumnId: 1,
+            nextId: 3,
+            originX: 0,
+            columns: [
+                { id: 1, width: 300 },
+                { id: 2, width: 500 },
+            ],
+        });
+    });
+});
+
 describe('Grid — adding columns', () => {
     it('adds a column, focuses it, and assigns increasing ids', () => {
         const grid = new Grid(HEIGHT, GAP);

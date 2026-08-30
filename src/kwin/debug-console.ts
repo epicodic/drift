@@ -26,15 +26,18 @@ PlasmaCore.Dialog {
         id: root
         radius: 5
         color: Qt.rgba(0, 0, 0, 0.7)
-        implicitWidth: label.paintedWidth + 30
-        implicitHeight: label.paintedHeight + 30
+        implicitWidth: 1200
+        implicitHeight: 800
         Text {
             id: label
-            anchors.centerIn: parent
+            anchors.fill: parent
+            anchors.margins: 15
             text: dialog.lines
             color: "#ffffff"
             font.family: "monospace"
             font.pixelSize: 13
+            wrapMode: Text.Wrap
+            verticalAlignment: Text.AlignTop
         }
     }
 }`;
@@ -45,7 +48,6 @@ export interface DebugConsole {
 
 export function createDebugConsole(parent: QmlObject): DebugConsole {
     const overlay = Qt.createQmlObject(CONSOLE_QML, parent) as QmlDebugOverlay;
-    console.log('Drift: overlay created'); // TEMPORARY: remove after live verification
     setDebugSink((text) => {
         overlay.lines = text;
     });

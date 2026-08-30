@@ -6,6 +6,13 @@
 import { Column } from './column';
 import { columnOffsets, columnRect, virtualWidth, Rect, ResizeEdge, nearestInsertionIndex } from './coordinates';
 
+export interface GridDebugState {
+    focusedColumnId: number | null;
+    nextId: number;
+    originX: number;
+    columns: { id: number; width: number }[];
+}
+
 export class Grid {
     private readonly ordered: Column[] = [];
     private focusedColumnId: number | null = null;
@@ -101,6 +108,16 @@ export class Grid {
 
     indexOf(id: number): number {
         return this.ordered.findIndex((column) => column.id === id);
+    }
+
+    /** Raw internal state for the debug console (docs §8) — not used by layout logic. */
+    debugState(): GridDebugState {
+        return {
+            focusedColumnId: this.focusedColumnId,
+            nextId: this.nextId,
+            originX: this.originX,
+            columns: this.ordered.map((column) => ({ id: column.id, width: column.width })),
+        };
     }
 
     private moveFocus(step: number): Column | null {
