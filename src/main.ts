@@ -6,6 +6,7 @@
 import { loadSettings } from './config/settings';
 import { rectsEqualRounded, resizedEdge, Rect } from './core/coordinates';
 import { Grid } from './core/grid';
+import { debug } from './debug';
 import { registerDragReorder } from './input/drag';
 import { registerShortcuts } from './input/shortcuts';
 import { createDebugConsole } from './kwin/debug-console';
@@ -25,6 +26,7 @@ export function init(root: QmlObject): void {
     const viewport = new Viewport(area.width);
     const geometrySync = new GeometrySync(area);
     const debugConsole = createDebugConsole(root);
+    debug('hello world'); // TEMPORARY: live-verification of the OSD console, remove after testing
     const windowsByColumn = new Map<number, WindowAdapter>();
     const disconnectByColumn = new Map<number, () => void>();
 
@@ -86,6 +88,7 @@ export function init(root: QmlObject): void {
     }
 
     workspaceAdapter.onWindowAdded((win) => {
+        console.log('Drift: windowAdded', win.caption, 'tileable=' + win.isTileable()); // TEMPORARY: OSD-overlay-capture diagnostic
         if (!win.isTileable()) {
             return;
         }

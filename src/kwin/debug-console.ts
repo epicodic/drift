@@ -1,31 +1,41 @@
 // A top-left OSD overlay showing the accumulated `debug()` log (../debug.ts).
-// Built via `Qt.createQmlObject`, the same pattern as `qml-timer.ts`/`shortcuts.ts` —
-// declarativescript has no static QML in this file tree for dynamically-parented
-// runtime objects (docs §6.2).
+// Built via `Qt.createQmlObject`, the same pattern as `qml-timer.ts`/`shortcuts.ts`.
+// A plain `Item`/`Rectangle` never gets composited under declarativescript — KWin
+// scripts need a real `PlasmaCore.Dialog` (the mechanism KZones uses for its own
+// overlays, docs §debug console) to get an on-screen surface at all.
 
 import { setDebugSink } from '../debug';
 
+/** Identifies the overlay's own window so Drift excludes it from tiling (see `WindowAdapter.isTileable`). */
+export const DEBUG_CONSOLE_WINDOW_TITLE = 'Drift Debug Console';
+
 const CONSOLE_QML = `import QtQuick 6.0
-Rectangle {
-    id: root
+import org.kde.plasma.core as PlasmaCore
+PlasmaCore.Dialog {
+    id: dialog
     property string lines: ""
-    z: 1000
-    anchors.left: parent.left
-    anchors.leftMargin: 20
-    anchors.top: parent.top
-    anchors.topMargin: 20
-    radius: 5
-    color: Qt.rgba(0, 0, 0, 0.7)
-    visible: false
-    width: label.paintedWidth + 30
-    height: label.paintedHeight + 30
-    Text {
-        id: label
-        anchors.centerIn: parent
-        text: root.lines
-        color: "#ffffff"
-        font.family: "monospace"
-        font.pixelSize: 13
+    title: "${DEBUG_CONSOLE_WINDOW_TITLE}"
+    type: PlasmaCore.Dialog.OnScreenDisplay
+    backgroundHints: PlasmaCore.Types.NoBackground
+    flags: Qt.BypassWindowManagerHint | Qt.FramelessWindowHint | Qt.Popup
+    outputOnly: true
+    x: 20
+    y: 20
+    visible: true
+    mainItem: Rectangle {
+        id: root
+        radius: 5
+        color: Qt.rgba(0, 0, 0, 0.7)
+        implicitWidth: label.paintedWidth + 30
+        implicitHeight: label.paintedHeight + 30
+        Text {
+            id: label
+            anchors.centerIn: parent
+            text: dialog.lines
+            color: "#ffffff"
+            font.family: "monospace"
+            font.pixelSize: 13
+        }
     }
 }`;
 
@@ -35,6 +45,7 @@ export interface DebugConsole {
 
 export function createDebugConsole(parent: QmlObject): DebugConsole {
     const overlay = Qt.createQmlObject(CONSOLE_QML, parent) as QmlDebugOverlay;
+    console.log('Drift: overlay created'); // TEMPORARY: remove after live verification
     setDebugSink((text) => {
         overlay.lines = text;
     });
