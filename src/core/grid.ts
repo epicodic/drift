@@ -4,7 +4,7 @@
 // without any gaps (docs §2.1, requirements 5 and 12).
 
 import { Column } from './column';
-import { columnOffsets, columnRect, virtualWidth, Rect, ResizeEdge, nearestInsertionIndex } from './coordinates';
+import { columnOffsets, columnRect, Rect, ResizeEdge, nearestInsertionIndex } from './coordinates';
 
 /** Width in pixels allocated to hidden columns for layout spacing (prevents taskbar confusion). */
 const HIDDEN_COLUMN_WIDTH = 1;
@@ -102,7 +102,11 @@ export class Grid {
     }
 
     virtualWidth(): number {
-        return virtualWidth(this.layoutWidths(), this.gap);
+        if (this.ordered.length === 0) {
+            return 0;
+        }
+        const lastIndex = this.ordered.length - 1;
+        return this.layoutOffsets()[lastIndex] + this.layoutWidths()[lastIndex] - this.originX;
     }
 
     contentLeft(): number {
@@ -114,8 +118,7 @@ export class Grid {
         if (column.hidden) {
             throw new Error(`Column ${id} is hidden`);
         }
-        const index = this.indexOf(id);
-        const offset = columnOffsets(this.layoutWidths(), this.gap, this.originX)[index];
+        const offset = this.layoutOffsets()[this.indexOf(id)];
         return columnRect(offset, column.width, this.height);
     }
 
@@ -151,6 +154,22 @@ export class Grid {
     /** Widths for layout calculations: visible columns use their width, hidden use HIDDEN_COLUMN_WIDTH. */
     private layoutWidths(): number[] {
         return this.ordered.map((column) => (column.hidden ? HIDDEN_COLUMN_WIDTH : column.width));
+    }
+
+    /** Offset of every column (visible or hidden). The gap only follows a VISIBLE column,
+     * so a run of hidden columns fits inside the single surrounding gap instead of
+     * bracketing itself with a gap on both sides. */
+    private layoutOffsets(): number[] {
+        const offsets: number[] = [];
+        let cursor = this.originX;
+        this.ordered.forEach((column, index) => {
+            offsets.push(cursor);
+            cursor += column.hidden ? HIDDEN_COLUMN_WIDTH : column.width;
+            if (!column.hidden && index < this.ordered.length - 1) {
+                cursor += this.gap;
+            }
+        });
+        return offsets;
     }
 
     /** Nearest visible column at or after `index`, else nearest visible before it, else null. */

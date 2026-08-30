@@ -76,9 +76,9 @@ describe('Grid — hiding and showing columns', () => {
         const b = grid.addColumn(500);
         const c = grid.addColumn(200);
         grid.hideColumn(b.id);
-        expect(grid.virtualWidth()).toBe(521); // 300 + gap(10) + 1(hidden b) + gap(10) + 200
+        expect(grid.virtualWidth()).toBe(511); // 300 + gap(10) + 1(hidden b) + 200 — single merged gap
         expect(grid.columnRect(a.id).x).toBe(0);
-        expect(grid.columnRect(c.id).x).toBe(321); // c maintains proper gap with a via hidden b's 1px
+        expect(grid.columnRect(c.id).x).toBe(311); // c sits right after a's gap + b's 1px, no doubled gap
     });
 
     it('keeps the hidden column in columns() at its original position', () => {
