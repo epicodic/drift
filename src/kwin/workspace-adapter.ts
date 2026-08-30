@@ -74,6 +74,20 @@ export class WorkspaceAdapter {
     onWindowActivated(handler: (window: WindowAdapter | null) => void): void {
         Workspace.windowActivated.connect((window) => handler(window ? new WindowAdapter(window) : null));
     }
+
+    /**
+     * Whether `win`'s current frame geometry already covers its own output's fullscreen area.
+     * Ported from Karousel's `Clients.isFullScreenGeometry`: KWin may resize a window to its
+     * fullscreen geometry before flipping `Window.fullScreen`, so this shape check — not the
+     * live boolean — is what must gate layout writes during that transition.
+     */
+    isFullScreenGeometry(win: WindowAdapter): boolean {
+        const desktops = win.desktops();
+        const desktop = desktops.length === 1 ? desktops[0] : Workspace.currentDesktop;
+        const area = Workspace.clientArea(ClientAreaOption.FullScreenArea, win.output(), desktop);
+        const geometry = win.frameGeometry();
+        return Math.round(geometry.width) >= area.width && Math.round(geometry.height) >= area.height;
+    }
 }
 
 function toRect(rect: QRect): Rect {

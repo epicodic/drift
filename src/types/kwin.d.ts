@@ -58,8 +58,10 @@ interface Window {
     readonly minimized: boolean;
     readonly activities: string[];
     readonly desktops: KwinDesktop[];
+    readonly output: Output;
     readonly frameGeometryChanged: Signal<(oldGeometry: QRect) => void>;
     readonly minimizedChanged: Signal<() => void>;
+    readonly fullScreenChanged: Signal<() => void>;
     readonly activitiesChanged: Signal<() => void>;
     readonly desktopsChanged: Signal<() => void>;
     readonly interactiveMoveResizeStarted: Signal<() => void>;
@@ -83,9 +85,23 @@ interface WorkspaceApi {
     readonly currentDesktopChanged: Signal<() => void>;
     readonly activitiesChanged: Signal<() => void>;
     readonly desktopsChanged: Signal<() => void>;
+    clientArea(option: ClientAreaOption, output: Output, desktop: KwinDesktop): QRect;
 }
 
 declare const Workspace: WorkspaceApi;
+
+// Mirrors KWin's own enum (verified against Karousel's live-used `_playground/karousel`
+// source). A `const enum` compiles away to plain numeric literals, matching the runtime API.
+const enum ClientAreaOption {
+    PlacementArea,
+    MovementArea,
+    MaximizeArea,
+    MaximizeFullArea,
+    FullScreenArea,
+    WorkArea,
+    FullArea,
+    ScreenArea,
+}
 
 /** Reads a value declared in the package's config/main.xml (docs §5). Backed by kwinrc. */
 interface KWinApi {

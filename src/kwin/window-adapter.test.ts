@@ -18,8 +18,10 @@ function createWindow(overrides: Partial<Window> = {}): Window {
         minimized: false,
         activities: ['activity-1'],
         desktops: [{ id: 'desktop-1', name: 'Desktop 1' }],
+        output: { name: 'output-1', geometry: { x: 0, y: 0, width: 1920, height: 1080 } },
         frameGeometryChanged: { connect: () => {}, disconnect: () => {} },
         minimizedChanged: { connect: () => {}, disconnect: () => {} },
+        fullScreenChanged: { connect: () => {}, disconnect: () => {} },
         activitiesChanged: { connect: () => {}, disconnect: () => {} },
         desktopsChanged: { connect: () => {}, disconnect: () => {} },
         interactiveMoveResizeStarted: { connect: () => {}, disconnect: () => {} },
@@ -53,6 +55,23 @@ describe('WindowAdapter.isTileable', () => {
         const window = createWindow({ caption: DEBUG_CONSOLE_WINDOW_TITLE });
 
         expect(new WindowAdapter(window).isTileable()).toBe(false);
+    });
+});
+
+describe('WindowAdapter.isFullScreen', () => {
+    it('reflects the window fullScreen property', () => {
+        const window = createWindow({ fullScreen: true });
+
+        expect(new WindowAdapter(window).isFullScreen()).toBe(true);
+    });
+});
+
+describe('WindowAdapter.output', () => {
+    it('returns the window output', () => {
+        const output = { name: 'output-2', geometry: { x: 1920, y: 0, width: 1920, height: 1080 } };
+        const window = createWindow({ output });
+
+        expect(new WindowAdapter(window).output()).toBe(output);
     });
 });
 
