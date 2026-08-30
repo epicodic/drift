@@ -52,9 +52,6 @@ export class Viewport {
 
     /** Minimal offset that brings [rectX, rectX + rectWidth] fully into view. */
     offsetToReveal(rectX: number, rectWidth: number): number {
-        if (this.contentSize <= this.width) {
-            return this.offsetX;
-        }
         const viewLeft = this.offsetX;
         const viewRight = this.offsetX + this.width;
         const rectRight = rectX + rectWidth;
