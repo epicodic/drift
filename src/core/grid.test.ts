@@ -24,8 +24,8 @@ describe('Grid — debugState', () => {
             nextId: 3,
             originX: 0,
             columns: [
-                { id: 1, width: 300 },
-                { id: 2, width: 500 },
+                { id: 1, width: 300, hidden: false },
+                { id: 2, width: 500, hidden: false },
             ],
         });
     });
@@ -66,6 +66,67 @@ describe('Grid — geometry', () => {
     it('throws when asked for the rect of an unknown column', () => {
         const grid = new Grid(HEIGHT, GAP);
         expect(() => grid.columnRect(999)).toThrow();
+    });
+});
+
+describe('Grid — hiding and showing columns', () => {
+    it('excludes a hidden column from virtualWidth and neighbor offsets, closing the gap', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(500);
+        const c = grid.addColumn(200);
+        grid.hideColumn(b.id);
+        expect(grid.virtualWidth()).toBe(510); // 300 + gap(10) + 200 — b contributes nothing
+        expect(grid.columnRect(a.id).x).toBe(0);
+        expect(grid.columnRect(c.id).x).toBe(310); // c shifts left to fill b's gap
+    });
+
+    it('keeps the hidden column in columns() at its original position', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(500);
+        const c = grid.addColumn(200);
+        grid.hideColumn(b.id);
+        expect(grid.columns().map((col) => col.id)).toEqual([a.id, b.id, c.id]);
+    });
+
+    it('restores a shown column to its original layout position', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(500);
+        grid.hideColumn(b.id);
+        grid.showColumn(b.id);
+        expect(grid.columnRect(a.id).x).toBe(0);
+        expect(grid.columnRect(b.id).x).toBe(310);
+        expect(grid.virtualWidth()).toBe(810);
+    });
+
+    it('throws when asked for the rect of a hidden column', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        grid.hideColumn(a.id);
+        expect(() => grid.columnRect(a.id)).toThrow();
+    });
+
+    it('reports hidden state via isHidden', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        expect(grid.isHidden(a.id)).toBe(false);
+        grid.hideColumn(a.id);
+        expect(grid.isHidden(a.id)).toBe(true);
+        grid.showColumn(a.id);
+        expect(grid.isHidden(a.id)).toBe(false);
+    });
+
+    it('does not change focus when hiding or showing the focused column', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        grid.addColumn(500);
+        grid.setFocus(a.id);
+        grid.hideColumn(a.id);
+        expect(grid.focusedColumn()).toBe(a);
+        grid.showColumn(a.id);
+        expect(grid.focusedColumn()).toBe(a);
     });
 });
 

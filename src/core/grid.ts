@@ -10,7 +10,7 @@ export interface GridDebugState {
     focusedColumnId: number | null;
     nextId: number;
     originX: number;
-    columns: { id: number; width: number }[];
+    columns: { id: number; width: number; hidden: boolean }[];
 }
 
 export class Grid {
@@ -60,6 +60,21 @@ export class Grid {
         this.focusedColumnId = next ? next.id : null;
     }
 
+    /** Hides a column's window (e.g. minimized) without removing it from the strip:
+     * it keeps its place in `columns()` but stops contributing width/gap to layout. */
+    hideColumn(id: number): void {
+        this.requireColumn(id).setHidden(true);
+    }
+
+    /** Reverses `hideColumn` — the column resumes contributing to layout at its same position. */
+    showColumn(id: number): void {
+        this.requireColumn(id).setHidden(false);
+    }
+
+    isHidden(id: number): boolean {
+        return this.requireColumn(id).hidden;
+    }
+
     resizeColumn(id: number, width: number, edge: ResizeEdge = 'right'): void {
         const column = this.requireColumn(id);
         const delta = width - column.width;
@@ -84,7 +99,7 @@ export class Grid {
     }
 
     virtualWidth(): number {
-        return virtualWidth(this.widths(), this.gap);
+        return virtualWidth(this.visibleWidths(), this.gap);
     }
 
     contentLeft(): number {
@@ -92,9 +107,14 @@ export class Grid {
     }
 
     columnRect(id: number): Rect {
-        const index = this.requireIndex(id);
-        const offset = columnOffsets(this.widths(), this.gap, this.originX)[index];
-        return columnRect(offset, this.ordered[index].width, this.height);
+        const column = this.requireColumn(id);
+        if (column.hidden) {
+            throw new Error(`Column ${id} is hidden`);
+        }
+        const visible = this.visibleColumns();
+        const index = visible.indexOf(column);
+        const offset = columnOffsets(this.visibleWidths(), this.gap, this.originX)[index];
+        return columnRect(offset, column.width, this.height);
     }
 
     /** Insertion index — a valid `moveColumn` target — closest to `virtualX`,
@@ -116,8 +136,16 @@ export class Grid {
             focusedColumnId: this.focusedColumnId,
             nextId: this.nextId,
             originX: this.originX,
-            columns: this.ordered.map((column) => ({ id: column.id, width: column.width })),
+            columns: this.ordered.map((column) => ({ id: column.id, width: column.width, hidden: column.hidden })),
         };
+    }
+
+    private visibleColumns(): Column[] {
+        return this.ordered.filter((column) => !column.hidden);
+    }
+
+    private visibleWidths(): number[] {
+        return this.visibleColumns().map((column) => column.width);
     }
 
     private moveFocus(step: number): Column | null {
@@ -128,10 +156,6 @@ export class Grid {
         const target = Math.min(Math.max(current + step, 0), this.ordered.length - 1);
         this.focusedColumnId = this.ordered[target].id;
         return this.ordered[target];
-    }
-
-    private widths(): number[] {
-        return this.ordered.map((column) => column.width);
     }
 
     private columnById(id: number): Column | null {
