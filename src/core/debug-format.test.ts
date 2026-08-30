@@ -15,6 +15,7 @@ describe('formatDebugState', () => {
                     columnId: 1,
                     id: 'win-1',
                     title: 'Firefox',
+                    hidden: false,
                     virtual: { x: 0, y: 0, width: 800, height: 1040 },
                     real: { x: -120, y: 0, width: 800, height: 1040 },
                 },
@@ -24,7 +25,7 @@ describe('formatDebugState', () => {
 
         expect(text).toBe(
             'camera: offset=120 viewport=1920 content=[0..2400]\n' +
-            'col 1 (win win-1 "Firefox"): virtual={x:0,y:0,w:800,h:1040} real={x:-120,y:0,w:800,h:1040}',
+                'col 1 (win win-1 "Firefox"): virtual={x:0,y:0,w:800,h:1040} real={x:-120,y:0,w:800,h:1040}',
         );
     });
 
@@ -37,15 +38,54 @@ describe('formatDebugState', () => {
                 nextId: 3,
                 originX: -120,
                 columns: [
-                    { id: 1, width: 800 },
-                    { id: 2, width: 640 },
+                    { id: 1, width: 800, hidden: false },
+                    { id: 2, width: 640, hidden: false },
                 ],
             },
         );
 
         expect(text).toBe(
             'grid: focused=2 nextId=3 originX=-120 columns=[1:800,2:640]\n' +
-            'camera: offset=120 viewport=1920 content=[0..2400]',
+                'camera: offset=120 viewport=1920 content=[0..2400]',
+        );
+    });
+
+    it('marks a hidden row with [minimized]', () => {
+        const text = formatDebugState(
+            [
+                {
+                    columnId: 1,
+                    id: 'win-1',
+                    title: 'Firefox',
+                    hidden: true,
+                    virtual: { x: 0, y: 0, width: 800, height: 0 },
+                    real: { x: 0, y: 0, width: 800, height: 1040 },
+                },
+            ],
+            { offset: 0, viewportWidth: 1920, contentLeft: 0, contentWidth: 800 },
+        );
+
+        expect(text).toBe(
+            'camera: offset=0 viewport=1920 content=[0..800]\n' +
+                'col 1 (win win-1 "Firefox") [minimized]: virtual={x:0,y:0,w:800,h:0} real={x:0,y:0,w:800,h:1040}',
+        );
+    });
+
+    it('marks a hidden column in the grid line', () => {
+        const text = formatDebugState(
+            [],
+            { offset: 0, viewportWidth: 1920, contentLeft: 0, contentWidth: 800 },
+            {
+                focusedColumnId: 1,
+                nextId: 2,
+                originX: 0,
+                columns: [{ id: 1, width: 800, hidden: true }],
+            },
+        );
+
+        expect(text).toBe(
+            'grid: focused=1 nextId=2 originX=0 columns=[1:800(hidden)]\n' +
+                'camera: offset=0 viewport=1920 content=[0..800]',
         );
     });
 });
