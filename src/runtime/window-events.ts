@@ -13,6 +13,7 @@ export interface WindowEventDeps {
     hideColumn(columnId: number): void;
     showColumn(columnId: number): void;
     render(excludeWindowId?: string): void;
+    revealFocused(): void;
 }
 
 export function onWindowGeometryChanged(win: WindowAdapter, oldReal: Rect, deps: WindowEventDeps): void {
@@ -30,8 +31,19 @@ export function onWindowGeometryChanged(win: WindowAdapter, oldReal: Rect, deps:
     if (Math.round(newReal.width) === Math.round(oldReal.width)) {
         return; // width-only step: ignore pure moves and height-only changes
     }
-    deps.resizeColumn(columnId, Math.round(newReal.width), resizedEdge(oldReal, newReal));
+    // Only a live border drag can tell us the left edge genuinely moved. A programmatic
+    // jump (maximize, quick-tile, snap) reports whatever x the compositor chose for the
+    // new size, which is meaningless as a drag direction and would otherwise corrupt the
+    // strip's origin — treat those as a right-edge resize that leaves the column's own
+    // virtual x untouched.
+    const edge = win.isInteractiveResize() ? resizedEdge(oldReal, newReal) : 'right';
+    deps.resizeColumn(columnId, Math.round(newReal.width), edge);
     deps.render(win.isInteractiveResize() ? win.id : undefined);
+    if (!win.isInteractiveResize()) {
+        // A programmatic resize (e.g. maximize) can grow a column out of view without any
+        // focus change to trigger a reveal — re-check now, not just on the next focus switch.
+        deps.revealFocused();
+    }
 }
 
 export function onMinimizedChanged(win: WindowAdapter, deps: WindowEventDeps): void {

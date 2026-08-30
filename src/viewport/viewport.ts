@@ -59,13 +59,16 @@ export class Viewport {
         const viewRight = this.offsetX + this.width;
         const rectRight = rectX + rectWidth;
         if (rectWidth >= this.width) {
-            if (rectRight <= viewLeft) {
-                return this.clamp(rectRight - this.width);
+            // A column at least as wide as the viewport can never be fully shown, so the
+            // best we can do is make the viewport entirely covered by the column. Only
+            // skip the move if that's already the case.
+            if (rectX <= viewLeft && viewRight <= rectRight) {
+                return this.offsetX;
             }
-            if (rectX >= viewRight) {
+            if (viewLeft < rectX) {
                 return this.clamp(rectX);
             }
-            return this.offsetX;
+            return this.clamp(rectRight - this.width);
         }
         if (rectX < viewLeft) {
             return this.clamp(rectX);
