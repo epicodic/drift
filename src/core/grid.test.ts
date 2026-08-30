@@ -277,6 +277,37 @@ describe('Grid — focus navigation', () => {
     });
 });
 
+describe('Grid — focus navigation skips hidden columns', () => {
+    it('skips a hidden column when moving focus right', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(500);
+        const c = grid.addColumn(200);
+        grid.hideColumn(b.id);
+        grid.setFocus(a.id);
+        expect(grid.focusRight()).toBe(c);
+    });
+
+    it('skips a hidden column when moving focus left', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(500);
+        const c = grid.addColumn(200);
+        grid.hideColumn(b.id);
+        grid.setFocus(c.id);
+        expect(grid.focusLeft()).toBe(a);
+    });
+
+    it('leaves focus unchanged when every column in that direction is hidden', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(500);
+        grid.hideColumn(b.id);
+        grid.setFocus(a.id);
+        expect(grid.focusRight()).toBe(a);
+    });
+});
+
 describe('Grid — reordering', () => {
     it('moves a column to a new index and recomputes positions', () => {
         const grid = new Grid(HEIGHT, GAP);
