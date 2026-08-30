@@ -9,6 +9,7 @@ function assertPositiveWidth(width: number): void {
 
 export class Column {
     private columnWidth: number;
+    private isHiddenFlag = false;
 
     constructor(
         public readonly id: number,
@@ -25,5 +26,14 @@ export class Column {
     setWidth(width: number): void {
         assertPositiveWidth(width);
         this.columnWidth = width;
+    }
+
+    /** True while the column's window is minimized (docs: minimized-windows design). */
+    get hidden(): boolean {
+        return this.isHiddenFlag;
+    }
+
+    setHidden(hidden: boolean): void {
+        this.isHiddenFlag = hidden;
     }
 }
