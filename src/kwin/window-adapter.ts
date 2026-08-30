@@ -6,7 +6,7 @@ import { Rect } from '../core/coordinates';
 import { DEBUG_CONSOLE_WINDOW_TITLE } from './debug-console';
 
 export class WindowAdapter {
-    constructor(private readonly window: Window) {}
+    constructor(private readonly window: Window) { }
 
     get id(): string {
         return this.window.internalId;
@@ -46,6 +46,10 @@ export class WindowAdapter {
         return this.window.maxSize.width;
     }
 
+    isMinimized(): boolean {
+        return this.window.minimized;
+    }
+
     isInteractiveResize(): boolean {
         return this.window.resize;
     }
@@ -75,5 +79,10 @@ export class WindowAdapter {
         };
         this.window.frameGeometryChanged.connect(wrapped);
         return () => this.window.frameGeometryChanged.disconnect(wrapped);
+    }
+
+    onMinimizedChanged(handler: () => void): () => void {
+        this.window.minimizedChanged.connect(handler);
+        return () => this.window.minimizedChanged.disconnect(handler);
     }
 }

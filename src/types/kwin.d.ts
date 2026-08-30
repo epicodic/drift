@@ -49,7 +49,9 @@ interface Window {
     readonly maxSize: QSize;
     readonly move: boolean;
     readonly resize: boolean;
+    readonly minimized: boolean;
     readonly frameGeometryChanged: Signal<(oldGeometry: QRect) => void>;
+    readonly minimizedChanged: Signal<() => void>;
     readonly interactiveMoveResizeStarted: Signal<() => void>;
     readonly interactiveMoveResizeFinished: Signal<() => void>;
 }
