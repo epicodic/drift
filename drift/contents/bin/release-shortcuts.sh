@@ -1,6 +1,6 @@
 #!/bin/sh
 # Frees the KWin core-action shortcuts that collide with Drift's own defaults, so a
-# later logout/login lets Drift claim Meta+Ctrl+Left/Right, Meta+Left/Right, and
+# later logout/login lets Drift claim Meta+Tab, Meta+Shift+Tab, Meta+Left/Right, and
 # Meta+Shift+Left/Right. Run manually (Drift's OSD notice points here) — this can't be
 # triggered from inside the KWin script itself: KWin's QML `DBusCall` element can't
 # marshal the QStringList argument `setShortcut` needs (see repo notes). Uses `busctl`
@@ -23,8 +23,8 @@ release() {
 		4 kwin "${action_name}" KWin "${action_text}" 0 4 >/dev/null
 }
 
-release "Switch One Desktop to the Left" "Switch One Desktop to the Left"
-release "Switch One Desktop to the Right" "Switch One Desktop to the Right"
+release "Walk Through Windows (Reverse)" "Walk Through Windows (Reverse)"
+release "Walk Through Windows" "Walk Through Windows"
 release "Window Quick Tile Left" "Quick Tile Window to the Left"
 release "Window Quick Tile Right" "Quick Tile Window to the Right"
 release "Window to Previous Screen" "Move Window to Previous Screen"

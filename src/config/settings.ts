@@ -22,6 +22,12 @@ export interface Settings {
     shortcutCycleAlignLeft: string;
     /** Shortcut sequence for cycling the focused column's align/focus rightward. */
     shortcutCycleAlignRight: string;
+    /** Shortcut sequence for panning the viewport left without changing focus. */
+    shortcutViewportShiftLeft: string;
+    /** Shortcut sequence for panning the viewport right without changing focus. */
+    shortcutViewportShiftRight: string;
+    /** Distance the viewport pans per shortcut press, in pixels. */
+    viewportShiftStep: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -30,11 +36,14 @@ export const DEFAULT_SETTINGS: Settings = {
     animationDurationMs: 200,
     animationTickMs: 16,
     bottomMargin: 0,
-    shortcutFocusLeft: 'Meta+Ctrl+Left',
-    shortcutFocusRight: 'Meta+Ctrl+Right',
+    shortcutFocusLeft: 'Meta+Shift+Tab',
+    shortcutFocusRight: 'Meta+Tab',
     shortcutToggleDebugConsole: 'Meta+Shift+D',
     shortcutCycleAlignLeft: 'Meta+Left',
     shortcutCycleAlignRight: 'Meta+Right',
+    shortcutViewportShiftLeft: 'Meta+Shift+Left',
+    shortcutViewportShiftRight: 'Meta+Shift+Right',
+    viewportShiftStep: 400,
 };
 
 /** Reads user-configurable settings from kwinrc (docs §5). Untestable glue (docs §8). */
@@ -50,6 +59,14 @@ export function loadSettings(): Settings {
         ),
         shortcutCycleAlignLeft: readStringConfig('shortcutCycleAlignLeft', DEFAULT_SETTINGS.shortcutCycleAlignLeft),
         shortcutCycleAlignRight: readStringConfig('shortcutCycleAlignRight', DEFAULT_SETTINGS.shortcutCycleAlignRight),
+        shortcutViewportShiftLeft: readStringConfig(
+            'shortcutViewportShiftLeft',
+            DEFAULT_SETTINGS.shortcutViewportShiftLeft,
+        ),
+        shortcutViewportShiftRight: readStringConfig(
+            'shortcutViewportShiftRight',
+            DEFAULT_SETTINGS.shortcutViewportShiftRight,
+        ),
     });
 }
 

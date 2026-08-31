@@ -160,6 +160,21 @@ export class Strip {
         this.cycleAlign('right');
     }
 
+    /** Pans the camera without touching focus — unlike focusLeft/Right and cycleAlign,
+     * the focused column never changes. */
+    shiftViewportLeft(): void {
+        this.shiftViewport(-this.settings.viewportShiftStep);
+    }
+
+    shiftViewportRight(): void {
+        this.shiftViewport(this.settings.viewportShiftStep);
+    }
+
+    private shiftViewport(delta: number): void {
+        const target = this.viewport.clampOffset(this.viewport.offset() + delta);
+        this.animator.animate(this.viewport.offset(), target, this.settings.animationDurationMs);
+    }
+
     private cycleAlign(direction: AlignDirection): void {
         const focused = this.grid.focusedColumn();
         if (focused === null || focused.hidden) {

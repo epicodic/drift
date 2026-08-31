@@ -11,6 +11,8 @@ export interface ShortcutActions {
     toggleDebugConsole(): void;
     cycleAlignLeft(): void;
     cycleAlignRight(): void;
+    shiftViewportLeft(): void;
+    shiftViewportRight(): void;
 }
 
 export function registerShortcuts(parent: QmlObject, settings: Settings, actions: ShortcutActions): void {
@@ -42,6 +44,20 @@ export function registerShortcuts(parent: QmlObject, settings: Settings, actions
         'Drift: Cycle Column Align Right',
         settings.shortcutCycleAlignRight,
         actions.cycleAlignRight,
+    );
+    createShortcut(
+        parent,
+        'DriftViewportShiftLeft',
+        'Drift: Shift Viewport Left',
+        settings.shortcutViewportShiftLeft,
+        actions.shiftViewportLeft,
+    );
+    createShortcut(
+        parent,
+        'DriftViewportShiftRight',
+        'Drift: Shift Viewport Right',
+        settings.shortcutViewportShiftRight,
+        actions.shiftViewportRight,
     );
 }
 
