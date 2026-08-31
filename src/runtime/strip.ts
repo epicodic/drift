@@ -93,6 +93,13 @@ export class Strip {
         );
     }
 
+    /** Forces `columnId`'s position animation to rest at its current logical x with no
+     * easing — used to settle the dragged column instantly on drag-reorder release
+     * while its neighbors keep animating (docs: 2026-08-31-drag-reorder-live-preview). */
+    snapColumn(columnId: number): void {
+        this.columnMotion.snapTo(columnId, this.grid.columnRect(columnId).x);
+    }
+
     revealFocused(): void {
         const focused = this.grid.focusedColumn();
         if (focused === null || focused.hidden) {
@@ -124,10 +131,9 @@ export class Strip {
             registerDragReorder(win, column.id, {
                 grid: this.grid,
                 viewport: this.viewport,
-                workspaceAdapter: this.workspaceAdapter,
                 area: this.area,
-                // Drag-reorder settle stays fully instant, matching pre-animation behavior.
-                render: () => this.render(undefined, true),
+                render: (excludeWindowId, instant) => this.render(excludeWindowId, instant),
+                snapColumn: (id) => this.snapColumn(id),
             }),
         );
         this.render();

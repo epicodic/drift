@@ -17,11 +17,6 @@ interface QSize {
     height: number;
 }
 
-interface QPoint {
-    x: number;
-    y: number;
-}
-
 /** A KWin/Qt signal. Handlers are connected and disconnected, not awaited. */
 interface Signal<Handler> {
     connect(handler: Handler): void;
@@ -72,7 +67,6 @@ interface Window {
 interface WorkspaceApi {
     readonly screens: Output[];
     readonly virtualScreenGeometry: QRect;
-    readonly cursorPos: QPoint;
     activeWindow: Window | null;
     readonly windowAdded: Signal<(window: Window) => void>;
     readonly windowRemoved: Signal<(window: Window) => void>;
