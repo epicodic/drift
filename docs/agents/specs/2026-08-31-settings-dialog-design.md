@@ -46,6 +46,8 @@ Rename the existing entry and add four new ones, all `type="UInt"`, alongside th
 
 Rebuild as a `QTabWidget` with three tabs, replacing the current single `QFormLayout`.
 Class name (`KWin::DriftConfigForm`) and window title (`Drift`) stay the same.
+A single `QLabel` sits above the tabs, visible regardless of which tab is open: *"Changes take effect after restarting KWin, or disabling and re-enabling Drift under KWin Scripts."*
+This was added after implementation, once manual testing showed settings changes don't take effect live — neither KZones nor Karousel achieve live-apply either (KZones' own README instructs the same disable/re-enable workaround, and its one attempt at an `Options.configChanged` hook is dead code the author marked "still not working"); this is a KWin `declarativescript` platform limitation, not something fixable in Drift's code.
 
 **Tab: Layout**
 

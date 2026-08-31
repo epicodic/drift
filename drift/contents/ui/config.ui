@@ -7,6 +7,16 @@
         </property>
         <layout class="QVBoxLayout" name="layout_main">
             <item>
+                <widget class="QLabel" name="label_restartNotice">
+                    <property name="text">
+                        <string>Changes take effect after restarting KWin, or disabling and re-enabling Drift under KWin Scripts.</string>
+                    </property>
+                    <property name="wordWrap">
+                        <bool>true</bool>
+                    </property>
+                </widget>
+            </item>
+            <item>
                 <widget class="QTabWidget" name="tabWidget">
                     <property name="currentIndex">
                         <number>0</number>

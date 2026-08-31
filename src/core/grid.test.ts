@@ -137,15 +137,18 @@ describe('Grid — insertion index for a drag position', () => {
         expect(grid.insertionIndexForX(a.id, 999)).toBe(0);
     });
 
-    it('finds the closest boundary among the other columns', () => {
+    it('finds the closest boundary among the other columns, using their real centers', () => {
         const grid = new Grid(HEIGHT, GAP);
         grid.addColumn(300);
         const b = grid.addColumn(500);
         grid.addColumn(200);
-        // with b excluded: a at [0,300), c at [310,510) -> boundaries [0, 310, 510]
-        expect(grid.insertionIndexForX(b.id, 50)).toBe(0);
-        expect(grid.insertionIndexForX(b.id, 200)).toBe(1); // b's original slot
-        expect(grid.insertionIndexForX(b.id, 450)).toBe(2);
+        // with b excluded but NOT moved: a stays at [0,300) (center 150), c stays at
+        // [820,1020) (center 920) — b's own width/gap still occupy real space, so c's
+        // real position isn't compressed leftward just because b is being dragged.
+        expect(grid.insertionIndexForX(b.id, 50)).toBe(0); // left of a's center -> before a
+        expect(grid.insertionIndexForX(b.id, 200)).toBe(1); // between the two centers -> b's original slot
+        expect(grid.insertionIndexForX(b.id, 450)).toBe(1); // still well short of c's real center (920)
+        expect(grid.insertionIndexForX(b.id, 950)).toBe(2); // past c's real center -> after c
     });
 
     it('combines with moveColumn to reorder based on a drop position', () => {
