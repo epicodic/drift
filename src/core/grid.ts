@@ -122,26 +122,24 @@ export class Grid {
         return columnRect(offset, column.width, this.height);
     }
 
-    /** Insertion index — a valid `moveColumn` target — closest to `virtualX`,
-     * considering every VISIBLE column except `excludeId` (the one being dragged),
-     * then mapped back to a real index in the full ordered list. The vote flips at
-     * each candidate's own real center — its actual current position, not one
-     * recomputed as if the dragged column didn't exist — so the boundary is the
-     * same distance away regardless of which side the dragged column starts on. */
-    insertionIndexForX(excludeId: number, virtualX: number): number {
-        const offsets = this.layoutOffsets();
-        const widths = this.layoutWidths();
-        const centerOf = (column: Column): number => {
-            const index = this.ordered.indexOf(column);
-            return offsets[index] + widths[index] / 2;
-        };
-        const remaining = this.ordered.filter((column) => column.id !== excludeId);
-        const visibleRemaining = remaining.filter((column) => !column.hidden);
-        const visibleIndex = visibleRemaining.filter((column) => centerOf(column) < virtualX).length;
-        if (visibleIndex >= visibleRemaining.length) {
-            return remaining.length;
+    /** Target `moveColumn` index for the dragged column `excludeId`, judged by its
+     * own leading edges rather than its center: it trades places with its current
+     * immediate right neighbor once its own right edge crosses that neighbor's
+     * real center, or with its immediate left neighbor once its own left edge
+     * crosses that neighbor's real center. Hidden columns are skipped when
+     * looking for a neighbor. Returns `excludeId`'s own current index (i.e. no
+     * move) when neither immediate neighbor has been crossed. */
+    insertionIndexForEdges(excludeId: number, leftEdgeVirtualX: number, rightEdgeVirtualX: number): number {
+        const index = this.requireIndex(excludeId);
+        const rightIndex = this.visibleNeighborIndex(index, 1);
+        if (rightIndex !== null && rightEdgeVirtualX > this.centerAt(rightIndex)) {
+            return rightIndex;
         }
-        return remaining.indexOf(visibleRemaining[visibleIndex]);
+        const leftIndex = this.visibleNeighborIndex(index, -1);
+        if (leftIndex !== null && leftEdgeVirtualX < this.centerAt(leftIndex)) {
+            return leftIndex;
+        }
+        return index;
     }
 
     indexOf(id: number): number {
@@ -177,6 +175,22 @@ export class Grid {
             }
         });
         return offsets;
+    }
+
+    /** Real center of the column at `index` in the full ordered list (offset plus half width). */
+    private centerAt(index: number): number {
+        return this.layoutOffsets()[index] + this.layoutWidths()[index] / 2;
+    }
+
+    /** Index of the nearest VISIBLE column strictly in direction `step` (+1 right,
+     * -1 left) from `index`, skipping hidden columns, or null if there is none. */
+    private visibleNeighborIndex(index: number, step: 1 | -1): number | null {
+        for (let i = index + step; i >= 0 && i < this.ordered.length; i += step) {
+            if (!this.ordered[i].hidden) {
+                return i;
+            }
+        }
+        return null;
     }
 
     /** Nearest visible column at or after `index`, else nearest visible before it, else null. */

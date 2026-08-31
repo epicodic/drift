@@ -1,8 +1,8 @@
 // Turns a window's interactive-move lifecycle into a live column reorder: as the
-// window's center crosses a boundary, its neighbors slide out of the way (docs
-// §2.1.7); on release, the dragged column itself snaps instantly into its final
-// slot. The window's own real geometry is never touched while dragging — it keeps
-// following the cursor untouched throughout.
+// window's own leading edge crosses a neighbor's center, its neighbors slide out
+// of the way (docs §2.1.7); on release, the dragged column itself snaps instantly
+// into its final slot. The window's own real geometry is never touched while
+// dragging — it keeps following the cursor untouched throughout.
 
 import { Rect } from '../core/coordinates';
 import { Grid } from '../core/grid';
@@ -18,12 +18,15 @@ export interface DragReorderDeps {
     snapColumn(columnId: number): void;
 }
 
-/** Virtual x of `win`'s own center — the anchor used to find the nearest insertion
- * boundary, so the vote reflects the dragged window itself rather than wherever the
- * cursor happened to grab it. */
-function windowCenterVirtualX(win: WindowAdapter, area: Rect, viewportOffsetX: number): number {
+/** Virtual x of `win`'s own left and right edges — the anchors used to decide
+ * whether it has crossed into a neighbor's territory, so the vote reflects the
+ * dragged window itself rather than wherever the cursor happened to grab it. */
+function windowEdgesVirtualX(win: WindowAdapter, area: Rect, viewportOffsetX: number): { left: number; right: number } {
     const rect = win.frameGeometry();
-    return toVirtualX(rect.x + rect.width / 2, area, viewportOffsetX);
+    return {
+        left: toVirtualX(rect.x, area, viewportOffsetX),
+        right: toVirtualX(rect.x + rect.width, area, viewportOffsetX),
+    };
 }
 
 /** Wires `win`'s move lifecycle to reorder `columnId` in `deps.grid` live, and to
@@ -35,11 +38,12 @@ export function registerDragReorder(win: WindowAdapter, columnId: number, deps: 
         dragging = win.isInteractiveMove();
     });
 
-    /** Reorders `columnId` to the insertion index nearest the window's current
-     * center. Returns whether the order actually changed. */
+    /** Reorders `columnId` to swap with its current left or right neighbor if the
+     * window's own edge has crossed that neighbor's center. Returns whether the
+     * order actually changed. */
     const reorderToCurrentPosition = (): boolean => {
-        const virtualX = windowCenterVirtualX(win, deps.area, deps.viewport.offset());
-        const targetIndex = deps.grid.insertionIndexForX(columnId, virtualX);
+        const { left, right } = windowEdgesVirtualX(win, deps.area, deps.viewport.offset());
+        const targetIndex = deps.grid.insertionIndexForEdges(columnId, left, right);
         if (targetIndex === deps.grid.indexOf(columnId)) {
             return false;
         }

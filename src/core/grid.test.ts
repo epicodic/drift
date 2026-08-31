@@ -130,49 +130,60 @@ describe('Grid — hiding and showing columns', () => {
     });
 });
 
-describe('Grid — insertion index for a drag position', () => {
-    it('returns 0 when the dragged column is the only column', () => {
+describe('Grid — insertion index for drag edges', () => {
+    it('returns its own index when the dragged column is the only column', () => {
         const grid = new Grid(HEIGHT, GAP);
         const a = grid.addColumn(300);
-        expect(grid.insertionIndexForX(a.id, 999)).toBe(0);
+        expect(grid.insertionIndexForEdges(a.id, -999, 999)).toBe(0);
     });
 
-    it('finds the closest boundary among the other columns, using their real centers', () => {
+    it("swaps with the right neighbor once the dragged window's right edge crosses its center", () => {
         const grid = new Grid(HEIGHT, GAP);
-        grid.addColumn(300);
-        const b = grid.addColumn(500);
-        grid.addColumn(200);
-        // with b excluded but NOT moved: a stays at [0,300) (center 150), c stays at
-        // [820,1020) (center 920) — b's own width/gap still occupy real space, so c's
-        // real position isn't compressed leftward just because b is being dragged.
-        expect(grid.insertionIndexForX(b.id, 50)).toBe(0); // left of a's center -> before a
-        expect(grid.insertionIndexForX(b.id, 200)).toBe(1); // between the two centers -> b's original slot
-        expect(grid.insertionIndexForX(b.id, 450)).toBe(1); // still well short of c's real center (920)
-        expect(grid.insertionIndexForX(b.id, 950)).toBe(2); // past c's real center -> after c
+        grid.addColumn(300); // a: [0,300), center 150
+        const b = grid.addColumn(500); // b (dragged): [310,810)
+        grid.addColumn(200); // c: [820,1020), center 920
+        // left edge stays well short of a's center throughout (b is 500 wide), so
+        // only the right edge crossing c's center matters here.
+        expect(grid.insertionIndexForEdges(b.id, 400, 900)).toBe(1); // short of c's center -> stays put
+        expect(grid.insertionIndexForEdges(b.id, 420, 920)).toBe(1); // exactly at the center -> not yet crossed
+        expect(grid.insertionIndexForEdges(b.id, 430, 930)).toBe(2); // past c's center -> swap with c
+    });
+
+    it("swaps with the left neighbor once the dragged window's left edge crosses its center", () => {
+        const grid = new Grid(HEIGHT, GAP);
+        grid.addColumn(300); // a: [0,300), center 150
+        const b = grid.addColumn(500); // b (dragged): [310,810)
+        grid.addColumn(200); // c: [820,1020)
+        // right edge stays well short of c's center throughout (b is 500 wide), so
+        // only the left edge crossing a's center matters here.
+        expect(grid.insertionIndexForEdges(b.id, 160, 660)).toBe(1); // short of a's center -> stays put
+        expect(grid.insertionIndexForEdges(b.id, 150, 650)).toBe(1); // exactly at the center -> not yet crossed
+        expect(grid.insertionIndexForEdges(b.id, 140, 640)).toBe(0); // past a's center -> swap with a
     });
 
     it('combines with moveColumn to reorder based on a drop position', () => {
         const grid = new Grid(HEIGHT, GAP);
-        const a = grid.addColumn(300);
-        grid.addColumn(500); // b
-        const c = grid.addColumn(200);
-        const targetIndex = grid.insertionIndexForX(c.id, 50);
+        grid.addColumn(300); // a
+        const b = grid.addColumn(500); // b: [310,810), center 560
+        const c = grid.addColumn(200); // c (dragged): [820,1020), immediate left neighbor is b
+        const targetIndex = grid.insertionIndexForEdges(c.id, 500, 999); // left edge past b's center (560)
         grid.moveColumn(c.id, targetIndex);
-        expect(grid.columns().map((col) => col.id)).toEqual([3, 1, 2]);
-        expect(grid.columnRect(a.id).x).toBe(210); // a shifted right to make room for c
+        expect(grid.columns().map((col) => col.id)).toEqual([1, 3, 2]);
+        expect(grid.columnRect(c.id).x).toBe(310); // c moved into b's old slot
+        expect(grid.columnRect(b.id).x).toBe(520); // b shifted right to make room for c
     });
 });
 
 describe('Grid — insertion index skips hidden columns', () => {
-    it('excludes a hidden column from boundary candidates and maps back to the full ordered index', () => {
+    it('skips a hidden neighbor and swaps with the next visible one instead', () => {
         const grid = new Grid(HEIGHT, GAP);
-        grid.addColumn(300); // visible, [0,300)
+        grid.addColumn(300); // a: visible, [0,300), center 150
         const b = grid.addColumn(500); // hidden — contributes no space
-        const c = grid.addColumn(200);
+        const c = grid.addColumn(200); // c (dragged)
         grid.hideColumn(b.id);
-        // with c excluded and b hidden: only a occupies space, boundaries are [0, 300]
-        expect(grid.insertionIndexForX(c.id, 50)).toBe(0); // before a -> ordered index 0
-        expect(grid.insertionIndexForX(c.id, 400)).toBe(2); // past a -> ordered index 2 (end, after hidden b)
+        // with b hidden, c's only visible left neighbor is a.
+        expect(grid.insertionIndexForEdges(c.id, 160, 999)).toBe(2); // short of a's center -> stays put (own index)
+        expect(grid.insertionIndexForEdges(c.id, 140, 999)).toBe(0); // past a's center -> swap with a
     });
 });
 
