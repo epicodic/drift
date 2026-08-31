@@ -31,7 +31,7 @@ function fakeTimer(): ManualTimer {
 }
 
 function fakeWorkspaceAdapter(): WorkspaceAdapter {
-    return { cursorX: () => 0 } as unknown as WorkspaceAdapter;
+    return {} as unknown as WorkspaceAdapter;
 }
 
 interface FakeWindow {
@@ -120,7 +120,9 @@ describe('Strip', () => {
 
         strip.removeWindow(win.adapter);
 
-        expect(win.disconnects.frameGeometry).toHaveBeenCalledTimes(1);
+        // Two independent onFrameGeometryChanged subscribers: window-events.ts's resize/fullscreen
+        // handling, and drag.ts's live drag-reorder preview.
+        expect(win.disconnects.frameGeometry).toHaveBeenCalledTimes(2);
         expect(win.disconnects.minimized).toHaveBeenCalledTimes(1);
         expect(win.disconnects.fullScreen).toHaveBeenCalledTimes(1);
         expect(win.disconnects.moveStarted).toHaveBeenCalledTimes(1);
@@ -407,6 +409,40 @@ describe('Strip', () => {
             strip.render(undefined, true); // e.g. a live interactive-resize frame
 
             expect(win2.setFrameGeometry).toHaveBeenCalledWith(expect.objectContaining({ x: 1616 }));
+        });
+
+        it('snapColumn settles one column instantly while a separately-animating neighbor keeps sliding', () => {
+            vi.useFakeTimers();
+            vi.setSystemTime(0);
+            try {
+                const timer = fakeTimer();
+                const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, timer, fakeWorkspaceAdapter());
+                const win1 = fakeWindow('w1');
+                const win2 = fakeWindow('w2');
+                const win3 = fakeWindow('w3');
+                strip.addWindow(win1.adapter); // col id 1 @ x=0, focused
+                strip.addWindow(win2.adapter); // col id 2 @ x=808, focused
+                strip.addWindow(win3.adapter); // col id 3 @ x=1616, focused
+                strip.focusLeft();
+                strip.focusLeft(); // focus back to col 1
+
+                const win4 = fakeWindow('w4');
+                strip.addWindow(win4.adapter); // col id 4, inserted right of col 1; pushes col2 -> 1616, col3 -> 2424
+                win2.setFrameGeometry.mockClear();
+                win3.setFrameGeometry.mockClear();
+
+                strip.snapColumn(2); // settle col2 (win2) instantly; col3 (win3) keeps animating
+                vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs / 2);
+                strip.render();
+
+                expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 1616 }));
+                const [lastCall] = win3.setFrameGeometry.mock.calls.slice(-1);
+                const col3X = (lastCall[0] as { x: number }).x;
+                expect(col3X).toBeGreaterThan(1616); // still mid-flight...
+                expect(col3X).toBeLessThan(2424); // ...not yet at its target
+            } finally {
+                vi.useRealTimers();
+            }
         });
 
         it('snaps a column back into place after fullscreen instead of animating from its pre-fullscreen position', () => {

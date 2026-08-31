@@ -32,11 +32,15 @@ Rounding matters because KWin/Wayland can report fractional geometry for the sam
 
 Source: [`nearestInsertionIndex`](../src/core/coordinates.ts) in `coordinates.ts`, driven by [`registerDragReorder`](../src/input/drag.ts) in `drag.ts`.
 
-While a window is being interactively moved, Drift does not touch the layout — the window moves freely under the cursor.
-Only on `interactiveMoveResizeFinished` does `registerDragReorder` act: it converts the cursor's real screen x to a virtual x (`toVirtualX`), then asks `Grid.insertionIndexForX` for the closest valid insertion index among all *other* columns (the dragged column is excluded from the candidate list so it cannot "insert relative to itself").
+While a window is being interactively moved, Drift never writes its real geometry — it moves freely under the cursor — but the *order* of the other columns updates live: on every `frameGeometryChanged` tick during the drag, `registerDragReorder` converts the dragged window's own center (not the cursor) to a virtual x (`toVirtualX`), then asks `Grid.insertionIndexForX` for the closest valid insertion index among all *other* columns (the dragged column is excluded from the candidate list so it cannot "insert relative to itself").
+If that index differs from the column's current position, it is committed immediately via `Grid.moveColumn`, and displaced neighbors slide into their new positions through the normal per-column position animation (see "Layout-Change Position Animation" below) rather than jumping.
+Using the window's own center, rather than the cursor, means the vote reflects where the dragged window itself sits, regardless of where within it the user grabbed to start the drag.
 
 `nearestInsertionIndex(offsets, widths, x)` builds the list of column boundaries — each column's left edge, plus one final boundary at the last column's right edge — and returns the index of the boundary closest to `x` by absolute distance.
 That index is a valid `moveColumn` target: inserting at boundary `i` places the column immediately before the column currently at index `i` (or at the end, for the final boundary).
+A useful property falls out of this: the vote between two adjacent boundaries flips at their midpoint, so for a candidate column of width `W` starting at offset `O`, the flip point is `O + (W + gap)/2` (the midpoint to the next column's left edge), except for the last column, whose trailing boundary is its own right edge with no gap, giving an exact midpoint of `O + W/2`.
+
+On `interactiveMoveResizeFinished`, the same center-based computation runs once more, then the dragged column itself is forced to snap instantly into its final slot (`Strip.snapColumn`) while its neighbors keep whatever slide they were already mid-flight on.
 
 ## Viewport Reveal and Animation Easing
 
@@ -62,7 +66,8 @@ Source: [`ColumnMotion`](../src/viewport/column-motion.ts) in `column-motion.ts`
 Whenever a column's logical x changes for a reason other than the user actively dragging or resizing it — adding, removing, or minimizing/restoring a window, a resize pushing a neighbor, or a drag-reorder settling on release — `ColumnMotion` animates that column's real x from wherever it currently visually is to the new logical x, using the same eased duration as the camera (`settings.animationDurationMs` / `easeOutCubic`).
 A column is never animated on its own first appearance (add, restore, returning from fullscreen): `ColumnMotion` snaps a never-seen-before column straight to its target, so only *already-visible* neighbors slide.
 
-Live interactive gestures (border drag, window drag) stay fully instant: `Strip.render`'s `instant` flag makes `ColumnMotion` snap straight to the target instead of animating for those frames.
+Border-drag resize stays fully instant: `Strip.render`'s `instant` flag makes `ColumnMotion` snap straight to the target instead of animating for those frames.
+Window drag-reorder is the exception: neighbors displaced by a live reorder tick, or by the settle on release, animate like any other layout change; only the dragged column itself is forced instant, via `Strip.snapColumn` on release.
 `Strip` forgets a column's motion state whenever it is hidden (minimized) or excluded (fullscreen), so that restoring it later snaps to its new position instead of animating in from a stale pre-hide value.
 
 `SharedTicker` exists because a `Strip` is only ever given one real `Timer`, but the camera pan and per-column motion are independent animations that may need to tick at once.

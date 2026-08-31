@@ -16,11 +16,6 @@ export class WorkspaceAdapter {
         return toRect(Workspace.virtualScreenGeometry);
     }
 
-    /** The mouse cursor's x position in real (screen) coordinates. */
-    cursorX(): number {
-        return Workspace.cursorPos.x;
-    }
-
     currentActivity(): string {
         return Workspace.currentActivity;
     }
