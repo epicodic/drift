@@ -4,17 +4,17 @@ See [`docs/architecture.md`](architecture.md) for the concepts referenced below 
 
 ## Column Layout Math
 
-Source: [`src/core/coordinates.ts`](../src/core/coordinates.ts).
+Source: [`virtualWidth`, `columnRect`](../src/core/coordinates.ts) in `coordinates.ts`, and `Grid`'s private `layoutOffsets`/`layoutWidths` in [`grid.ts`](../src/core/grid.ts).
 
 A column's virtual position is never stored — it is always recomputed from the ordered list of column widths.
-`columnOffsets(widths, gap, origin)` walks the widths left to right and accumulates: each column's offset is the running cursor, and the cursor advances by that column's width plus `gap`.
+`layoutOffsets()` walks the columns left to right and accumulates: each column's offset is the running cursor, and the cursor advances by that column's width plus `gap` (a hidden column contributes a fixed, tiny `HIDDEN_COLUMN_WIDTH` and no trailing gap, so a run of hidden columns fits inside the single surrounding gap).
 
 $$
 \text{offset}_i = \text{origin} + \sum_{j=0}^{i-1} (\text{width}_j + \text{gap})
 $$
 
 `virtualWidth(widths, gap)` sums all widths plus `gap` between them (not after the last column), giving the strip's total extent.
-Because both functions are pure derivations from the current width list, adding, removing, or resizing a column and recomputing these values is enough to keep the layout gapless — there is no separate "shift neighbors" step to keep in sync.
+Because both are pure derivations from the current column list, adding, removing, or resizing a column and recomputing these values is enough to keep the layout gapless — there is no separate "shift neighbors" step to keep in sync.
 
 `columnRect(offset, width, height)` turns an offset into a full rect; height always equals the grid's configured height, so columns always span the full usable screen height.
 
@@ -30,15 +30,16 @@ Rounding matters because KWin/Wayland can report fractional geometry for the sam
 
 ## Drag-Reorder Insertion Index
 
-Source: [`nearestInsertionIndex`](../src/core/coordinates.ts) in `coordinates.ts`, driven by [`registerDragReorder`](../src/input/drag.ts) in `drag.ts`.
+Source: [`Grid.insertionIndexForX`](../src/core/grid.ts) in `grid.ts`, driven by [`registerDragReorder`](../src/input/drag.ts) in `drag.ts`.
 
 While a window is being interactively moved, Drift never writes its real geometry — it moves freely under the cursor — but the *order* of the other columns updates live: on every `frameGeometryChanged` tick during the drag, `registerDragReorder` converts the dragged window's own center (not the cursor) to a virtual x (`toVirtualX`), then asks `Grid.insertionIndexForX` for the closest valid insertion index among all *other* columns (the dragged column is excluded from the candidate list so it cannot "insert relative to itself").
 If that index differs from the column's current position, it is committed immediately via `Grid.moveColumn`, and displaced neighbors slide into their new positions through the normal per-column position animation (see "Layout-Change Position Animation" below) rather than jumping.
 Using the window's own center, rather than the cursor, means the vote reflects where the dragged window itself sits, regardless of where within it the user grabbed to start the drag.
 
-`nearestInsertionIndex(offsets, widths, x)` builds the list of column boundaries — each column's left edge, plus one final boundary at the last column's right edge — and returns the index of the boundary closest to `x` by absolute distance.
-That index is a valid `moveColumn` target: inserting at boundary `i` places the column immediately before the column currently at index `i` (or at the end, for the final boundary).
-A useful property falls out of this: the vote between two adjacent boundaries flips at their midpoint, so for a candidate column of width `W` starting at offset `O`, the flip point is `O + (W + gap)/2` (the midpoint to the next column's left edge), except for the last column, whose trailing boundary is its own right edge with no gap, giving an exact midpoint of `O + W/2`.
+`insertionIndexForX(excludeId, virtualX)` reads each other VISIBLE column's own real center — its actual current offset plus half its width, taken straight from the grid's live layout — and counts how many of those centers sit to the left of `virtualX`.
+That count is a valid `moveColumn` target: inserting at index `i` places the column immediately before the candidate currently at index `i` (or at the end, once every candidate's center is to the left).
+Because every center is read from the real, undisturbed layout rather than one recomputed as if the dragged column had already been removed, the vote flips at exactly each candidate's own center regardless of which side the dragged column starts from — dragging past a neighbor's center costs the same distance whether that neighbor is to the left or to the right.
+An earlier version of this algorithm instead repacked the other columns from scratch, excluding the dragged column's own width and gap; that silently shrank the space after the dragged column in a way that never matched the real screen, making rightward reorders trigger far too early — this is why the current version reads real centers directly instead of repacking.
 
 On `interactiveMoveResizeFinished`, the same center-based computation runs once more, then the dragged column itself is forced to snap instantly into its final slot (`Strip.snapColumn`) while its neighbors keep whatever slide they were already mid-flight on.
 

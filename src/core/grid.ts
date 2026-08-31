@@ -4,7 +4,7 @@
 // without any gaps (docs §2.1, requirements 5 and 12).
 
 import { Column } from './column';
-import { columnOffsets, columnRect, Rect, ResizeEdge, nearestInsertionIndex } from './coordinates';
+import { columnRect, Rect, ResizeEdge } from './coordinates';
 
 /** Width in pixels allocated to hidden columns for layout spacing (prevents taskbar confusion). */
 const HIDDEN_COLUMN_WIDTH = 1;
@@ -124,13 +124,20 @@ export class Grid {
 
     /** Insertion index — a valid `moveColumn` target — closest to `virtualX`,
      * considering every VISIBLE column except `excludeId` (the one being dragged),
-     * then mapped back to a real index in the full ordered list. */
+     * then mapped back to a real index in the full ordered list. The vote flips at
+     * each candidate's own real center — its actual current position, not one
+     * recomputed as if the dragged column didn't exist — so the boundary is the
+     * same distance away regardless of which side the dragged column starts on. */
     insertionIndexForX(excludeId: number, virtualX: number): number {
+        const offsets = this.layoutOffsets();
+        const widths = this.layoutWidths();
+        const centerOf = (column: Column): number => {
+            const index = this.ordered.indexOf(column);
+            return offsets[index] + widths[index] / 2;
+        };
         const remaining = this.ordered.filter((column) => column.id !== excludeId);
         const visibleRemaining = remaining.filter((column) => !column.hidden);
-        const widths = visibleRemaining.map((column) => column.width);
-        const offsets = columnOffsets(widths, this.gap, this.originX);
-        const visibleIndex = nearestInsertionIndex(offsets, widths, virtualX);
+        const visibleIndex = visibleRemaining.filter((column) => centerOf(column) < virtualX).length;
         if (visibleIndex >= visibleRemaining.length) {
             return remaining.length;
         }

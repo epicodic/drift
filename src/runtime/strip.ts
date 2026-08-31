@@ -84,7 +84,9 @@ export class Strip {
             this.geometrySync.apply(win, Object.assign({}, rect, { x }), this.viewport.offset());
         }
         if (this.columnMotion.isAnimating()) {
-            this.columnMotionTimer.start(this.settings.animationTickMs, () => this.render());
+            // Preserve excludeWindowId: a live drag-reorder must keep skipping the
+            // dragged window's own geometry across continuation ticks, not just the first.
+            this.columnMotionTimer.start(this.settings.animationTickMs, () => this.render(excludeWindowId));
         } else {
             this.columnMotionTimer.stop();
         }

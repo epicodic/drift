@@ -9,17 +9,6 @@ export interface Rect {
     height: number;
 }
 
-/** Cumulative x-offset of each column, starting at `origin`, with `gap` between columns. */
-export function columnOffsets(widths: readonly number[], gap: number, origin = 0): number[] {
-    const offsets: number[] = [];
-    let cursor = origin;
-    for (let i = 0; i < widths.length; i++) {
-        offsets.push(cursor);
-        cursor += widths[i] + gap;
-    }
-    return offsets;
-}
-
 /** Total horizontal extent of the strip: summed widths plus gaps between columns. */
 export function virtualWidth(widths: readonly number[], gap: number): number {
     if (widths.length === 0) {
@@ -50,26 +39,4 @@ export function rectsEqualRounded(a: Rect, b: Rect): boolean {
         Math.round(a.width) === Math.round(b.width) &&
         Math.round(a.height) === Math.round(b.height)
     );
-}
-
-/** Which insertion index among `offsets`/`widths` has a boundary closest to `x`.
- * Boundaries are each column's left edge plus the last column's right edge, so the
- * result is a valid `toIndex` for inserting a column into that same ordered list. */
-export function nearestInsertionIndex(offsets: readonly number[], widths: readonly number[], x: number): number {
-    if (offsets.length === 0) {
-        return 0;
-    }
-    const lastIndex = offsets.length - 1;
-    const boundaries = offsets.slice();
-    boundaries.push(offsets[lastIndex] + widths[lastIndex]);
-    let bestIndex = 0;
-    let bestDistance = Infinity;
-    for (let i = 0; i < boundaries.length; i++) {
-        const distance = Math.abs(x - boundaries[i]);
-        if (distance < bestDistance) {
-            bestDistance = distance;
-            bestIndex = i;
-        }
-    }
-    return bestIndex;
 }

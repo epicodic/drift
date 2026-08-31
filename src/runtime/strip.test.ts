@@ -392,6 +392,37 @@ describe('Strip', () => {
             }
         });
 
+        it('keeps excluding the actively-dragged window across an animation-continuation tick', () => {
+            vi.useFakeTimers();
+            vi.setSystemTime(0);
+            try {
+                const timer = fakeTimer();
+                const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, timer, fakeWorkspaceAdapter());
+                const win1 = fakeWindow('w1');
+                const win2 = fakeWindow('w2');
+                strip.addWindow(win1.adapter); // col1 @ x=0, focused
+                strip.addWindow(win2.adapter); // col2 @ x=808, focused
+                strip.focusLeft(); // focus back to col1
+
+                const win3 = fakeWindow('w3');
+                strip.addWindow(win3.adapter); // col3, inserted right of col1; pushes col2 -> 1616 (animating)
+                win3.setFrameGeometry.mockClear();
+
+                // live drag-reorder tick: win3 is the dragged window, so it must be excluded
+                strip.render(win3.adapter.id, false);
+                win3.setFrameGeometry.mockClear();
+
+                // animation-continuation tick, still mid-drag: win3 must stay excluded
+                vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs / 2);
+                timer.fire();
+
+                expect(win3.setFrameGeometry).not.toHaveBeenCalled();
+                expect(win2.setFrameGeometry).toHaveBeenCalled(); // col2's push animation still continues
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
         it('renders a column at its exact logical position when instant=true, bypassing animation', () => {
             const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
             const win1 = fakeWindow('w1');
