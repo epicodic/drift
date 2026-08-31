@@ -13,7 +13,9 @@ export interface WindowEventDeps {
     hideColumn(columnId: number): void;
     showColumn(columnId: number): void;
     setFullScreen(columnId: number, fullScreen: boolean): void;
-    render(excludeWindowId?: string): void;
+    /** `instant`, when true, skips per-column position animation entirely — used for a
+     * live interactive resize's neighbors, which must track the cursor with zero lag. */
+    render(excludeWindowId?: string, instant?: boolean): void;
     revealFocused(): void;
     /** Whether `win`'s geometry already covers its output's fullscreen area (see workspace-adapter.ts). */
     isFullScreenGeometry(win: WindowAdapter): boolean;
@@ -39,9 +41,10 @@ export function onWindowGeometryChanged(win: WindowAdapter, oldReal: Rect, deps:
     }
     if (win.isInteractiveResize()) {
         // A live border drag can tell us the left edge genuinely moved, and needs to render
-        // immediately (excluding itself) to track the pointer without stutter.
+        // immediately (excluding itself, and skipping neighbor animation) to track the pointer
+        // without stutter.
         deps.resizeColumn(columnId, Math.round(newReal.width), resizedEdge(oldReal, newReal));
-        deps.render(win.id);
+        deps.render(win.id, true);
         return;
     }
     // This can be the compositor resizing the frame to cover the screen as the *first* step of

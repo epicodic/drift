@@ -49,13 +49,13 @@ describe('onWindowGeometryChanged', () => {
         expect(deps.render).toHaveBeenCalledTimes(1);
     });
 
-    it('excludes the resized window from render during an interactive resize', () => {
+    it('excludes the resized window from render during an interactive resize, without animating its neighbors', () => {
         const deps = fakeDeps();
         const win = fakeWindow('w1', { x: 0, y: 0, width: 900, height: 600 }, { interactiveResize: true });
 
         onWindowGeometryChanged(win, { x: 0, y: 0, width: 800, height: 600 }, deps);
 
-        expect(deps.render).toHaveBeenCalledWith('w1');
+        expect(deps.render).toHaveBeenCalledWith('w1', true);
     });
 
     it('reports the left edge when a live border drag moves x', () => {

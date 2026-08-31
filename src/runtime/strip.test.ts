@@ -7,10 +7,27 @@ import type { Timer } from '../viewport/animator';
 import { Strip } from './strip';
 
 const AREA: Rect = { x: 0, y: 0, width: 1280, height: 1000 };
+const WIDE_AREA: Rect = { x: 0, y: 0, width: 5000, height: 1000 };
 const INSTANT_SETTINGS = { ...DEFAULT_SETTINGS, animationDurationMs: 0 };
 
-function fakeTimer(): Timer {
-    return { start: () => {}, stop: () => {} };
+class ManualTimer implements Timer {
+    private onTick: (() => void) | null = null;
+
+    start(_intervalMs: number, onTick: () => void): void {
+        this.onTick = onTick;
+    }
+
+    stop(): void {
+        this.onTick = null;
+    }
+
+    fire(): void {
+        this.onTick?.();
+    }
+}
+
+function fakeTimer(): ManualTimer {
+    return new ManualTimer();
 }
 
 function fakeWorkspaceAdapter(): WorkspaceAdapter {
@@ -340,6 +357,75 @@ describe('Strip', () => {
 
             expect(win1.activate).not.toHaveBeenCalled();
             expect(win2.activate).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('column-motion animation', () => {
+        it('starts a pushed neighbor from its previous position and settles it at the new one', () => {
+            vi.useFakeTimers();
+            vi.setSystemTime(0);
+            try {
+                const timer = fakeTimer();
+                const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, timer, fakeWorkspaceAdapter());
+                const win1 = fakeWindow('w1');
+                const win2 = fakeWindow('w2');
+                strip.addWindow(win1.adapter); // col1 @ x=0, focused
+                strip.addWindow(win2.adapter); // col2 @ x=808, focused
+                strip.focusLeft(); // focus back to col1
+                win2.setFrameGeometry.mockClear();
+
+                const win3 = fakeWindow('w3');
+                strip.addWindow(win3.adapter); // inserted right of col1, pushes col2 to x=1616
+
+                // first frame: col2 hasn't jumped yet, still at its previous position
+                expect(win2.setFrameGeometry).toHaveBeenCalledWith(expect.objectContaining({ x: 808 }));
+
+                vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs);
+                timer.fire();
+
+                // settled at its new, pushed-right position
+                expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 1616 }));
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('renders a column at its exact logical position when instant=true, bypassing animation', () => {
+            const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+            const win1 = fakeWindow('w1');
+            const win2 = fakeWindow('w2');
+            strip.addWindow(win1.adapter);
+            strip.addWindow(win2.adapter); // col2 @ x=808
+            strip.focusLeft();
+            const win3 = fakeWindow('w3');
+            strip.addWindow(win3.adapter); // pushes col2 to x=1616; its animation is still in-flight
+
+            // first frame: col2 has not jumped to its new position yet
+            expect(win2.setFrameGeometry).toHaveBeenCalledWith(expect.objectContaining({ x: 808 }));
+            win2.setFrameGeometry.mockClear();
+
+            strip.render(undefined, true); // e.g. a live interactive-resize frame
+
+            expect(win2.setFrameGeometry).toHaveBeenCalledWith(expect.objectContaining({ x: 1616 }));
+        });
+
+        it('snaps a column back into place after fullscreen instead of animating from its pre-fullscreen position', () => {
+            const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+            const win1 = fakeWindow('w1');
+            const win2 = fakeWindow('w2');
+            strip.addWindow(win1.adapter); // col1 @ 0
+            strip.addWindow(win2.adapter); // col2 @ 808, focused
+            win2.setIsFullScreen(true);
+            win2.triggerFullScreenChanged(); // excluded from render; forgets col2's motion state
+
+            strip.focusLeft(); // focus back to col1
+            const win3 = fakeWindow('w3');
+            strip.addWindow(win3.adapter); // inserted right of col1, pushes col2 to x=1616 while it's still fullscreen
+
+            win2.setIsFullScreen(false);
+            win2.triggerFullScreenChanged(); // resumes rendering — must snap straight to 1616, not animate from 808
+
+            expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 1616 }));
         });
     });
 });

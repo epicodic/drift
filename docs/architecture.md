@@ -46,7 +46,7 @@ Every focus change triggers `revealFocused()`, which asks the viewport for the m
 | Module | Purpose |
 |---|---|
 | [`src/core/`](../src/core) | Pure, KWin-free layout model: `Grid`, `Column`, and the coordinate math in `coordinates.ts`. Fully unit-tested. |
-| [`src/viewport/`](../src/viewport) | Pure "camera" (`Viewport`) and the timer-driven scroll animation (`Animator`). Fully unit-tested. |
+| [`src/viewport/`](../src/viewport) | Pure "camera" (`Viewport`) and the timer-driven scroll animation (`Animator`), plus `ColumnMotion` (per-column position smoothing) and `SharedTicker` (lets both share one real `Timer`). Fully unit-tested. |
 | [`src/kwin/`](../src/kwin) | The only code that touches the live KWin API: `WindowAdapter`, `WorkspaceAdapter`, `GeometrySync`, and `createQmlTimer`. Thin by design; only `toRealRect`/`toVirtualX` and `GeometrySync`'s echo tracking are unit-tested. |
 | [`src/input/`](../src/input) | Wires KWin interaction events (drag lifecycle, global shortcuts) to `core`/`viewport` calls. |
 | [`src/config/`](../src/config) | Settings defaults and `kwinrc` config loading. |
@@ -86,6 +86,6 @@ sequenceDiagram
     end
 ```
 
-Each tick, `main.ts`'s `render()` recomputes every tiled window's real geometry from its column's virtual rect and the current viewport offset (`GeometrySync.apply`, which calls `toRealRect`), and writes it via `WindowAdapter.setFrameGeometry`.
+Each tick, `Strip`'s `render()` recomputes every tiled window's real geometry from its column's virtual rect and the current viewport offset (`GeometrySync.apply`, which calls `toRealRect`), and writes it via `WindowAdapter.setFrameGeometry`.
 The same `render()`/`revealFocused()` pair runs after a window is added, removed, or resized, and after drag-reorder — so all layout changes funnel through one path from virtual coordinates to real screen geometry.
-`GeometrySync` also records what it last wrote per window (`isEcho`), so `main.ts` can distinguish a `frameGeometryChanged` signal caused by Drift's own write from one caused by the user interactively resizing a window.
+`GeometrySync` also records what it last wrote per window (`isEcho`), so `window-events.ts` can distinguish a `frameGeometryChanged` signal caused by Drift's own write from one caused by the user interactively resizing a window.

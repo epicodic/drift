@@ -16,6 +16,8 @@ import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import { alignOffsets, nextAlignStep, type AlignDirection, type AlignOffsets } from '../viewport/align-cycle';
 import { Animator, type Timer } from '../viewport/animator';
+import { ColumnMotion } from '../viewport/column-motion';
+import { SharedTicker } from '../viewport/shared-ticker';
 import { Viewport } from '../viewport/viewport';
 import { ColumnRegistry } from './column-registry';
 import {
@@ -31,6 +33,8 @@ export class Strip {
     private readonly viewport: Viewport;
     private readonly geometrySync: GeometrySync;
     private readonly animator: Animator;
+    private readonly columnMotion = new ColumnMotion();
+    private readonly columnMotionTimer: Timer;
     private readonly registry = new ColumnRegistry();
     // Tracks fullscreen state per column, updated only by the window's fullScreenChanged
     // signal (never by re-reading the live property from an unrelated render() call — KWin's
@@ -46,8 +50,9 @@ export class Strip {
         this.grid = new Grid(Math.max(1, area.height - settings.bottomMargin), settings.columnGap);
         this.viewport = new Viewport(area.width);
         this.geometrySync = new GeometrySync(area);
+        const ticker = new SharedTicker(timer, settings.animationTickMs);
         this.animator = new Animator(
-            timer,
+            ticker.subscribe(),
             () => Date.now(),
             settings.animationTickMs,
             (offset) => {
@@ -55,18 +60,33 @@ export class Strip {
                 this.render();
             },
         );
+        this.columnMotionTimer = ticker.subscribe();
     }
 
-    render(excludeWindowId?: string): void {
+    render(excludeWindowId?: string, instant = false): void {
         this.viewport.setContentGeometry(this.grid.contentLeft(), this.grid.virtualWidth());
         for (const column of this.grid.columns()) {
             if (column.hidden) {
                 continue;
             }
             const win = this.registry.get(column.id);
-            if (win && win.id !== excludeWindowId && !this.fullScreenColumns.has(column.id)) {
-                this.geometrySync.apply(win, this.grid.columnRect(column.id), this.viewport.offset());
+            if (!win || win.id === excludeWindowId || this.fullScreenColumns.has(column.id)) {
+                continue;
             }
+            const rect = this.grid.columnRect(column.id);
+            let x: number;
+            if (instant) {
+                this.columnMotion.snapTo(column.id, rect.x);
+                x = rect.x;
+            } else {
+                x = this.columnMotion.update(column.id, rect.x, Date.now(), this.settings.animationDurationMs);
+            }
+            this.geometrySync.apply(win, Object.assign({}, rect, { x }), this.viewport.offset());
+        }
+        if (this.columnMotion.isAnimating()) {
+            this.columnMotionTimer.start(this.settings.animationTickMs, () => this.render());
+        } else {
+            this.columnMotionTimer.stop();
         }
         setDebugState(
             formatDebugState(debugRows(this.grid, this.registry), debugCamera(this.viewport), this.grid.debugState()),
@@ -106,7 +126,8 @@ export class Strip {
                 viewport: this.viewport,
                 workspaceAdapter: this.workspaceAdapter,
                 area: this.area,
-                render: () => this.render(),
+                // Drag-reorder settle stays fully instant, matching pre-animation behavior.
+                render: () => this.render(undefined, true),
             }),
         );
         this.render();
@@ -121,6 +142,7 @@ export class Strip {
         this.registry.delete(columnId);
         this.geometrySync.forget(win.id);
         this.fullScreenColumns.delete(columnId);
+        this.columnMotion.forget(columnId);
         this.grid.removeColumn(columnId);
         this.render();
         this.revealFocused();
@@ -204,16 +226,20 @@ export class Strip {
             isHidden: (columnId) => this.grid.isHidden(columnId),
             isEcho: (windowId, rect) => this.geometrySync.isEcho(windowId, rect),
             resizeColumn: (columnId, width, edge) => this.grid.resizeColumn(columnId, width, edge),
-            hideColumn: (columnId) => this.grid.hideColumn(columnId),
+            hideColumn: (columnId) => {
+                this.grid.hideColumn(columnId);
+                this.columnMotion.forget(columnId);
+            },
             showColumn: (columnId) => this.grid.showColumn(columnId),
             setFullScreen: (columnId, fullScreen) => {
                 if (fullScreen) {
                     this.fullScreenColumns.add(columnId);
+                    this.columnMotion.forget(columnId);
                 } else {
                     this.fullScreenColumns.delete(columnId);
                 }
             },
-            render: (excludeWindowId) => this.render(excludeWindowId),
+            render: (excludeWindowId, instant) => this.render(excludeWindowId, instant),
             revealFocused: () => this.revealFocused(),
             isFullScreenGeometry: (win) => this.workspaceAdapter.isFullScreenGeometry(win),
         };
