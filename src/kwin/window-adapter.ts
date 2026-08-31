@@ -126,4 +126,10 @@ export class WindowAdapter {
         this.window.fullScreenChanged.connect(handler);
         return () => this.window.fullScreenChanged.disconnect(handler);
     }
+
+    /** Makes this the workspace's active window (real KWin/keyboard focus, not just Drift's
+     * internal notion of the focused column). */
+    activate(): void {
+        Workspace.activeWindow = this.window;
+    }
 }

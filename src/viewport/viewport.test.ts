@@ -62,6 +62,15 @@ describe('Viewport — scrolling and clamping', () => {
     });
 });
 
+describe('Viewport — setOffset', () => {
+    it('sets the camera position exactly, bypassing the content clamp', () => {
+        const viewport = new Viewport(1000);
+        viewport.setContentWidth(3000); // maxOffset = 2000
+        viewport.setOffset(9000);
+        expect(viewport.offset()).toBe(9000);
+    });
+});
+
 describe('Viewport — revealing a column (focus scroll)', () => {
     it('scrolls right so a column past the right edge becomes fully visible', () => {
         const viewport = new Viewport(1000);

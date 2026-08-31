@@ -7,6 +7,7 @@ import type { Timer } from '../viewport/animator';
 import { Strip } from './strip';
 
 const AREA: Rect = { x: 0, y: 0, width: 1280, height: 1000 };
+const INSTANT_SETTINGS = { ...DEFAULT_SETTINGS, animationDurationMs: 0 };
 
 function fakeTimer(): Timer {
     return { start: () => {}, stop: () => {} };
@@ -19,6 +20,7 @@ function fakeWorkspaceAdapter(): WorkspaceAdapter {
 interface FakeWindow {
     adapter: WindowAdapter;
     setFrameGeometry: ReturnType<typeof vi.fn>;
+    activate: ReturnType<typeof vi.fn>;
     disconnects: {
         frameGeometry: ReturnType<typeof vi.fn>;
         minimized: ReturnType<typeof vi.fn>;
@@ -42,6 +44,7 @@ function fakeWindow(
         moveFinished: vi.fn(),
     };
     const setFrameGeometry = vi.fn();
+    const activate = vi.fn();
     let isFullScreen = options.fullScreen ?? false;
     let fullScreenHandler: (() => void) | undefined;
     const adapter = {
@@ -49,6 +52,7 @@ function fakeWindow(
         caption: id,
         frameGeometry: () => ({ x: 0, y: 0, width: options.width ?? 800, height: 1000 }),
         setFrameGeometry,
+        activate,
         isMinimized: () => options.minimized ?? false,
         isFullScreen: () => isFullScreen,
         isInteractiveResize: () => false,
@@ -65,6 +69,7 @@ function fakeWindow(
     return {
         adapter,
         setFrameGeometry,
+        activate,
         disconnects,
         setIsFullScreen: (value) => {
             isFullScreen = value;
@@ -135,6 +140,22 @@ describe('Strip', () => {
         expect(() => strip.focusRight()).not.toThrow();
     });
 
+    it('activates the window of the column focus moves to', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win1 = fakeWindow('w1');
+        const win2 = fakeWindow('w2');
+        strip.addWindow(win1.adapter);
+        strip.addWindow(win2.adapter); // col2 is now focused
+
+        strip.focusLeft();
+
+        expect(win1.activate).toHaveBeenCalledTimes(1);
+
+        strip.focusRight();
+
+        expect(win2.activate).toHaveBeenCalledTimes(1);
+    });
+
     it('never writes geometry to a fullscreen window on render', () => {
         const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1', { fullScreen: true });
@@ -189,5 +210,70 @@ describe('Strip', () => {
         strip.render();
 
         expect(win.setFrameGeometry).not.toHaveBeenCalled();
+    });
+
+    describe('cycleAlignLeft / cycleAlignRight', () => {
+        it('cycles a single oversized column through left/center/right and stops at both edges', () => {
+            const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+            const win = fakeWindow('w1', { width: 1600 });
+            strip.addWindow(win.adapter); // offset 0 — already left-aligned, no reveal needed
+
+            strip.cycleAlignRight(); // right cycle's start phase: advances to centered
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: -160 }));
+
+            strip.cycleAlignRight();
+            // right-aligned
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: -320 }));
+
+            strip.cycleAlignRight(); // already right-aligned (right cycle's own edge): no-op
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: -320 }));
+
+            strip.cycleAlignLeft(); // left cycle's start phase: advances to centered
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: -160 }));
+
+            strip.cycleAlignLeft();
+            // left-aligned
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 0 }));
+
+            strip.cycleAlignLeft(); // already left-aligned (left cycle's own edge): no-op
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 0 }));
+        });
+
+        it('cycles a narrow column through left/center/right even when the whole strip fits in the viewport', () => {
+            // AREA is 1280 wide; this column (400) is far narrower — nothing here ever needs
+            // scrolling to stay revealed, but align-cycle must still be able to place it at
+            // the viewport's left edge, center, and right edge.
+            const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+            const win = fakeWindow('w1', { width: 400 });
+            strip.addWindow(win.adapter); // offset 0 — already left-aligned
+
+            strip.cycleAlignRight();
+            // centered: (1280 - 400) / 2 = 440
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 440 }));
+
+            strip.cycleAlignRight();
+            // right-aligned: 1280 - 400 = 880
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 880 }));
+
+            strip.cycleAlignLeft();
+            // back to centered
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 440 }));
+
+            strip.cycleAlignLeft();
+            // back to left-aligned
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 0 }));
+        });
+
+        it('does nothing when the focused column is hidden (minimized)', () => {
+            const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+            const win = fakeWindow('w1', { minimized: true });
+            strip.addWindow(win.adapter);
+            win.setFrameGeometry.mockClear();
+
+            strip.cycleAlignRight();
+            strip.cycleAlignLeft();
+
+            expect(win.setFrameGeometry).not.toHaveBeenCalled();
+        });
     });
 });

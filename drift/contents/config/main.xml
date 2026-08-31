@@ -5,5 +5,20 @@
         <entry name="marginBottom" type="UInt">
             <default>0</default>
         </entry>
+        <entry name="shortcutFocusLeft" type="String">
+            <default>Meta+Ctrl+Left</default>
+        </entry>
+        <entry name="shortcutFocusRight" type="String">
+            <default>Meta+Ctrl+Right</default>
+        </entry>
+        <entry name="shortcutToggleDebugConsole" type="String">
+            <default>Meta+Shift+D</default>
+        </entry>
+        <entry name="shortcutCycleAlignLeft" type="String">
+            <default>Meta+Left</default>
+        </entry>
+        <entry name="shortcutCycleAlignRight" type="String">
+            <default>Meta+Right</default>
+        </entry>
     </group>
 </kcfg>
