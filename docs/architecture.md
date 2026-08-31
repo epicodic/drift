@@ -41,16 +41,25 @@ Exactly one column can be focused at a time, tracked by the grid as a column id.
 Focus changes on window activation (clicking a window, alt-tabbing) or on the `focusLeft`/`focusRight` shortcuts, which move focus to the adjacent column in strip order.
 Every focus change triggers `revealFocused()`, which asks the viewport for the minimal scroll offset that brings the whole focused column into view, then animates to it (see [Data Flow](#data-flow)) so the user keeps their mental map of the layout.
 
+Two further shortcut pairs move the camera without moving focus: `cycleAlignLeft`/`cycleAlignRight` step the *already-focused* column through left/centered/right positions in the viewport, and `shiftViewportLeft`/`shiftViewportRight` pan the camera by a fixed step regardless of what is focused (see [Algorithms](algorithms.md)).
+
+### Activities and Virtual Desktops
+
+Drift keeps one independent `Grid`/`Viewport` pair — a `Strip` — per `(activity, virtual desktop)` combination, so windows on different activities or desktops never affect each other's layout.
+`StripManager` creates strips lazily and prunes them once their activity or desktop no longer exists; `WindowManager` routes each window to the strip for its current activity+desktop and moves it between strips if that assignment changes.
+A window on multiple activities/desktops (or none) is left unmanaged.
+Grids always span every screen, so screen is not part of the key.
+
 ## Module Map
 
 | Module | Purpose |
 |---|---|
 | [`src/core/`](../src/core) | Pure, KWin-free layout model: `Grid`, `Column`, and the coordinate math in `coordinates.ts`. Fully unit-tested. |
 | [`src/viewport/`](../src/viewport) | Pure "camera" (`Viewport`) and the timer-driven scroll animation (`Animator`), plus `ColumnMotion` (per-column position smoothing) and `SharedTicker` (lets both share one real `Timer`). Fully unit-tested. |
-| [`src/kwin/`](../src/kwin) | The only code that touches the live KWin API: `WindowAdapter`, `WorkspaceAdapter`, `GeometrySync`, and `createQmlTimer`. Thin by design; only `toRealRect`/`toVirtualX` and `GeometrySync`'s echo tracking are unit-tested. |
+| [`src/kwin/`](../src/kwin) | The only code that touches the live KWin API: `WindowAdapter`, `WorkspaceAdapter`, `GeometrySync`, `createQmlTimer`, and `createDebugConsole` (the on-screen debug overlay). Thin by design; only `toRealRect`/`toVirtualX` and `GeometrySync`'s echo tracking are unit-tested. |
 | [`src/input/`](../src/input) | Wires KWin interaction events (drag lifecycle, global shortcuts) to `core`/`viewport` calls. |
 | [`src/config/`](../src/config) | Settings defaults and `kwinrc` config loading. |
-| [`src/runtime/`](../src/runtime) | Orchestration layer that composes the pure modules and adapters: `Controller` (root), `Strip` (one surface = `Grid` + `Viewport` + `Animator` + `ColumnRegistry`), and the `StripManager`/`WindowManager` seams for future Plasma Activities support. Also holds the extracted `window-events` handlers and `workspace-signals` registration. |
+| [`src/runtime/`](../src/runtime) | Orchestration layer that composes the pure modules and adapters: `Controller` (root), `Strip` (one surface = `Grid` + `Viewport` + `Animator` + `ColumnRegistry`), `StripManager` (one `Strip` per activity+desktop, see [Activities and Virtual Desktops](#activities-and-virtual-desktops)), and `WindowManager` (routes/reassigns windows to strips). Also holds the extracted `window-events` handlers and `workspace-signals` registration. |
 | [`src/utils/`](../src/utils) | Small cross-cutting helpers: `SignalManager`, which tracks adapter disconnect thunks and tears them all down in one call. |
 | [`src/debug/`](../src/debug) | Debug-console snapshot builders (`debugRows`/`debugCamera`); the debug output channel itself remains in `src/debug.ts`. |
 | [`src/main.ts`](../src/main.ts) | Entry point (`init`) called by the QML host. Constructs and starts the `Controller`; contains no logic of its own. |

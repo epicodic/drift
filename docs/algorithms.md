@@ -74,3 +74,21 @@ Window drag-reorder is the exception: neighbors displaced by a live reorder tick
 
 `SharedTicker` exists because a `Strip` is only ever given one real `Timer`, but the camera pan and per-column motion are independent animations that may need to tick at once.
 It hands out independent `Timer`-shaped handles that share one real timer, starting it when any handle is active and stopping it only once every handle has stopped.
+
+## Align-Cycle Phase Stepping
+
+Source: [`alignOffsets`/`nextAlignStep`](../src/viewport/align-cycle.ts) in `align-cycle.ts`, driven by `Strip.cycleAlign` in [`strip.ts`](../src/runtime/strip.ts).
+
+Pressing `cycleAlignLeft`/`cycleAlignRight` never changes which column is focused — it steps the *already-focused* column through three candidate scroll offsets that place it flush against the viewport's left edge, centered, or flush against its right edge.
+`alignOffsets(rectX, rectWidth, viewportWidth)` computes those three offsets directly from the column's rect, deliberately unclamped by content bounds (unlike `offsetToReveal`), so a column can be placed flush against either viewport edge even when the whole strip already fits within it.
+
+`nextAlignStep(direction, currentOffset, offsets)` derives which of the three phases the viewport is currently in by comparing the rounded current offset against the three rounded candidates, rather than storing a phase — so it self-corrects if anything else moved the viewport between presses.
+Each key drives the column toward its own edge and stops there instead of looping: `left` cycles right → centered → left, `right` cycles left → centered → right; pressing the same key again once already at that edge is a no-op.
+If a column has no room to move within the viewport (`offsets.left === offsets.right`, e.g. the whole strip already fits), the cycle is a no-op regardless of direction.
+
+## Viewport Shift
+
+Source: `Strip.shiftViewport` in [`strip.ts`](../src/runtime/strip.ts).
+
+`shiftViewportLeft`/`shiftViewportRight` pan the camera by a fixed `settings.viewportShiftStep` without touching focus or the focused column's alignment — a plain `Animator.animate` call from the current offset to `offset ± step`.
+Unlike focus-driven reveals and align-cycle, this is deliberately unclamped: the user can keep panning past either end of the content.
