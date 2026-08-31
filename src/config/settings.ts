@@ -50,7 +50,11 @@ export const DEFAULT_SETTINGS: Settings = {
 export function loadSettings(): Settings {
     // Object spread is unsupported by KWin's declarativescript JS engine — use Object.assign.
     return Object.assign({}, DEFAULT_SETTINGS, {
-        bottomMargin: readNumberConfig('marginBottom', DEFAULT_SETTINGS.bottomMargin),
+        bottomMargin: readNumberConfig('bottomMargin', DEFAULT_SETTINGS.bottomMargin),
+        columnGap: readNumberConfig('columnGap', DEFAULT_SETTINGS.columnGap),
+        defaultColumnWidth: readNumberConfig('defaultColumnWidth', DEFAULT_SETTINGS.defaultColumnWidth),
+        animationDurationMs: readNumberConfig('animationDurationMs', DEFAULT_SETTINGS.animationDurationMs),
+        viewportShiftStep: readNumberConfig('viewportShiftStep', DEFAULT_SETTINGS.viewportShiftStep),
         shortcutFocusLeft: readStringConfig('shortcutFocusLeft', DEFAULT_SETTINGS.shortcutFocusLeft),
         shortcutFocusRight: readStringConfig('shortcutFocusRight', DEFAULT_SETTINGS.shortcutFocusRight),
         shortcutToggleDebugConsole: readStringConfig(
