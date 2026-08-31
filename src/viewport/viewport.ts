@@ -50,6 +50,16 @@ export class Viewport {
         this.scrollTo(this.offsetX + delta);
     }
 
+    /** Sets the camera position exactly, bypassing the "never scroll past content"
+     * clamp. Used by the animator's tick callback, which is shared by every animated
+     * scroll: `revealFocused` already computes a bounded target via `offsetToReveal`,
+     * while align-cycle deliberately targets positions outside the content's own
+     * bounds (e.g. placing a column narrower than the viewport flush against its
+     * right edge) — the camera must be free to show empty space to do that. */
+    setOffset(offset: number): void {
+        this.offsetX = offset;
+    }
+
     /** Minimal offset that brings [rectX, rectX + rectWidth] fully into view. */
     offsetToReveal(rectX: number, rectWidth: number): number {
         const viewLeft = this.offsetX;

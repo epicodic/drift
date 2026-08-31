@@ -2,25 +2,50 @@
 // `registerShortcut` global — each shortcut is a QML `ShortcutHandler` element from
 // `org.kde.kwin`, created via `Qt.createQmlObject` parented to the QML root (docs §4).
 
+import type { Settings } from '../config/settings';
+import { debug } from '../debug';
+
 export interface ShortcutActions {
     focusLeft(): void;
     focusRight(): void;
     toggleDebugConsole(): void;
+    cycleAlignLeft(): void;
+    cycleAlignRight(): void;
 }
 
-export function registerShortcuts(parent: QmlObject, actions: ShortcutActions): void {
-    createShortcut(parent, 'DriftFocusLeft', 'Drift: Focus Column Left', 'Meta+A', actions.focusLeft);
-    createShortcut(parent, 'DriftFocusRight', 'Drift: Focus Column Right', 'Meta+D', actions.focusRight);
+export function registerShortcuts(parent: QmlObject, settings: Settings, actions: ShortcutActions): void {
+    createShortcut(parent, 'DriftFocusLeft', 'Drift: Focus Column Left', settings.shortcutFocusLeft, actions.focusLeft);
+    createShortcut(
+        parent,
+        'DriftFocusRight',
+        'Drift: Focus Column Right',
+        settings.shortcutFocusRight,
+        actions.focusRight,
+    );
     createShortcut(
         parent,
         'DriftToggleDebugConsole',
         'Drift: Toggle Debug Console',
-        'Meta+Shift+D',
+        settings.shortcutToggleDebugConsole,
         actions.toggleDebugConsole,
+    );
+    createShortcut(
+        parent,
+        'DriftCycleAlignLeft',
+        'Drift: Cycle Column Align Left',
+        settings.shortcutCycleAlignLeft,
+        actions.cycleAlignLeft,
+    );
+    createShortcut(
+        parent,
+        'DriftCycleAlignRight',
+        'Drift: Cycle Column Align Right',
+        settings.shortcutCycleAlignRight,
+        actions.cycleAlignRight,
     );
 }
 
-function createShortcut(
+export function createShortcut(
     parent: QmlObject,
     name: string,
     text: string,
@@ -30,10 +55,13 @@ function createShortcut(
     const qml = `import QtQuick 6.0
 import org.kde.kwin 3.0
 ShortcutHandler {
-    name: "${name}"
-    text: "${text}"
-    sequence: "${sequence}"
+    name: ${JSON.stringify(name)}
+    text: ${JSON.stringify(text)}
+    sequence: ${JSON.stringify(sequence)}
 }`;
     const handler = Qt.createQmlObject(qml, parent) as QmlShortcutHandler;
-    handler.activated.connect(onActivated);
+    handler.activated.connect(() => {
+        debug(`shortcut activated: ${name}`);
+        onActivated();
+    });
 }

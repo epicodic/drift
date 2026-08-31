@@ -131,6 +131,20 @@ interface QmlShortcutHandler extends QmlObject {
     readonly activated: Signal<() => void>;
 }
 
+/** A QML `DBusCall` element from `org.kde.kwin` — a one-shot, async, session-bus DBus
+ * method call. `call()` never blocks; the reply arrives via `finished` (success, with
+ * the reply's arguments) or `failed` (error, no detail). */
+interface QmlDBusCall extends QmlObject {
+    service: string;
+    path: string;
+    dbusInterface: string;
+    method: string;
+    arguments: unknown[];
+    call(): void;
+    readonly finished: Signal<(returnValue: unknown[]) => void>;
+    readonly failed: Signal<() => void>;
+}
+
 /** The dynamically-created debug console overlay (`Rectangle` root). */
 interface QmlDebugOverlay extends QmlObject {
     lines: string;
@@ -141,6 +155,10 @@ interface QmlDebugOverlay extends QmlObject {
 interface QtNamespace {
     rect(x: number, y: number, width: number, height: number): QRect;
     createQmlObject(qml: string, parent: QmlObject): QmlObject;
+    /** Resolves a URL relative to the calling QML file's own location. Returns a QUrl
+     * value, not a plain string (confirmed live) — callers must coerce via `String(...)`
+     * before doing any string operations on it. */
+    resolvedUrl(url: string): unknown;
 }
 
 declare const Qt: QtNamespace;

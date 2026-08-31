@@ -5,14 +5,16 @@
 
 import type { Rect } from '../core/coordinates';
 import { formatDebugState } from '../core/debug-format';
+import type { Column } from '../core/column';
 import { Grid } from '../core/grid';
 import type { Settings } from '../config/settings';
-import { setDebugState } from '../debug';
+import { debug, setDebugState } from '../debug';
 import { debugCamera, debugRows } from '../debug/snapshot';
 import { registerDragReorder } from '../input/drag';
 import { GeometrySync } from '../kwin/geometry-sync';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
+import { alignOffsets, nextAlignStep, type AlignDirection, type AlignOffsets } from '../viewport/align-cycle';
 import { Animator, type Timer } from '../viewport/animator';
 import { Viewport } from '../viewport/viewport';
 import { ColumnRegistry } from './column-registry';
@@ -49,7 +51,7 @@ export class Strip {
             () => Date.now(),
             settings.animationTickMs,
             (offset) => {
-                this.viewport.scrollTo(offset);
+                this.viewport.setOffset(offset);
                 this.render();
             },
         );
@@ -134,13 +136,50 @@ export class Strip {
     }
 
     focusLeft(): void {
-        this.grid.focusLeft();
-        this.revealFocused();
+        this.activateColumn(this.grid.focusLeft());
     }
 
     focusRight(): void {
-        this.grid.focusRight();
+        this.activateColumn(this.grid.focusRight());
+    }
+
+    /** Focus-stepping only moves Drift's own notion of the focused column (`Grid`) —
+     * this is what also makes KWin actually hand keyboard focus to that column's window. */
+    private activateColumn(column: Column | null): void {
+        if (column !== null) {
+            this.registry.get(column.id)?.activate();
+        }
         this.revealFocused();
+    }
+
+    cycleAlignLeft(): void {
+        this.cycleAlign('left');
+    }
+
+    cycleAlignRight(): void {
+        this.cycleAlign('right');
+    }
+
+    private cycleAlign(direction: AlignDirection): void {
+        const focused = this.grid.focusedColumn();
+        if (focused === null || focused.hidden) {
+            debug(`cycleAlign(${direction}): no focused column (focused=${focused === null ? 'null' : 'hidden'})`);
+            return;
+        }
+        const offsets = this.columnAlignOffsets(focused.id);
+        const step = nextAlignStep(direction, this.viewport.offset(), offsets);
+        debug(
+            `cycleAlign(${direction}): offset=${this.viewport.offset()} offsets=${JSON.stringify(offsets)} ` +
+                `step=${JSON.stringify(step)}`,
+        );
+        this.animator.animate(this.viewport.offset(), step.targetOffset, this.settings.animationDurationMs);
+    }
+
+    /** Unclamped on purpose — align-cycle must be able to place a column flush against
+     * either viewport edge even when the whole strip already fits within it. */
+    private columnAlignOffsets(columnId: number): AlignOffsets {
+        const rect = this.grid.columnRect(columnId);
+        return alignOffsets(rect.x, rect.width, this.viewport.viewportWidth());
     }
 
     private eventDeps(): WindowEventDeps {

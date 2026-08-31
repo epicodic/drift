@@ -5,11 +5,17 @@
 import type { Settings } from '../config/settings';
 import { createDebugConsole, type DebugConsole } from '../kwin/debug-console';
 import { createQmlTimer } from '../kwin/qml-timer';
+// import { checkForShortcutConflicts } from '../kwin/shortcut-conflicts'; // disabled, see start()
 import { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import { registerShortcuts } from '../input/shortcuts';
 import { StripManager } from './strip-manager';
 import { WindowManager } from './window-manager';
 import { initWorkspaceSignals } from './workspace-signals';
+
+// How long to wait after registering shortcuts before checking whether kglobalaccel
+// actually granted them — the grant may not be settled the instant the ShortcutHandler
+// QML objects are constructed.
+// const SHORTCUT_CONFLICT_CHECK_DELAY_MS = 1000; // disabled, see start()
 
 export class Controller {
     private readonly workspaceAdapter = new WorkspaceAdapter();
@@ -19,7 +25,8 @@ export class Controller {
 
     constructor(
         private readonly root: QmlObject,
-        settings: Settings,
+        private readonly settings: Settings,
+        private readonly scriptUiDirUrl: string,
     ) {
         const area = this.workspaceAdapter.combinedGeometry();
         // Create the debug console before the animation timer, matching the original init() order.
@@ -30,11 +37,20 @@ export class Controller {
 
     start(): void {
         initWorkspaceSignals(this.windowManager, this.stripManager, this.workspaceAdapter);
-        registerShortcuts(this.root, {
+        registerShortcuts(this.root, this.settings, {
             focusLeft: () => this.stripManager.activeStrip().focusLeft(),
             focusRight: () => this.stripManager.activeStrip().focusRight(),
             toggleDebugConsole: () => this.debugConsole.toggle(),
+            cycleAlignLeft: () => this.stripManager.activeStrip().cycleAlignLeft(),
+            cycleAlignRight: () => this.stripManager.activeStrip().cycleAlignRight(),
         });
+        // Disabled: the OSD conflict notice kept firing incorrectly. Left in place, not deleted, per user request.
+        // const conflictCheckTimer = createQmlTimer(this.root);
+        // conflictCheckTimer.start(SHORTCUT_CONFLICT_CHECK_DELAY_MS, () => {
+        //     conflictCheckTimer.stop();
+        //     checkForShortcutConflicts(this.root, this.scriptUiDirUrl);
+        // });
+        void this.scriptUiDirUrl; // only used by the disabled conflict check above
         console.log('Drift: initialized');
     }
 }
