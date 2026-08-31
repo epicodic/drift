@@ -30,18 +30,19 @@ Rounding matters because KWin/Wayland can report fractional geometry for the sam
 
 ## Drag-Reorder Insertion Index
 
-Source: [`Grid.insertionIndexForX`](../src/core/grid.ts) in `grid.ts`, driven by [`registerDragReorder`](../src/input/drag.ts) in `drag.ts`.
+Source: [`Grid.insertionIndexForEdges`](../src/core/grid.ts) in `grid.ts`, driven by [`registerDragReorder`](../src/input/drag.ts) in `drag.ts`.
 
-While a window is being interactively moved, Drift never writes its real geometry — it moves freely under the cursor — but the *order* of the other columns updates live: on every `frameGeometryChanged` tick during the drag, `registerDragReorder` converts the dragged window's own center (not the cursor) to a virtual x (`toVirtualX`), then asks `Grid.insertionIndexForX` for the closest valid insertion index among all *other* columns (the dragged column is excluded from the candidate list so it cannot "insert relative to itself").
-If that index differs from the column's current position, it is committed immediately via `Grid.moveColumn`, and displaced neighbors slide into their new positions through the normal per-column position animation (see "Layout-Change Position Animation" below) rather than jumping.
-Using the window's own center, rather than the cursor, means the vote reflects where the dragged window itself sits, regardless of where within it the user grabbed to start the drag.
+While a window is being interactively moved, Drift never writes its real geometry — it moves freely under the cursor — but the *order* of the other columns updates live: on every `frameGeometryChanged` tick during the drag, `registerDragReorder` converts the dragged window's own left and right edges (not the cursor) to virtual x coordinates (`toVirtualX`), then asks `Grid.insertionIndexForEdges` whether it should trade places with its current immediate left or right neighbor.
+If the returned index differs from the column's current position, the swap is committed immediately via `Grid.moveColumn`, and the displaced neighbor slides into its new position through the normal per-column position animation (see "Layout-Change Position Animation" below) rather than jumping.
+Using the window's own edges, rather than the cursor, means the vote reflects where the dragged window itself sits, regardless of where within it the user grabbed to start the drag.
 
-`insertionIndexForX(excludeId, virtualX)` reads each other VISIBLE column's own real center — its actual current offset plus half its width, taken straight from the grid's live layout — and counts how many of those centers sit to the left of `virtualX`.
-That count is a valid `moveColumn` target: inserting at index `i` places the column immediately before the candidate currently at index `i` (or at the end, once every candidate's center is to the left).
-Because every center is read from the real, undisturbed layout rather than one recomputed as if the dragged column had already been removed, the vote flips at exactly each candidate's own center regardless of which side the dragged column starts from — dragging past a neighbor's center costs the same distance whether that neighbor is to the left or to the right.
-An earlier version of this algorithm instead repacked the other columns from scratch, excluding the dragged column's own width and gap; that silently shrank the space after the dragged column in a way that never matched the real screen, making rightward reorders trigger far too early — this is why the current version reads real centers directly instead of repacking.
+The criterion is intentionally directional and edge-based, matching how a user visually judges a swap: the dragged window trades places with its right neighbor once its own *right* edge crosses that neighbor's center, and with its left neighbor once its own *left* edge crosses that neighbor's center.
+`insertionIndexForEdges(excludeId, leftEdgeVirtualX, rightEdgeVirtualX)` finds only the current immediate left and right neighbor (skipping hidden columns), reading each one's real center — its actual current offset plus half its width, taken straight from the grid's live layout — and checks the matching edge against it: the right edge against the right neighbor's center, the left edge against the left neighbor's center.
+It returns that neighbor's index once its center is crossed, or `excludeId`'s own current index (i.e. no move) when neither immediate neighbor has been crossed.
+Because centers are read from the real, undisturbed layout, the two directions are symmetric: crossing a neighbor's center costs the same distance whether that neighbor is to the left or to the right.
+Checking only the *immediate* neighbor, rather than voting across every other column at once, keeps each reorder step a single swap — consecutive ticks during a fast drag simply keep re-evaluating against whatever the new immediate neighbor becomes after each swap.
 
-On `interactiveMoveResizeFinished`, the same center-based computation runs once more, then the dragged column itself is forced to snap instantly into its final slot (`Strip.snapColumn`) while its neighbors keep whatever slide they were already mid-flight on.
+On `interactiveMoveResizeFinished`, the same edge-based computation runs once more, then the dragged column itself is forced to snap instantly into its final slot (`Strip.snapColumn`) while its neighbor keeps whatever slide it was already mid-flight on.
 
 ## Viewport Reveal and Animation Easing
 
