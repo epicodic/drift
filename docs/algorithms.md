@@ -20,7 +20,7 @@ Because both functions are pure derivations from the current width list, adding,
 
 ## Resize-Edge Detection
 
-Source: [`resizedEdge`](../src/core/coordinates.ts) in `coordinates.ts`, called from [`onWindowGeometryChanged`](../src/main.ts) in `main.ts`.
+Source: [`resizedEdge`](../src/core/coordinates.ts) in `coordinates.ts`, called from [`onWindowGeometryChanged`](../src/runtime/window-events.ts) in `window-events.ts`.
 
 When a tiled window's frame geometry changes, Drift needs to know whether the user resized it from the left edge or the right edge, because only a left-edge resize should shift the strip's origin (`Grid.resizeColumn`'s `edge` parameter).
 `resizedEdge(oldRect, newRect)` compares the rounded `x` of the old and new geometry: if `x` moved, the left edge moved; otherwise the right edge moved.
@@ -54,3 +54,16 @@ Animating to that offset is a plain, injectable-clock interpolation, split into 
   Easing defaults to `easeOutCubic` — $1 - (1-t)^3$ — a fast start with a gentle settle.
 - `Animator` drives an `Animation` from a real timer: each tick it reads wall-clock elapsed time (via an injected `now()`), computes `valueAt(elapsed)`, and calls the `onUpdate` callback (which scrolls the viewport and re-renders).
   Using elapsed wall-clock time rather than counting ticks means a dropped/delayed tick under load does not slow the animation down — the value simply catches up on the next tick.
+
+## Layout-Change Position Animation
+
+Source: [`ColumnMotion`](../src/viewport/column-motion.ts) in `column-motion.ts`, driven by [`Strip.render`](../src/runtime/strip.ts) in `strip.ts`, sharing a `Timer` with the camera's `Animator` via [`SharedTicker`](../src/viewport/shared-ticker.ts).
+
+Whenever a column's logical x changes for a reason other than the user actively dragging or resizing it — adding, removing, or minimizing/restoring a window, a resize pushing a neighbor, or a drag-reorder settling on release — `ColumnMotion` animates that column's real x from wherever it currently visually is to the new logical x, using the same eased duration as the camera (`settings.animationDurationMs` / `easeOutCubic`).
+A column is never animated on its own first appearance (add, restore, returning from fullscreen): `ColumnMotion` snaps a never-seen-before column straight to its target, so only *already-visible* neighbors slide.
+
+Live interactive gestures (border drag, window drag) stay fully instant: `Strip.render`'s `instant` flag makes `ColumnMotion` snap straight to the target instead of animating for those frames.
+`Strip` forgets a column's motion state whenever it is hidden (minimized) or excluded (fullscreen), so that restoring it later snaps to its new position instead of animating in from a stale pre-hide value.
+
+`SharedTicker` exists because a `Strip` is only ever given one real `Timer`, but the camera pan and per-column motion are independent animations that may need to tick at once.
+It hands out independent `Timer`-shaped handles that share one real timer, starting it when any handle is active and stopping it only once every handle has stopped.
