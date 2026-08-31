@@ -313,27 +313,23 @@ describe('Strip', () => {
             expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 0 }));
         });
 
-        it('clamps at the content right edge (contentWidth 1608, viewport 1280 -> maxOffset 328)', () => {
+        it('keeps panning right past the content right edge (contentWidth 1608, viewport 1280 -> maxOffset 328)', () => {
             const { strip, win2 } = twoColumnStrip();
 
             for (let i = 0; i < 10; i++) {
                 strip.shiftViewportRight();
             }
 
-            expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 808 - 328 }));
+            // offset reaches 1000, well past maxOffset (328): real x = 808 - 1000
+            expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 808 - 1000 }));
         });
 
-        it('clamps at the content left edge (does not scroll past offset 0)', () => {
+        it('keeps panning left past the content left edge (offset goes negative)', () => {
             const { strip, win1 } = twoColumnStrip();
-            strip.shiftViewportRight(); // offset 0 -> 100
-            win1.setFrameGeometry.mockClear();
 
-            strip.shiftViewportLeft(); // offset 100 -> 0
-            expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 0 }));
+            strip.shiftViewportLeft(); // offset 0 -> -100
 
-            win1.setFrameGeometry.mockClear();
-            strip.shiftViewportLeft(); // already at 0: no-op, no further geometry write
-            expect(win1.setFrameGeometry).not.toHaveBeenCalled();
+            expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 100 }));
         });
 
         it('does not change which column is focused', () => {

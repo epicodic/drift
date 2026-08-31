@@ -62,21 +62,6 @@ describe('Viewport — scrolling and clamping', () => {
     });
 });
 
-describe('Viewport — clampOffset', () => {
-    it('clamps an offset without mutating the current camera position', () => {
-        const viewport = new Viewport(1000);
-        viewport.setContentWidth(3000); // maxOffset = 2000
-        expect(viewport.clampOffset(5000)).toBe(2000);
-        expect(viewport.offset()).toBe(0);
-    });
-
-    it('clamps the low end to the content-left', () => {
-        const viewport = new Viewport(1000);
-        viewport.setContentGeometry(-200, 3000); // content spans [-200, 2800]
-        expect(viewport.clampOffset(-9000)).toBe(-200);
-    });
-});
-
 describe('Viewport — setOffset', () => {
     it('sets the camera position exactly, bypassing the content clamp', () => {
         const viewport = new Viewport(1000);

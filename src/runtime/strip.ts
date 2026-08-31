@@ -161,7 +161,8 @@ export class Strip {
     }
 
     /** Pans the camera without touching focus — unlike focusLeft/Right and cycleAlign,
-     * the focused column never changes. */
+     * the focused column never changes. Deliberately unclamped: the user can keep
+     * panning past either end of the content. */
     shiftViewportLeft(): void {
         this.shiftViewport(-this.settings.viewportShiftStep);
     }
@@ -171,7 +172,7 @@ export class Strip {
     }
 
     private shiftViewport(delta: number): void {
-        const target = this.viewport.clampOffset(this.viewport.offset() + delta);
+        const target = this.viewport.offset() + delta;
         this.animator.animate(this.viewport.offset(), target, this.settings.animationDurationMs);
     }
 
