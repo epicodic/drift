@@ -43,6 +43,8 @@ export class Controller {
             toggleDebugConsole: () => this.debugConsole.toggle(),
             cycleAlignLeft: () => this.stripManager.activeStrip().cycleAlignLeft(),
             cycleAlignRight: () => this.stripManager.activeStrip().cycleAlignRight(),
+            shiftViewportLeft: () => this.stripManager.activeStrip().shiftViewportLeft(),
+            shiftViewportRight: () => this.stripManager.activeStrip().shiftViewportRight(),
         });
         // Disabled: the OSD conflict notice kept firing incorrectly. Left in place, not deleted, per user request.
         // const conflictCheckTimer = createQmlTimer(this.root);

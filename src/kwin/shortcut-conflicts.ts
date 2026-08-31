@@ -1,12 +1,12 @@
 // Detects two kinds of KWin shortcut cleanup Drift can offer, and if either applies,
 // tells the user to run the shipped release-shortcuts.sh script (contents/bin/) to
 // free the affected KWin actions:
-//  1. Drift's own Meta+Ctrl+Left/Right (focus) and Meta+Left/Right (align-cycle)
-//     shortcuts couldn't be granted (claimed by KWin's built-in virtual-desktop-switch
+//  1. Drift's own Meta+Tab / Meta+Shift+Tab (focus) and Meta+Left/Right (align-cycle)
+//     shortcuts couldn't be granted (claimed by KWin's built-in window-walking
 //     and Quick Tile actions respectively).
 //  2. Meta+Shift+Left/Right are still claimed by KWin's built-in Move Window to
 //     Screen actions — checked unconditionally, independent of Drift's own bindings
-//     (Drift itself now uses Meta+Ctrl+Left/Right for focus), purely so the user can
+//     (Drift itself now uses Meta+Tab / Meta+Shift+Tab for focus), purely so the user can
 //     free those keys for their own use.
 // No persisted "already asked" flag is kept — the check re-derives its answer from
 // kglobalaccel every start, the same "derive state, don't store it" approach
@@ -43,14 +43,14 @@ const KNOWN_CONFLICTS: KnownConflict[] = [
     {
         driftActionName: 'DriftFocusLeft',
         driftActionText: 'Drift: Focus Column Left',
-        kwinActionName: 'Switch One Desktop to the Left',
-        kwinActionText: 'Switch One Desktop to the Left',
+        kwinActionName: 'Walk Through Windows (Reverse)',
+        kwinActionText: 'Walk Through Windows (Reverse)',
     },
     {
         driftActionName: 'DriftFocusRight',
         driftActionText: 'Drift: Focus Column Right',
-        kwinActionName: 'Switch One Desktop to the Right',
-        kwinActionText: 'Switch One Desktop to the Right',
+        kwinActionName: 'Walk Through Windows',
+        kwinActionText: 'Walk Through Windows',
     },
     {
         driftActionName: 'DriftCycleAlignLeft',

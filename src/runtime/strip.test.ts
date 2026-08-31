@@ -276,4 +276,74 @@ describe('Strip', () => {
             expect(win.setFrameGeometry).not.toHaveBeenCalled();
         });
     });
+
+    describe('shiftViewportLeft / shiftViewportRight', () => {
+        const SHIFT_SETTINGS = { ...INSTANT_SETTINGS, viewportShiftStep: 100 };
+
+        function twoColumnStrip(): { strip: Strip; win1: FakeWindow; win2: FakeWindow } {
+            const strip = new Strip(AREA, SHIFT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+            const win1 = fakeWindow('w1');
+            const win2 = fakeWindow('w2');
+            strip.addWindow(win1.adapter);
+            strip.addWindow(win2.adapter); // col2 focused; revealFocused already scrolled right
+            strip.focusLeft(); // back to col1, offset 0
+            win1.setFrameGeometry.mockClear();
+            win2.setFrameGeometry.mockClear();
+            win1.activate.mockClear();
+            win2.activate.mockClear();
+            return { strip, win1, win2 };
+        }
+
+        it('pans the camera right by the configured step', () => {
+            const { strip, win1 } = twoColumnStrip();
+
+            strip.shiftViewportRight();
+
+            expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: -100 }));
+        });
+
+        it('pans the camera left by the configured step', () => {
+            const { strip, win1, win2 } = twoColumnStrip();
+            strip.shiftViewportRight();
+            win1.setFrameGeometry.mockClear();
+            win2.setFrameGeometry.mockClear();
+
+            strip.shiftViewportLeft();
+
+            expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 0 }));
+        });
+
+        it('clamps at the content right edge (contentWidth 1608, viewport 1280 -> maxOffset 328)', () => {
+            const { strip, win2 } = twoColumnStrip();
+
+            for (let i = 0; i < 10; i++) {
+                strip.shiftViewportRight();
+            }
+
+            expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 808 - 328 }));
+        });
+
+        it('clamps at the content left edge (does not scroll past offset 0)', () => {
+            const { strip, win1 } = twoColumnStrip();
+            strip.shiftViewportRight(); // offset 0 -> 100
+            win1.setFrameGeometry.mockClear();
+
+            strip.shiftViewportLeft(); // offset 100 -> 0
+            expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 0 }));
+
+            win1.setFrameGeometry.mockClear();
+            strip.shiftViewportLeft(); // already at 0: no-op, no further geometry write
+            expect(win1.setFrameGeometry).not.toHaveBeenCalled();
+        });
+
+        it('does not change which column is focused', () => {
+            const { strip, win1, win2 } = twoColumnStrip();
+
+            strip.shiftViewportRight();
+            strip.shiftViewportLeft();
+
+            expect(win1.activate).not.toHaveBeenCalled();
+            expect(win2.activate).not.toHaveBeenCalled();
+        });
+    });
 });

@@ -90,6 +90,12 @@ export class Viewport {
         this.scrollTo(this.offsetToReveal(rectX, rectWidth));
     }
 
+    /** Clamps `offset` the same way `scrollTo` would, without moving the camera —
+     * lets a caller compute a clamped animation target up front. */
+    clampOffset(offset: number): number {
+        return this.clamp(offset);
+    }
+
     private maxOffset(): number {
         return Math.max(this.contentOrigin, this.contentOrigin + this.contentSize - this.width);
     }

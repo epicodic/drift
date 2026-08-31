@@ -6,10 +6,10 @@
             <default>0</default>
         </entry>
         <entry name="shortcutFocusLeft" type="String">
-            <default>Meta+Ctrl+Left</default>
+            <default>Meta+Shift+Tab</default>
         </entry>
         <entry name="shortcutFocusRight" type="String">
-            <default>Meta+Ctrl+Right</default>
+            <default>Meta+Tab</default>
         </entry>
         <entry name="shortcutToggleDebugConsole" type="String">
             <default>Meta+Shift+D</default>
@@ -19,6 +19,12 @@
         </entry>
         <entry name="shortcutCycleAlignRight" type="String">
             <default>Meta+Right</default>
+        </entry>
+        <entry name="shortcutViewportShiftLeft" type="String">
+            <default>Meta+Shift+Left</default>
+        </entry>
+        <entry name="shortcutViewportShiftRight" type="String">
+            <default>Meta+Shift+Right</default>
         </entry>
     </group>
 </kcfg>
