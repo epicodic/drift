@@ -73,6 +73,7 @@ function fakeWindow(
         setFrameGeometry,
         activate,
         icon: () => null,
+        windowHandle: () => null,
         output: () => FAKE_OUTPUT,
         isMinimized: () => options.minimized ?? false,
         isFullScreen: () => isFullScreen,

@@ -1,5 +1,6 @@
 // Builds a snapshot of one strip's layout + camera for the minimap overlay
-// (docs: 2026-09-01-minimap-design). Pure and KWin-free, mirrors debug/snapshot.ts.
+// (docs: 2026-09-01-minimap-design, 2026-09-01-minimap-thumbnails-design). Pure and
+// KWin-free, mirrors debug/snapshot.ts.
 
 import type { Grid } from '../core/grid';
 import type { ColumnRegistry } from '../runtime/column-registry';
@@ -11,6 +12,7 @@ export interface MinimapColumn {
     width: number;
     focused: boolean;
     icon: QIcon | null;
+    thumbnail: Window | null;
 }
 
 export interface MinimapViewport {
@@ -23,6 +25,7 @@ export interface MinimapViewport {
 export interface MinimapSnapshot {
     columns: MinimapColumn[];
     viewport: MinimapViewport;
+    gridHeight: number;
 }
 
 export function buildMinimapSnapshot(grid: Grid, viewport: Viewport, registry: ColumnRegistry): MinimapSnapshot {
@@ -32,12 +35,14 @@ export function buildMinimapSnapshot(grid: Grid, viewport: Viewport, registry: C
         .filter((column) => !column.hidden)
         .map((column) => {
             const rect = grid.columnRect(column.id);
+            const window = registry.get(column.id);
             return {
                 id: column.id,
                 x: rect.x,
                 width: rect.width,
                 focused: column.id === focusedId,
-                icon: registry.get(column.id)?.icon() ?? null,
+                icon: window?.icon() ?? null,
+                thumbnail: window?.windowHandle() ?? null,
             };
         });
     return {
@@ -48,5 +53,6 @@ export function buildMinimapSnapshot(grid: Grid, viewport: Viewport, registry: C
             contentLeft: viewport.contentLeft(),
             contentWidth: viewport.contentWidth(),
         },
+        gridHeight: grid.screenHeight(),
     };
 }

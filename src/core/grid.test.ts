@@ -13,6 +13,14 @@ describe('Grid — empty state', () => {
     });
 });
 
+describe('Grid — screenHeight', () => {
+    it('reports the constant height passed to the constructor', () => {
+        const grid = new Grid(HEIGHT, GAP);
+
+        expect(grid.screenHeight()).toBe(HEIGHT);
+    });
+});
+
 describe('Grid — debugState', () => {
     it('reports focus, id counter, origin, and columns with widths', () => {
         const grid = new Grid(HEIGHT, GAP);

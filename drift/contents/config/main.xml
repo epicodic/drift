@@ -20,6 +20,9 @@
         <entry name="minimapAutoHideMs" type="UInt">
             <default>1200</default>
         </entry>
+        <entry name="minimapShowThumbnails" type="Bool">
+            <default>true</default>
+        </entry>
         <entry name="shortcutFocusLeft" type="String">
             <default>Meta+Shift+Tab</default>
         </entry>
