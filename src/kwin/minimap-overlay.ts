@@ -48,8 +48,6 @@ PlasmaCore.Dialog {
                     height: ${PANEL_HEIGHT}
                     radius: 4
                     color: modelData.focused ? "#3daee9" : "#5c5c5c"
-                    border.color: "#ffffff"
-                    border.width: modelData.focused ? 2 : 0
                     clip: true
                     KWinComponents.WindowThumbnail {
                         client: modelData.thumbnail
@@ -75,6 +73,24 @@ PlasmaCore.Dialog {
                         height: width
                         source: modelData.icon
                         visible: dialog.showThumbnails && modelData.icon !== null && parent.width > 12
+                    }
+                    // Painted last so the focus indicator stays on top of the window
+                    // thumbnail, regardless of when its async live content arrives.
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 4
+                        color: "transparent"
+                        border.color: Qt.rgba(0.239, 0.682, 0.914, 0.55)
+                        border.width: 4
+                        visible: modelData.focused
+                    }
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 4
+                        color: "transparent"
+                        border.color: "#3daee9"
+                        border.width: 2
+                        visible: modelData.focused
                     }
                 }
             }
