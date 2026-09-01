@@ -74,14 +74,18 @@ export class Strip {
     render(excludeWindowId?: string, instant = false): void {
         this.viewport.setContentGeometry(this.grid.contentLeft(), this.grid.virtualWidth());
         for (const column of this.grid.columns()) {
-            if (column.hidden) {
-                continue;
-            }
             const win = this.registry.get(column.id);
             if (!win || win.id === excludeWindowId || this.fullScreenColumns.has(column.id)) {
                 continue;
             }
             const rect = this.grid.columnRect(column.id);
+            if (column.hidden) {
+                // No position animation for a minimized window — nothing on screen to smooth,
+                // and this keeps its real x tracking the viewport pan instead of freezing it
+                // (a taskbar sorted by real x would otherwise see it drift out of order).
+                this.geometrySync.apply(win, rect, this.viewport.offset());
+                continue;
+            }
             let x: number;
             if (instant) {
                 this.columnMotion.snapTo(column.id, rect.x);

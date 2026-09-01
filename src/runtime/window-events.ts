@@ -72,10 +72,16 @@ export function onMinimizedChanged(win: WindowAdapter, deps: WindowEventDeps): v
     }
     if (win.isMinimized()) {
         deps.hideColumn(columnId);
+        deps.render();
+        // Collapsing the hidden column's gap can slide a still-visible neighbor out from
+        // under the (unchanged) viewport offset — re-check now, not just on the next focus
+        // switch, same reasoning as the resize-out-of-view case above. Restoring deliberately
+        // skips this: it must not move the camera (docs: 2026-08-30-minimized-windows-design).
+        deps.revealFocused();
     } else {
         deps.showColumn(columnId);
+        deps.render();
     }
-    deps.render();
 }
 
 export function onFullScreenChanged(win: WindowAdapter, deps: WindowEventDeps): void {

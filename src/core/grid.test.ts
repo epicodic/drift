@@ -109,11 +109,13 @@ describe('Grid — hiding and showing columns', () => {
         expect(grid.virtualWidth()).toBe(810);
     });
 
-    it('throws when asked for the rect of a hidden column', () => {
+    it("returns a hidden column's rect at its 1px-slot offset with its real (unshrunk) width", () => {
         const grid = new Grid(HEIGHT, GAP);
-        const a = grid.addColumn(300);
-        grid.hideColumn(a.id);
-        expect(() => grid.columnRect(a.id)).toThrow();
+        grid.addColumn(300);
+        const b = grid.addColumn(500);
+        grid.addColumn(200);
+        grid.hideColumn(b.id);
+        expect(grid.columnRect(b.id)).toEqual({ x: 310, y: 0, width: 500, height: HEIGHT });
     });
 
     it('reports hidden state via isHidden', () => {

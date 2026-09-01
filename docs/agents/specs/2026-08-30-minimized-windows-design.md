@@ -78,9 +78,14 @@ void>` to the `Window` interface (verified against the installed Karousel
   - Handler: minimized → `grid.hideColumn(id)`; restored →
     `grid.showColumn(id)`; then `render()`. No focus change, no
     `revealFocused()` call, in either direction.
-- `render()` skips hidden columns entirely — never calls
-  `geometrySync.apply` (i.e. never touches `frameGeometry`) for a minimized
-  window.
+- `render()` still calls `geometrySync.apply` for a hidden column, using its
+  1px-slot virtual offset (`Grid.columnRect`) and real (unshrunk) width, with
+  no position-animation smoothing — just enough to keep the minimized
+  window's real on-screen x tracking viewport pans. Without this, a taskbar
+  sorted by real x would see a minimized window drift out of order as soon
+  as the viewport scrolled after it was minimized (its real x used to freeze
+  at whatever it was the instant it was hidden). Superseded 2026-09-01; see
+  `columnRect`'s doc comment in `core/grid.ts`.
 - **Camera-shift fix**: `onWindowGeometryChanged` bails out early if the
   window's column is currently hidden. Whatever geometry change a given
   app/compositor reports while minimizing, Drift now ignores it while the
