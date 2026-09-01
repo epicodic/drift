@@ -18,7 +18,7 @@ This rules out a true alt-tab-style overlay that shows while a modifier is held 
 - Every `focusLeft`/`focusRight` press shows the minimap overlay and (re)starts an auto-hide timer.
 - The overlay hides itself after the configured delay (`minimapAutoHideMs`, default ~1200ms) once presses stop.
 - The overlay is a centered floating panel, not a persistent HUD or a thin position bar.
-- The overlay is centered on the screen of the newly focused window, not a fixed screen.
+- The overlay is centered on the screen under the mouse pointer, not a fixed screen.
 - The overlay only ever reflects the **active strip** (current activity + desktop), matching how shortcuts and the debug console already scope to `stripManager.activeStrip()`.
 - Minimized (hidden) columns are omitted entirely from the minimap; only columns with a visible window are drawn.
 - Each column is drawn as a rectangle sized proportionally to its width in the virtual strip, with the focused column visually highlighted, and the window's icon drawn inside the rectangle.
@@ -73,13 +73,13 @@ export function createMinimapOverlay(parent: QmlObject, autoHideMs: number): Min
 ### `WindowAdapter` / `WorkspaceAdapter` additions
 
 - `WindowAdapter` gains an `icon(): QIcon` accessor (`this.window.icon`) for the `IconItem` binding above.
-- `WorkspaceAdapter` gains a way to resolve an `Output` (as returned by `WindowAdapter.output()`) to its `ScreenInfo` geometry, reusing the existing `screens()` method's data, so the overlay can be centered on "the screen of the focused window."
+- `WorkspaceAdapter` gains a way to resolve the mouse pointer's position (`Workspace.cursorPos`) to the containing screen's `ScreenInfo` geometry, reusing the existing `screens()` method's data, so the overlay can be centered on "the screen under the pointer."
 
 ### `Controller` wiring
 
 `Controller` already owns `debugConsole` and wires `registerShortcuts` callbacks (see [`src/runtime/controller.ts`](../../../src/runtime/controller.ts)).
 It gains a `minimapOverlay: MinimapOverlay`, constructed alongside `debugConsole`.
-The `focusLeft`/`focusRight` callbacks passed to `registerShortcuts` are extended: after calling `stripManager.activeStrip().focusLeft()` (or `focusRight()`), build a snapshot from that strip's `grid`/`viewport`/`registry`, resolve the newly focused window's screen via `WorkspaceAdapter`, and call `minimapOverlay.show(snapshot, screen)`.
+The `focusLeft`/`focusRight` callbacks passed to `registerShortcuts` are extended: after calling `stripManager.activeStrip().focusLeft()` (or `focusRight()`), build a snapshot from that strip's `grid`/`viewport`/`registry`, resolve the screen under the mouse pointer via `WorkspaceAdapter`, and call `minimapOverlay.show(snapshot, screen)`.
 No changes to `Strip`, `Grid`, or `Viewport` themselves — this is purely additive orchestration in `Controller`.
 
 ### Settings

@@ -124,15 +124,6 @@ export class Strip {
         return buildMinimapSnapshot(this.grid, this.viewport, this.registry);
     }
 
-    /** The output the focused column's window sits on, or null if nothing is focused. */
-    focusedWindowOutput(): Output | null {
-        const focused = this.grid.focusedColumn();
-        if (focused === null) {
-            return null;
-        }
-        return this.registry.get(focused.id)?.output() ?? null;
-    }
-
     addWindow(win: WindowAdapter): void {
         const width = Math.round(win.frameGeometry().width) || this.settings.defaultColumnWidth;
         const column = this.grid.addColumn(width);
