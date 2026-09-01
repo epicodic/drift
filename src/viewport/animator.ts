@@ -42,6 +42,7 @@ export interface Timer {
 export class Animator {
     private animation: Animation | null = null;
     private startedAt = 0;
+    private target = 0;
 
     constructor(
         private readonly timer: Timer,
@@ -54,7 +55,15 @@ export class Animator {
         return this.animation !== null;
     }
 
+    /** Where the camera is headed: the in-flight animation's endpoint, or its last-known
+     * value once idle. Lets callers (e.g. the minimap) read the intended position right
+     * after `animate()` starts, without waiting for the timer's first tick. */
+    targetOffset(): number {
+        return this.target;
+    }
+
     animate(from: number, to: number, durationMs: number): void {
+        this.target = to;
         if (from === to) {
             this.animation = null;
             this.timer.stop();

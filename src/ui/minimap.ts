@@ -28,7 +28,12 @@ export interface MinimapSnapshot {
     gridHeight: number;
 }
 
-export function buildMinimapSnapshot(grid: Grid, viewport: Viewport, registry: ColumnRegistry): MinimapSnapshot {
+export function buildMinimapSnapshot(
+    grid: Grid,
+    viewport: Viewport,
+    registry: ColumnRegistry,
+    offset: number = viewport.offset(),
+): MinimapSnapshot {
     const focusedId = grid.focusedColumn()?.id ?? null;
     const columns = grid
         .columns()
@@ -48,7 +53,7 @@ export function buildMinimapSnapshot(grid: Grid, viewport: Viewport, registry: C
     return {
         columns,
         viewport: {
-            offset: viewport.offset(),
+            offset,
             width: viewport.viewportWidth(),
             contentLeft: viewport.contentLeft(),
             contentWidth: viewport.contentWidth(),
