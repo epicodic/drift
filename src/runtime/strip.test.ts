@@ -174,20 +174,6 @@ describe('Strip', () => {
         expect(snapshot.columns[0].focused).toBe(true);
     });
 
-    it('reports null for focusedWindowOutput when nothing is focused', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
-
-        expect(strip.focusedWindowOutput()).toBeNull();
-    });
-
-    it("reports the focused window's output", () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
-        const win = fakeWindow('w1');
-        strip.addWindow(win.adapter);
-
-        expect(strip.focusedWindowOutput()).toBe(FAKE_OUTPUT);
-    });
-
     it('activates the window of the column focus moves to', () => {
         const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win1 = fakeWindow('w1');

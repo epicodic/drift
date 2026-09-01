@@ -63,10 +63,10 @@ export class Controller {
     private focusAndShowMinimap(move: (strip: Strip) => void): void {
         const strip = this.stripManager.activeStrip();
         move(strip);
-        const output = strip.focusedWindowOutput();
-        if (output === null) {
+        const snapshot = strip.minimapSnapshot();
+        if (!snapshot.columns.some((column) => column.focused)) {
             return;
         }
-        this.minimapOverlay.show(strip.minimapSnapshot(), this.workspaceAdapter.screenGeometryFor(output));
+        this.minimapOverlay.show(snapshot, this.workspaceAdapter.screenGeometryAtCursor());
     }
 }

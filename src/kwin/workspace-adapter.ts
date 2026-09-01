@@ -54,9 +54,17 @@ export class WorkspaceAdapter {
         return Workspace.screens.map((output) => ({ name: output.name, geometry: toRect(output.geometry) }));
     }
 
-    /** Resolve a specific output's screen geometry (used to center the minimap on a window's screen). */
-    screenGeometryFor(output: Output): Rect {
-        return toRect(output.geometry);
+    /** The screen geometry under the mouse pointer (used to center the minimap on the pointer's screen). */
+    screenGeometryAtCursor(): Rect {
+        const cursor = Workspace.cursorPos;
+        const screen = this.screens().find(
+            (candidate) =>
+                cursor.x >= candidate.geometry.x &&
+                cursor.x < candidate.geometry.x + candidate.geometry.width &&
+                cursor.y >= candidate.geometry.y &&
+                cursor.y < candidate.geometry.y + candidate.geometry.height,
+        );
+        return screen?.geometry ?? this.combinedGeometry();
     }
 
     activeWindow(): WindowAdapter | null {

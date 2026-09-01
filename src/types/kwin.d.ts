@@ -17,6 +17,11 @@ interface QSize {
     height: number;
 }
 
+interface QPoint {
+    x: number;
+    y: number;
+}
+
 /** An opaque Qt icon value (`Window.icon`). Never introspected — passed straight
  * through to QML for rendering (docs: 2026-09-01-minimap-design). */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- intentionally opaque
@@ -73,6 +78,7 @@ interface Window {
 interface WorkspaceApi {
     readonly screens: Output[];
     readonly virtualScreenGeometry: QRect;
+    readonly cursorPos: QPoint;
     activeWindow: Window | null;
     readonly windowAdded: Signal<(window: Window) => void>;
     readonly windowRemoved: Signal<(window: Window) => void>;
