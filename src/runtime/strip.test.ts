@@ -175,6 +175,18 @@ describe('Strip', () => {
         expect(snapshot.columns[0].focused).toBe(true);
     });
 
+    it('reports the reveal animation target offset immediately, not the stale pre-move offset', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win1 = fakeWindow('w1');
+        const win2 = fakeWindow('w2');
+        strip.addWindow(win1.adapter); // col1 @ x=0, width 800 — fits, no scroll
+        strip.addWindow(win2.adapter); // col2 @ x=808, width 800 — revealFocused animates offset 0 -> 328
+
+        const snapshot = strip.minimapSnapshot();
+
+        expect(snapshot.viewport.offset).toBe(328);
+    });
+
     it('activates the window of the column focus moves to', () => {
         const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win1 = fakeWindow('w1');

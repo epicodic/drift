@@ -121,7 +121,7 @@ export class Strip {
     }
 
     minimapSnapshot(): MinimapSnapshot {
-        return buildMinimapSnapshot(this.grid, this.viewport, this.registry);
+        return buildMinimapSnapshot(this.grid, this.viewport, this.registry, this.animator.targetOffset());
     }
 
     addWindow(win: WindowAdapter): void {
