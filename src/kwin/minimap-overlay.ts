@@ -17,7 +17,7 @@ const DIALOG_HEIGHT = PANEL_HEIGHT + PANEL_MARGIN * 2;
 
 const MINIMAP_QML = `import QtQuick 6.0
 import org.kde.plasma.core as PlasmaCore
-import org.kde.plasma.components as PlasmaComponents
+import org.kde.kirigami as Kirigami
 PlasmaCore.Dialog {
     id: dialog
     property var columns: []
@@ -46,7 +46,7 @@ PlasmaCore.Dialog {
                     color: modelData.focused ? "#3daee9" : "#5c5c5c"
                     border.color: "#ffffff"
                     border.width: modelData.focused ? 2 : 0
-                    PlasmaComponents.IconItem {
+                    Kirigami.Icon {
                         anchors.centerIn: parent
                         width: Math.min(parent.width - 8, 32)
                         height: width
