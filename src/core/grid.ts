@@ -121,11 +121,11 @@ export class Grid {
         return this.originX;
     }
 
+    /** Also well-defined for a hidden column: its 1px-slot offset (see `layoutOffsets`)
+     * paired with its real (unshrunk) width — lets `Strip.render()` keep a minimized
+     * window's real on-screen x tracking the viewport instead of freezing it. */
     columnRect(id: number): Rect {
         const column = this.requireColumn(id);
-        if (column.hidden) {
-            throw new Error(`Column ${id} is hidden`);
-        }
         const offset = this.layoutOffsets()[this.indexOf(id)];
         return columnRect(offset, column.width, this.height);
     }

@@ -49,6 +49,8 @@ interface FakeWindow {
     };
     setIsFullScreen(value: boolean): void;
     triggerFullScreenChanged(): void;
+    minimize(): void;
+    restore(): void;
 }
 
 function fakeWindow(
@@ -65,7 +67,9 @@ function fakeWindow(
     const setFrameGeometry = vi.fn();
     const activate = vi.fn();
     let isFullScreen = options.fullScreen ?? false;
+    let isMinimized = options.minimized ?? false;
     let fullScreenHandler: (() => void) | undefined;
+    let minimizedHandler: (() => void) | undefined;
     const adapter = {
         id,
         caption: id,
@@ -75,12 +79,15 @@ function fakeWindow(
         icon: () => null,
         windowHandle: () => null,
         output: () => FAKE_OUTPUT,
-        isMinimized: () => options.minimized ?? false,
+        isMinimized: () => isMinimized,
         isFullScreen: () => isFullScreen,
         isInteractiveResize: () => false,
         isInteractiveMove: () => false,
         onFrameGeometryChanged: () => disconnects.frameGeometry,
-        onMinimizedChanged: () => disconnects.minimized,
+        onMinimizedChanged: (handler: () => void) => {
+            minimizedHandler = handler;
+            return disconnects.minimized;
+        },
         onFullScreenChanged: (handler: () => void) => {
             fullScreenHandler = handler;
             return disconnects.fullScreen;
@@ -97,16 +104,24 @@ function fakeWindow(
             isFullScreen = value;
         },
         triggerFullScreenChanged: () => fullScreenHandler?.(),
+        minimize: () => {
+            isMinimized = true;
+            minimizedHandler?.();
+        },
+        restore: () => {
+            isMinimized = false;
+            minimizedHandler?.();
+        },
     };
 }
 
 describe('Strip', () => {
-    it('adds an already-minimized window without throwing and keeps it hidden', () => {
+    it('adds an already-minimized window without throwing and still positions it via geometry sync', () => {
         const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1', { minimized: true });
 
         expect(() => strip.addWindow(win.adapter)).not.toThrow();
-        expect(win.setFrameGeometry).not.toHaveBeenCalled();
+        expect(win.setFrameGeometry).toHaveBeenCalled();
     });
 
     it('applies real geometry to a newly added window', () => {
@@ -447,6 +462,41 @@ describe('Strip', () => {
 
             expect(win1.activate).not.toHaveBeenCalled();
             expect(win2.activate).not.toHaveBeenCalled();
+        });
+
+        it("keeps a minimized window's real x tracking the pan instead of freezing it (regression)", () => {
+            const strip = new Strip(AREA, SHIFT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+            const win1 = fakeWindow('w1');
+            const win2 = fakeWindow('w2', { minimized: true });
+            strip.addWindow(win1.adapter);
+            strip.addWindow(win2.adapter); // col2, hidden: virtual x 808 (800 + gap 8)
+            strip.focusLeft(); // back to col1, offset 0
+            win2.setFrameGeometry.mockClear();
+
+            strip.shiftViewportLeft(); // offset 0 -> 100
+
+            expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 708 })); // 808 - 100
+        });
+    });
+
+    describe('minimizing a window that overflows the viewport (regression)', () => {
+        it('keeps the still-visible, focused neighbor on screen after the gap collapses', () => {
+            const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+            const win1 = fakeWindow('w1');
+            const win2 = fakeWindow('w2');
+            strip.addWindow(win1.adapter);
+            strip.addWindow(win2.adapter); // col2 focused; revealFocused scrolls right to show it fully
+            win1.setFrameGeometry.mockClear();
+            win2.setFrameGeometry.mockClear();
+
+            win1.minimize();
+
+            // Before the fix this landed at x=-327: win2 slid left with the collapsed gap but the
+            // viewport offset never re-centered on it, pushing it mostly off screen.
+            const calls = win2.setFrameGeometry.mock.calls;
+            const real = calls[calls.length - 1][0];
+            expect(real.x).toBeGreaterThanOrEqual(0);
+            expect(real.x + real.width).toBeLessThanOrEqual(AREA.width);
         });
     });
 

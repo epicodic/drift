@@ -156,6 +156,15 @@ describe('onMinimizedChanged', () => {
         expect(deps.render).toHaveBeenCalledTimes(1);
     });
 
+    it('reveals the focused column after minimizing, so collapsing the gap cannot scroll it out of view', () => {
+        const deps = fakeDeps();
+        const win = fakeWindow('w1', { x: 0, y: 0, width: 800, height: 600 }, { minimized: true });
+
+        onMinimizedChanged(win, deps);
+
+        expect(deps.revealFocused).toHaveBeenCalledTimes(1);
+    });
+
     it('shows the column when the window is restored', () => {
         const deps = fakeDeps();
         const win = fakeWindow('w1', { x: 0, y: 0, width: 800, height: 600 }, { minimized: false });
@@ -163,6 +172,15 @@ describe('onMinimizedChanged', () => {
         onMinimizedChanged(win, deps);
 
         expect(deps.showColumn).toHaveBeenCalledWith(1);
+    });
+
+    it('does not reveal on restore — restoring must not move the camera (design decision)', () => {
+        const deps = fakeDeps();
+        const win = fakeWindow('w1', { x: 0, y: 0, width: 800, height: 600 }, { minimized: false });
+
+        onMinimizedChanged(win, deps);
+
+        expect(deps.revealFocused).not.toHaveBeenCalled();
     });
 });
 
