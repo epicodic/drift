@@ -12,17 +12,79 @@ export interface AlignOffsets {
     right: number;
 }
 
+/** A screen's horizontal extent, in the same coordinate space as the viewport's offset
+ * (mirrors `Viewport.ScreenBounds`; duplicated here to keep this module KWin/Viewport-free). */
+export interface ScreenBounds {
+    left: number;
+    width: number;
+}
+
 /** The 3 candidate scroll offsets that place a column at `rectX`/`rectWidth` at the
- * left edge, centered, or the right edge of a `viewportWidth`-wide viewport.
- * Deliberately unclamped by content bounds — align-cycle must be able to place a
- * column against either viewport edge even when the whole strip already fits within
- * it (see `Strip.columnAlignOffsets`/`Viewport.setOffset`). */
-export function alignOffsets(rectX: number, rectWidth: number, viewportWidth: number): AlignOffsets {
+ * left edge, centered, or the right edge of `screen`. Deliberately unclamped by content
+ * bounds — align-cycle must be able to place a column against either screen edge even
+ * when the whole strip already fits within it (see `Strip.cycleAlign`/`Viewport.setOffset`). */
+export function alignOffsets(rectX: number, rectWidth: number, screen: ScreenBounds): AlignOffsets {
     return {
-        left: rectX,
-        center: rectX + rectWidth / 2 - viewportWidth / 2,
-        right: rectX + rectWidth - viewportWidth,
+        left: rectX - screen.left,
+        center: rectX + rectWidth / 2 - screen.left - screen.width / 2,
+        right: rectX + rectWidth - screen.left - screen.width,
     };
+}
+
+/** Picks whichever screen the focused column is currently "on", for align-cycle purposes:
+ * among screens the column actually fits on (`rectWidth <= screen.width`), the one with an
+ * align candidate (left/center/right) closest to `currentOffset` — the same "least movement
+ * wins" idea `Viewport.offsetToRevealOnScreen` uses for reveal. An exact match (the column
+ * already sitting flush against one of its own candidates from a previous press) always wins
+ * over a merely-nearby one. Returns `null` if the column fits no screen at all. */
+export function currentScreenIndex(
+    rectX: number,
+    rectWidth: number,
+    currentOffset: number,
+    screens: ScreenBounds[],
+): number | null {
+    let best: number | null = null;
+    let bestDistance = Infinity;
+    screens.forEach((screen, index) => {
+        if (rectWidth > screen.width) {
+            return;
+        }
+        const offsets = alignOffsets(rectX, rectWidth, screen);
+        const distance = Math.min(
+            Math.abs(currentOffset - offsets.left),
+            Math.abs(currentOffset - offsets.center),
+            Math.abs(currentOffset - offsets.right),
+        );
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            best = index;
+        }
+    });
+    return best;
+}
+
+/** The physically-adjacent screen in `direction` from `currentIndex` within `screens`
+ * (sorted left-to-right), wrapping around at either end. Returns `null` when there's no
+ * other screen to land on (a single-screen setup, where wraparound would otherwise land
+ * back on the same screen) or when the column doesn't fit on that neighbor. */
+export function adjacentScreenIndex(
+    direction: AlignDirection,
+    currentIndex: number,
+    rectWidth: number,
+    screens: ScreenBounds[],
+): number | null {
+    if (screens.length <= 1) {
+        return null;
+    }
+    const delta = direction === 'left' ? -1 : 1;
+    const targetIndex = (currentIndex + delta + screens.length) % screens.length;
+    if (targetIndex === currentIndex) {
+        return null;
+    }
+    if (rectWidth > screens[targetIndex].width) {
+        return null;
+    }
+    return targetIndex;
 }
 
 export type AlignDirection = 'left' | 'right';

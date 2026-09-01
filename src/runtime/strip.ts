@@ -15,7 +15,14 @@ import { GeometrySync } from '../kwin/geometry-sync';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import { buildMinimapSnapshot, type MinimapSnapshot } from '../ui/minimap';
-import { alignOffsets, nextAlignStep, type AlignDirection, type AlignOffsets } from '../viewport/align-cycle';
+import {
+    adjacentScreenIndex,
+    alignOffsets,
+    currentScreenIndex,
+    nextAlignStep,
+    type AlignDirection,
+    type ScreenBounds,
+} from '../viewport/align-cycle';
 import { Animator, type Timer } from '../viewport/animator';
 import { ColumnMotion } from '../viewport/column-motion';
 import { SharedTicker } from '../viewport/shared-ticker';
@@ -109,15 +116,20 @@ export class Strip {
             return;
         }
         const rect = this.grid.columnRect(focused.id);
-        const screens = this.workspaceAdapter.screens().map((screen) => ({
-            left: screen.geometry.x - this.area.x,
-            width: screen.geometry.width,
-        }));
         this.animator.animate(
             this.viewport.offset(),
-            this.viewport.offsetToRevealOnScreen(rect.x, rect.width, screens),
+            this.viewport.offsetToRevealOnScreen(rect.x, rect.width, this.screenBounds()),
             this.settings.animationDurationMs,
         );
+    }
+
+    /** Physical screens in strip-relative coordinates, sorted left-to-right. Read fresh on
+     * every call rather than cached, consistent with `isFullScreenGeometry`'s live reads. */
+    private screenBounds(): ScreenBounds[] {
+        return this.workspaceAdapter
+            .screens()
+            .map((screen) => ({ left: screen.geometry.x - this.area.x, width: screen.geometry.width }))
+            .sort((a, b) => a.left - b.left);
     }
 
     minimapSnapshot(): MinimapSnapshot {
@@ -215,26 +227,41 @@ export class Strip {
         this.animator.animate(this.viewport.offset(), target, this.settings.animationDurationMs);
     }
 
+    /** Cycles the focused column through left/center/right of whichever physical screen
+     * it's currently on (falling back to the combined desktop when it fits no single
+     * screen). A further press at that screen's own edge crosses to the neighboring
+     * screen's entering edge, wrapping around at either end (docs:
+     * 2026-09-01-multimonitor-align-cycle-design). */
     private cycleAlign(direction: AlignDirection): void {
         const focused = this.grid.focusedColumn();
         if (focused === null || focused.hidden) {
             debug(`cycleAlign(${direction}): no focused column (focused=${focused === null ? 'null' : 'hidden'})`);
             return;
         }
-        const offsets = this.columnAlignOffsets(focused.id);
-        const step = nextAlignStep(direction, this.viewport.offset(), offsets);
+        const rect = this.grid.columnRect(focused.id);
+        const screens = this.screenBounds();
+        const offset = this.viewport.offset();
+
+        const screenIndex = currentScreenIndex(rect.x, rect.width, offset, screens);
+        const screen = screenIndex === null ? { left: 0, width: this.viewport.viewportWidth() } : screens[screenIndex];
+        const offsets = alignOffsets(rect.x, rect.width, screen);
+        const step = nextAlignStep(direction, offset, offsets);
         debug(
-            `cycleAlign(${direction}): offset=${this.viewport.offset()} offsets=${JSON.stringify(offsets)} ` +
+            `cycleAlign(${direction}): offset=${offset} screenIndex=${screenIndex} offsets=${JSON.stringify(offsets)} ` +
                 `step=${JSON.stringify(step)}`,
         );
-        this.animator.animate(this.viewport.offset(), step.targetOffset, this.settings.animationDurationMs);
-    }
 
-    /** Unclamped on purpose — align-cycle must be able to place a column flush against
-     * either viewport edge even when the whole strip already fits within it. */
-    private columnAlignOffsets(columnId: number): AlignOffsets {
-        const rect = this.grid.columnRect(columnId);
-        return alignOffsets(rect.x, rect.width, this.viewport.viewportWidth());
+        if (screenIndex !== null && Math.round(step.targetOffset) === Math.round(offset)) {
+            const targetIndex = adjacentScreenIndex(direction, screenIndex, rect.width, screens);
+            if (targetIndex === null) {
+                return; // no-op: no fitting neighbor in this direction
+            }
+            const targetOffsets = alignOffsets(rect.x, rect.width, screens[targetIndex]);
+            const targetOffset = direction === 'left' ? targetOffsets.right : targetOffsets.left;
+            this.animator.animate(offset, targetOffset, this.settings.animationDurationMs);
+            return;
+        }
+        this.animator.animate(offset, step.targetOffset, this.settings.animationDurationMs);
     }
 
     private eventDeps(): WindowEventDeps {
