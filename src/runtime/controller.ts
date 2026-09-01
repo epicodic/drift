@@ -4,10 +4,12 @@
 
 import type { Settings } from '../config/settings';
 import { createDebugConsole, type DebugConsole } from '../kwin/debug-console';
+import { createMinimapOverlay, type MinimapOverlay } from '../kwin/minimap-overlay';
 import { createQmlTimer } from '../kwin/qml-timer';
 // import { checkForShortcutConflicts } from '../kwin/shortcut-conflicts'; // disabled, see start()
 import { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import { registerShortcuts } from '../input/shortcuts';
+import type { Strip } from './strip';
 import { StripManager } from './strip-manager';
 import { WindowManager } from './window-manager';
 import { initWorkspaceSignals } from './workspace-signals';
@@ -22,6 +24,7 @@ export class Controller {
     private readonly stripManager: StripManager;
     private readonly windowManager: WindowManager;
     private readonly debugConsole: DebugConsole;
+    private readonly minimapOverlay: MinimapOverlay;
 
     constructor(
         private readonly root: QmlObject,
@@ -31,6 +34,7 @@ export class Controller {
         const area = this.workspaceAdapter.combinedGeometry();
         // Create the debug console before the animation timer, matching the original init() order.
         this.debugConsole = createDebugConsole(root);
+        this.minimapOverlay = createMinimapOverlay(root, settings.minimapAutoHideMs);
         this.stripManager = new StripManager(area, settings, createQmlTimer(root), this.workspaceAdapter);
         this.windowManager = new WindowManager(this.stripManager);
     }
@@ -38,8 +42,8 @@ export class Controller {
     start(): void {
         initWorkspaceSignals(this.windowManager, this.stripManager, this.workspaceAdapter);
         registerShortcuts(this.root, this.settings, {
-            focusLeft: () => this.stripManager.activeStrip().focusLeft(),
-            focusRight: () => this.stripManager.activeStrip().focusRight(),
+            focusLeft: () => this.focusAndShowMinimap((strip) => strip.focusLeft()),
+            focusRight: () => this.focusAndShowMinimap((strip) => strip.focusRight()),
             toggleDebugConsole: () => this.debugConsole.toggle(),
             cycleAlignLeft: () => this.stripManager.activeStrip().cycleAlignLeft(),
             cycleAlignRight: () => this.stripManager.activeStrip().cycleAlignRight(),
@@ -54,5 +58,15 @@ export class Controller {
         // });
         void this.scriptUiDirUrl; // only used by the disabled conflict check above
         console.log('Drift: initialized');
+    }
+
+    private focusAndShowMinimap(move: (strip: Strip) => void): void {
+        const strip = this.stripManager.activeStrip();
+        move(strip);
+        const output = strip.focusedWindowOutput();
+        if (output === null) {
+            return;
+        }
+        this.minimapOverlay.show(strip.minimapSnapshot(), this.workspaceAdapter.screenGeometryFor(output));
     }
 }
