@@ -203,11 +203,11 @@ export class Strip {
      * the focused column never changes. Deliberately unclamped: the user can keep
      * panning past either end of the content. */
     shiftViewportLeft(): void {
-        this.shiftViewport(-this.settings.viewportShiftStep);
+        this.shiftViewport(this.settings.viewportShiftStep);
     }
 
     shiftViewportRight(): void {
-        this.shiftViewport(this.settings.viewportShiftStep);
+        this.shiftViewport(-this.settings.viewportShiftStep);
     }
 
     private shiftViewport(delta: number): void {

@@ -11,12 +11,11 @@ import { createQmlTimer } from './qml-timer';
 export const MINIMAP_OVERLAY_WINDOW_TITLE = 'Drift Minimap';
 
 const PANEL_WIDTH = 900;
-const PANEL_HEIGHT = 90;
+const PANEL_MAX_HEIGHT = 250;
 const PANEL_MARGIN = 20;
-const DIALOG_WIDTH = PANEL_WIDTH + PANEL_MARGIN * 2;
-const DIALOG_HEIGHT = PANEL_HEIGHT + PANEL_MARGIN * 2;
 
 const MINIMAP_QML = `import QtQuick 6.0
+import QtQuick.Effects
 import org.kde.plasma.core as PlasmaCore
 import org.kde.kirigami as Kirigami
 import org.kde.kwin 3.0 as KWinComponents
@@ -24,7 +23,8 @@ PlasmaCore.Dialog {
     id: dialog
     property var columns: []
     property var viewportBox: ({ x: 0, width: 0 })
-    property real thumbnailHeight: 0
+    property real panelWidth: ${PANEL_WIDTH}
+    property real panelHeight: ${PANEL_MAX_HEIGHT}
     property bool showThumbnails: false
     title: "${MINIMAP_OVERLAY_WINDOW_TITLE}"
     type: PlasmaCore.Dialog.OnScreenDisplay
@@ -35,8 +35,8 @@ PlasmaCore.Dialog {
     mainItem: Rectangle {
         radius: 8
         color: Qt.rgba(0, 0, 0, 0.75)
-        implicitWidth: ${DIALOG_WIDTH}
-        implicitHeight: ${DIALOG_HEIGHT}
+        implicitWidth: dialog.panelWidth + ${PANEL_MARGIN * 2}
+        implicitHeight: dialog.panelHeight + ${PANEL_MARGIN * 2}
         Item {
             anchors.fill: parent
             anchors.margins: ${PANEL_MARGIN}
@@ -45,16 +45,14 @@ PlasmaCore.Dialog {
                 delegate: Rectangle {
                     x: modelData.x
                     width: Math.max(modelData.width, 2)
-                    height: ${PANEL_HEIGHT}
+                    height: dialog.panelHeight
                     radius: 4
                     color: modelData.focused ? "#3daee9" : "#5c5c5c"
                     clip: true
                     KWinComponents.WindowThumbnail {
                         client: modelData.thumbnail
                         visible: dialog.showThumbnails && modelData.thumbnail !== null
-                        width: parent.width
-                        height: dialog.thumbnailHeight
-                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.fill: parent
                     }
                     Kirigami.Icon {
                         anchors.centerIn: parent
@@ -76,13 +74,26 @@ PlasmaCore.Dialog {
                     }
                     // Painted last so the focus indicator stays on top of the window
                     // thumbnail, regardless of when its async live content arrives.
-                    Rectangle {
+                    Item {
+                        id: focusRingSource
                         anchors.fill: parent
-                        radius: 4
-                        color: "transparent"
-                        border.color: Qt.rgba(0.239, 0.682, 0.914, 0.55)
-                        border.width: 4
+                        visible: false
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 4
+                            color: "transparent"
+                            border.color: "#3daee9"
+                            border.width: 4
+                        }
+                    }
+                    MultiEffect {
+                        anchors.fill: focusRingSource
+                        source: focusRingSource
                         visible: modelData.focused
+                        blurEnabled: true
+                        blur: 1.0
+                        blurMax: 24
+                        brightness: 0.15
                     }
                     Rectangle {
                         anchors.fill: parent
@@ -98,7 +109,7 @@ PlasmaCore.Dialog {
                 x: dialog.viewportBox.x
                 y: -6
                 width: Math.max(dialog.viewportBox.width, 2)
-                height: ${PANEL_HEIGHT + 12}
+                height: dialog.panelHeight + 12
                 radius: 4
                 color: "transparent"
                 border.color: "#ffffff"
@@ -132,12 +143,17 @@ export function createMinimapOverlay(parent: QmlObject, autoHideMs: number, show
 
     return {
         show(snapshot: MinimapSnapshot, screen: Rect): void {
-            const { scale } = panelScale(snapshot);
+            const { panelWidth, panelHeight } = panelLayout(snapshot);
             dialog.columns = toPanelColumns(snapshot);
             dialog.viewportBox = toPanelViewportBox(snapshot);
-            dialog.thumbnailHeight = scale * snapshot.gridHeight;
-            dialog.x = Math.round(screen.x + (screen.width - DIALOG_WIDTH) / 2);
-            dialog.y = Math.round(screen.y + (screen.height - DIALOG_HEIGHT) / 2);
+            dialog.panelWidth = panelWidth;
+            dialog.panelHeight = panelHeight;
+            const dialogWidth = panelWidth + PANEL_MARGIN * 2;
+            const dialogHeight = panelHeight + PANEL_MARGIN * 2;
+            dialog.width = dialogWidth;
+            dialog.height = dialogHeight;
+            dialog.x = Math.round(screen.x + (screen.width - dialogWidth) / 2);
+            dialog.y = Math.round(screen.y + (screen.height - dialogHeight) / 2);
             dialog.visible = true;
             hideTimer.start(autoHideMs, () => {
                 hideTimer.stop();
@@ -147,15 +163,26 @@ export function createMinimapOverlay(parent: QmlObject, autoHideMs: number, show
     };
 }
 
-function panelScale(snapshot: MinimapSnapshot): { left: number; scale: number } {
+/** The uniform scale factor is `min` of the two per-axis fits (not each axis scaled
+ * independently) so that a column's rendered width:height ratio always matches its
+ * true `columnWidth : gridHeight` ratio (docs: 2026-09-01-minimap-thumbnails-design). */
+function panelLayout(snapshot: MinimapSnapshot): {
+    left: number;
+    scale: number;
+    panelWidth: number;
+    panelHeight: number;
+} {
     const { viewport } = snapshot;
     const left = Math.min(viewport.contentLeft, viewport.offset);
     const right = Math.max(viewport.contentLeft + viewport.contentWidth, viewport.offset + viewport.width);
-    return { left, scale: PANEL_WIDTH / Math.max(right - left, 1) };
+    const virtualWidth = Math.max(right - left, 1);
+    const virtualHeight = Math.max(snapshot.gridHeight, 1);
+    const scale = Math.min(PANEL_WIDTH / virtualWidth, PANEL_MAX_HEIGHT / virtualHeight);
+    return { left, scale, panelWidth: virtualWidth * scale, panelHeight: virtualHeight * scale };
 }
 
 function toPanelColumns(snapshot: MinimapSnapshot): PanelColumn[] {
-    const { left, scale } = panelScale(snapshot);
+    const { left, scale } = panelLayout(snapshot);
     return snapshot.columns.map((column) => ({
         x: (column.x - left) * scale,
         width: column.width * scale,
@@ -166,7 +193,7 @@ function toPanelColumns(snapshot: MinimapSnapshot): PanelColumn[] {
 }
 
 function toPanelViewportBox(snapshot: MinimapSnapshot): PanelViewportBox {
-    const { left, scale } = panelScale(snapshot);
+    const { left, scale } = panelLayout(snapshot);
     return {
         x: (snapshot.viewport.offset - left) * scale,
         width: snapshot.viewport.width * scale,
