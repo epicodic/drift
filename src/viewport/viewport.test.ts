@@ -185,3 +185,76 @@ describe('Viewport — content that starts left of zero', () => {
         expect(viewport.offset()).toBe(0);
     });
 });
+
+describe('Viewport — offsetToRevealOnScreen (multi-monitor alignment)', () => {
+    it('does not move when the column is already fully on the closer screen', () => {
+        const viewport = new Viewport(2000);
+        viewport.setContentWidth(4000);
+        viewport.scrollTo(500); // view [500,2500]
+        const screens = [
+            { left: 0, width: 1000 },
+            { left: 1000, width: 1000 },
+        ];
+        // col [1600,1800] already fully within the right screen's view [1500,2500]
+        expect(viewport.offsetToRevealOnScreen(1600, 200, screens)).toBe(500);
+    });
+
+    it('snaps a bezel-straddling column onto whichever screen needs less movement', () => {
+        const viewport = new Viewport(2000);
+        viewport.setContentWidth(4000);
+        viewport.scrollTo(500); // view [500,2500]
+        const screens = [
+            { left: 0, width: 1000 },
+            { left: 1000, width: 1000 },
+        ];
+        // col [1450,1650] straddles the bezel at x=1500 in the current view.
+        // Left screen would need offset 650 (delta 150); right screen needs offset 450 (delta 50).
+        expect(viewport.offsetToRevealOnScreen(1450, 200, screens)).toBe(450);
+    });
+
+    it('still aligns a straddling column when total content is narrower than the combined desktop', () => {
+        const viewport = new Viewport(2000);
+        viewport.setContentWidth(1408); // only two columns open: [0,700] and [708,1408]
+        const screens = [
+            { left: 0, width: 1000 },
+            { left: 1000, width: 1000 },
+        ];
+        // The "never show empty space" clamp is dropped for this path entirely, so the right
+        // screen's minimal-movement offset -292 fully separates the column instead of the
+        // combined-content clamp pinning the offset to 0 and leaving it straddling the bezel at x=1000.
+        expect(viewport.offsetToRevealOnScreen(708, 700, screens)).toBe(-292);
+    });
+
+    it('falls back to the combined-area reveal when the column is wider than every screen', () => {
+        const viewport = new Viewport(2000);
+        viewport.setContentWidth(4000);
+        const screens = [
+            { left: 0, width: 1000 },
+            { left: 1000, width: 1000 },
+        ];
+        expect(viewport.offsetToRevealOnScreen(1000, 1500, screens)).toBe(500);
+        expect(viewport.offsetToRevealOnScreen(1000, 1500, screens)).toBe(viewport.offsetToReveal(1000, 1500));
+    });
+
+    it('picks the exact-width screen with zero movement over a wider, farther one', () => {
+        const viewport = new Viewport(2000);
+        viewport.setContentWidth(4000);
+        const screens = [
+            { left: 0, width: 1000 },
+            { left: 1000, width: 1000 },
+        ];
+        // col [1000,2000] exactly matches the right screen's width and is already aligned to it.
+        expect(viewport.offsetToRevealOnScreen(1000, 1000, screens)).toBe(0);
+    });
+
+    it('does not re-clamp a stale offset, unlike offsetToReveal — empty space is accepted, not avoided', () => {
+        const viewport = new Viewport(2000);
+        viewport.setContentWidth(2000);
+        viewport.setOffset(5000); // stale offset, e.g. left over from an unclamped shiftViewport pan
+        const screens = [{ left: 0, width: 2000 }];
+        // offsetToReveal would clamp this back to 0 (no empty space); offsetToRevealOnScreen
+        // always targets the exact minimal-movement position instead.
+        expect(viewport.offsetToRevealOnScreen(1000, 1000, screens)).toBe(1000);
+        expect(viewport.offsetToReveal(1000, 1000)).toBe(0);
+    });
+});

@@ -108,9 +108,13 @@ export class Strip {
             return;
         }
         const rect = this.grid.columnRect(focused.id);
+        const screens = this.workspaceAdapter.screens().map((screen) => ({
+            left: screen.geometry.x - this.area.x,
+            width: screen.geometry.width,
+        }));
         this.animator.animate(
             this.viewport.offset(),
-            this.viewport.offsetToReveal(rect.x, rect.width),
+            this.viewport.offsetToRevealOnScreen(rect.x, rect.width, screens),
             this.settings.animationDurationMs,
         );
     }

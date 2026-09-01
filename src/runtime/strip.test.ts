@@ -2,12 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '../config/settings';
 import type { Rect } from '../core/coordinates';
 import type { WindowAdapter } from '../kwin/window-adapter';
-import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
+import type { ScreenInfo, WorkspaceAdapter } from '../kwin/workspace-adapter';
 import type { Timer } from '../viewport/animator';
 import { Strip } from './strip';
 
 const AREA: Rect = { x: 0, y: 0, width: 1280, height: 1000 };
 const WIDE_AREA: Rect = { x: 0, y: 0, width: 5000, height: 1000 };
+const MULTI_MONITOR_AREA: Rect = { x: 0, y: 0, width: 2000, height: 1000 };
 const INSTANT_SETTINGS = { ...DEFAULT_SETTINGS, animationDurationMs: 0 };
 
 class ManualTimer implements Timer {
@@ -30,8 +31,8 @@ function fakeTimer(): ManualTimer {
     return new ManualTimer();
 }
 
-function fakeWorkspaceAdapter(): WorkspaceAdapter {
-    return {} as unknown as WorkspaceAdapter;
+function fakeWorkspaceAdapter(screens: ScreenInfo[] = []): WorkspaceAdapter {
+    return { screens: () => screens } as unknown as WorkspaceAdapter;
 }
 
 interface FakeWindow {
@@ -494,5 +495,23 @@ describe('Strip', () => {
 
             expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 1616 }));
         });
+    });
+});
+
+describe('Strip — revealFocused multi-monitor alignment', () => {
+    it('aligns a focused column that straddles a monitor bezel onto the closer screen', () => {
+        const screens: ScreenInfo[] = [
+            { name: 'L', geometry: { x: 0, y: 0, width: 1000, height: 1000 } },
+            { name: 'R', geometry: { x: 1000, y: 0, width: 1000, height: 1000 } },
+        ];
+        const strip = new Strip(MULTI_MONITOR_AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter(screens));
+        const win1 = fakeWindow('w1', { width: 900 });
+        const win2 = fakeWindow('w2', { width: 200 });
+
+        strip.addWindow(win1.adapter); // col1 @ x=0
+        strip.addWindow(win2.adapter); // col2 @ x=908 — straddles the bezel at x=1000
+
+        // Realigned fully onto the right screen: real x = 908 - (-92) = 1000
+        expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 1000 }));
     });
 });
