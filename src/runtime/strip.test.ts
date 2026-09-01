@@ -341,40 +341,40 @@ describe('Strip', () => {
             return { strip, win1, win2 };
         }
 
-        it('pans the camera right by the configured step', () => {
+        it('shiftViewportLeft moves windows left by the configured step', () => {
             const { strip, win1 } = twoColumnStrip();
 
-            strip.shiftViewportRight();
+            strip.shiftViewportLeft();
 
             expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: -100 }));
         });
 
-        it('pans the camera left by the configured step', () => {
+        it('shiftViewportRight moves windows right by the configured step', () => {
             const { strip, win1, win2 } = twoColumnStrip();
-            strip.shiftViewportRight();
+            strip.shiftViewportLeft();
             win1.setFrameGeometry.mockClear();
             win2.setFrameGeometry.mockClear();
 
-            strip.shiftViewportLeft();
+            strip.shiftViewportRight();
 
             expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 0 }));
         });
 
-        it('keeps panning right past the content right edge (contentWidth 1608, viewport 1280 -> maxOffset 328)', () => {
+        it('keeps moving windows left past the content right edge (contentWidth 1608, viewport 1280 -> maxOffset 328)', () => {
             const { strip, win2 } = twoColumnStrip();
 
             for (let i = 0; i < 10; i++) {
-                strip.shiftViewportRight();
+                strip.shiftViewportLeft();
             }
 
             // offset reaches 1000, well past maxOffset (328): real x = 808 - 1000
             expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 808 - 1000 }));
         });
 
-        it('keeps panning left past the content left edge (offset goes negative)', () => {
+        it('keeps moving windows right past the content left edge (offset goes negative)', () => {
             const { strip, win1 } = twoColumnStrip();
 
-            strip.shiftViewportLeft(); // offset 0 -> -100
+            strip.shiftViewportRight(); // offset 0 -> -100
 
             expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 100 }));
         });
@@ -382,8 +382,8 @@ describe('Strip', () => {
         it('does not change which column is focused', () => {
             const { strip, win1, win2 } = twoColumnStrip();
 
-            strip.shiftViewportRight();
             strip.shiftViewportLeft();
+            strip.shiftViewportRight();
 
             expect(win1.activate).not.toHaveBeenCalled();
             expect(win2.activate).not.toHaveBeenCalled();

@@ -164,10 +164,13 @@ interface QmlDebugOverlay extends QmlObject {
 interface QmlMinimapDialog extends QmlObject {
     columns: unknown[];
     viewportBox: unknown;
-    thumbnailHeight: number;
+    panelWidth: number;
+    panelHeight: number;
     showThumbnails: boolean;
     x: number;
     y: number;
+    width: number;
+    height: number;
     visible: boolean;
 }
 

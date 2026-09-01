@@ -42,23 +42,31 @@ Every window in Drift's grid spans the same real height — `Grid` uses one cons
 (`columnRect(offset, column.width, this.height)`, [`src/core/grid.ts:122`](../../../src/core/grid.ts#L122)).
 So a column's true aspect ratio is `columnWidth : gridHeight`, with `gridHeight` constant across the whole strip.
 
-The minimap panel is a fixed, compact OSD strip (`PANEL_WIDTH` × `PANEL_HEIGHT`, currently 900×90) — intentionally not
-sized to real window height (`2026-09-01-minimap-design.md` explicitly rules out "a persistent HUD").
-`panelScale()` already scales column width to fit `PANEL_WIDTH`; height is a separate fixed constant, so a live
-texture stretched with `anchors.fill: parent` into a rectangle would visibly distort (the two axes use unrelated
+**Superseded 2026-09-01:** the panel height is no longer a fixed constant.
+See `panelLayout()` in [`src/kwin/minimap-overlay.ts`](../../../src/kwin/minimap-overlay.ts) for the live behavior.
+The rest of this section is kept for history.
+
+The minimap panel was originally a fixed, compact OSD strip (`PANEL_WIDTH` × `PANEL_HEIGHT`, 900×90) — intentionally
+not sized to real window height (`2026-09-01-minimap-design.md` explicitly rules out "a persistent HUD").
+`panelScale()` scaled column width to fit `PANEL_WIDTH`; height was a separate fixed constant, so a live texture
+stretched with `anchors.fill: parent` into a rectangle would have visibly distorted (the two axes would use unrelated
 scale factors).
 
-Fix: apply the *same* width scale factor to `gridHeight` to get the column's true rendered height at that scale, then
-clip it to the fixed `PANEL_HEIGHT` band instead of stretching:
+Original fix: apply the *same* width scale factor to `gridHeight` to get the column's true rendered height at that
+scale, then clip it to the fixed `PANEL_HEIGHT` band instead of stretching:
 
 ```
 trueHeight = scale × gridHeight   // scale from panelScale(), same one used for column x/width
 ```
 
-Each `WindowThumbnail` is sized `width: <column's scaled width>, height: trueHeight`, vertically centered within its
+Each `WindowThumbnail` was sized `width: <column's scaled width>, height: trueHeight`, vertically centered within its
 column `Rectangle`, which has `clip: true`.
-Since `trueHeight` is normally taller than `PANEL_HEIGHT` (a real screen is much taller than a 90px strip), this
-center-crops vertically — full window width shown, a vertical center slice of the content, no squish.
+Since `trueHeight` was normally taller than `PANEL_HEIGHT` (a real screen is much taller than a 90px strip), this
+center-cropped vertically — full window width shown, a vertical center slice of the content, no squish.
+
+This tradeoff (a fixed compact strip, with tall content center-cropped) was later rejected: the panel's own height
+now scales to match `gridHeight` at the same factor as width (capped by `PANEL_MAX_HEIGHT`, see the superseding note
+above), so `WindowThumbnail` fills its column `Rectangle` exactly with no cropping.
 
 ## Architecture
 
@@ -89,13 +97,13 @@ otherwise keeps `this.window` private.
 - Dialog gains a `showThumbnails: bool` property, set once at construction from `createMinimapOverlay`'s new
   `showThumbnails` parameter (Controller reads `settings.minimapShowThumbnails` and passes it through — same
   construction site as `debugConsole`/`minimapOverlay` today).
-- `show()` additionally computes `thumbnailHeight = scale × snapshot.gridHeight` (reusing `panelScale()`) and sets it
-  as a dialog property alongside the existing `columns`/`viewportBox` assignment.
+- `show()` computes the panel's actual on-screen size via `panelLayout()` (see the superseding note above) and sets
+  `panelWidth`/`panelHeight` as dialog properties alongside the existing `columns`/`viewportBox` assignment.
 - Each column delegate:
-  - Rectangle gains `clip: true`.
+  - Rectangle gains `clip: true` (still useful as a safety clip, though the aspect-fit panel means it rarely crops
+    anything in practice).
   - Gains a `KWinComponents.WindowThumbnail { client: modelData.thumbnail; visible: dialog.showThumbnails &&
-    modelData.thumbnail !== null; width: parent.width; height: dialog.thumbnailHeight; anchors.verticalCenter:
-    parent.verticalCenter }`, layered below the icon.
+    modelData.thumbnail !== null; anchors.fill: parent }`, layered below the icon.
   - The `Kirigami.Icon` delegate moves from centered to a small corner badge (`anchors { right; bottom; margins: 2
     }`, roughly half its current size), keeping its existing `parent.width > 12` visibility guard.
 
@@ -108,7 +116,8 @@ otherwise keeps `this.window` private.
 ## Data flow
 
 Unchanged from the original spec's sequence diagram, except `buildMinimapSnapshot` now also carries `gridHeight` and
-each column's `thumbnail`, and `Overlay.show()` additionally computes `thumbnailHeight` before repainting.
+each column's `thumbnail`, and `Overlay.show()` computes the panel's actual `panelWidth`/`panelHeight` before
+repainting.
 
 ## Testing
 
@@ -126,7 +135,5 @@ each column's `thumbnail`, and `Overlay.show()` additionally computes `thumbnail
 
 - Any UI for toggling `minimapShowThumbnails` beyond the existing `kwinrc`-override settings mechanism (no new KCM
   control).
-- Horizontal cropping or letterboxing — only vertical center-crop is needed, since column width already matches the
-  window's real proportional width.
 - Static/cached fallback thumbnails for windows that don't render live content (e.g. a captured last-good-frame) —
   if `WindowThumbnail` renders blank for a given window, the icon badge is the only fallback.
