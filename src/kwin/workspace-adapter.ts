@@ -54,6 +54,11 @@ export class WorkspaceAdapter {
         return Workspace.screens.map((output) => ({ name: output.name, geometry: toRect(output.geometry) }));
     }
 
+    /** Resolve a specific output's screen geometry (used to center the minimap on a window's screen). */
+    screenGeometryFor(output: Output): Rect {
+        return toRect(output.geometry);
+    }
+
     activeWindow(): WindowAdapter | null {
         return Workspace.activeWindow ? new WindowAdapter(Workspace.activeWindow) : null;
     }

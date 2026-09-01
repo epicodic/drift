@@ -17,6 +17,11 @@ interface QSize {
     height: number;
 }
 
+/** An opaque Qt icon value (`Window.icon`). Never introspected — passed straight
+ * through to QML for rendering (docs: 2026-09-01-minimap-design). */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- intentionally opaque
+interface QIcon { }
+
 /** A KWin/Qt signal. Handlers are connected and disconnected, not awaited. */
 interface Signal<Handler> {
     connect(handler: Handler): void;
@@ -51,6 +56,7 @@ interface Window {
     readonly move: boolean;
     readonly resize: boolean;
     readonly minimized: boolean;
+    readonly icon: QIcon;
     readonly activities: string[];
     readonly desktops: KwinDesktop[];
     readonly output: Output;
@@ -142,6 +148,17 @@ interface QmlDBusCall extends QmlObject {
 /** The dynamically-created debug console overlay (`Rectangle` root). */
 interface QmlDebugOverlay extends QmlObject {
     lines: string;
+    visible: boolean;
+}
+
+/** The dynamically-created minimap overlay dialog. `columns`/`viewportBox` are plain
+ * data (see `PanelColumn`/`PanelViewportBox` in `kwin/minimap-overlay.ts`), typed
+ * loosely here since this file has no app-specific types (docs: 2026-09-01-minimap-design). */
+interface QmlMinimapDialog extends QmlObject {
+    columns: unknown[];
+    viewportBox: unknown;
+    x: number;
+    y: number;
     visible: boolean;
 }
 

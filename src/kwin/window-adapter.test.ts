@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEBUG_CONSOLE_WINDOW_TITLE } from './debug-console';
+import { MINIMAP_OVERLAY_WINDOW_TITLE } from './minimap-overlay';
 import { WindowAdapter } from './window-adapter';
 
 function createWindow(overrides: Partial<Window> = {}): Window {
@@ -16,6 +17,7 @@ function createWindow(overrides: Partial<Window> = {}): Window {
         move: false,
         resize: false,
         minimized: false,
+        icon: {} as QIcon,
         activities: ['activity-1'],
         desktops: [{ id: 'desktop-1', name: 'Desktop 1' }],
         output: { name: 'output-1', geometry: { x: 0, y: 0, width: 1920, height: 1080 } },
@@ -56,6 +58,12 @@ describe('WindowAdapter.isTileable', () => {
 
         expect(new WindowAdapter(window).isTileable()).toBe(false);
     });
+
+    it('rejects the minimap overlay window by title', () => {
+        const window = createWindow({ caption: MINIMAP_OVERLAY_WINDOW_TITLE });
+
+        expect(new WindowAdapter(window).isTileable()).toBe(false);
+    });
 });
 
 describe('WindowAdapter.isFullScreen', () => {
@@ -63,6 +71,15 @@ describe('WindowAdapter.isFullScreen', () => {
         const window = createWindow({ fullScreen: true });
 
         expect(new WindowAdapter(window).isFullScreen()).toBe(true);
+    });
+});
+
+describe('WindowAdapter.icon', () => {
+    it('returns the underlying window icon', () => {
+        const icon = {} as QIcon;
+        const window = createWindow({ icon });
+
+        expect(new WindowAdapter(window).icon()).toBe(icon);
     });
 });
 

@@ -8,6 +8,7 @@ import { Strip } from './strip';
 
 const AREA: Rect = { x: 0, y: 0, width: 1280, height: 1000 };
 const WIDE_AREA: Rect = { x: 0, y: 0, width: 5000, height: 1000 };
+const FAKE_OUTPUT: Output = { name: 'output-1', geometry: { x: 0, y: 0, width: 1920, height: 1080 } };
 const INSTANT_SETTINGS = { ...DEFAULT_SETTINGS, animationDurationMs: 0 };
 
 class ManualTimer implements Timer {
@@ -70,6 +71,8 @@ function fakeWindow(
         frameGeometry: () => ({ x: 0, y: 0, width: options.width ?? 800, height: 1000 }),
         setFrameGeometry,
         activate,
+        icon: () => null,
+        output: () => FAKE_OUTPUT,
         isMinimized: () => options.minimized ?? false,
         isFullScreen: () => isFullScreen,
         isInteractiveResize: () => false,
@@ -157,6 +160,31 @@ describe('Strip', () => {
         expect(() => strip.activateWindow(win.adapter)).not.toThrow();
         expect(() => strip.focusLeft()).not.toThrow();
         expect(() => strip.focusRight()).not.toThrow();
+    });
+
+    it('reports a minimap snapshot with the focused column flagged', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1');
+        strip.addWindow(win.adapter);
+
+        const snapshot = strip.minimapSnapshot();
+
+        expect(snapshot.columns).toHaveLength(1);
+        expect(snapshot.columns[0].focused).toBe(true);
+    });
+
+    it('reports null for focusedWindowOutput when nothing is focused', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+
+        expect(strip.focusedWindowOutput()).toBeNull();
+    });
+
+    it("reports the focused window's output", () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1');
+        strip.addWindow(win.adapter);
+
+        expect(strip.focusedWindowOutput()).toBe(FAKE_OUTPUT);
     });
 
     it('activates the window of the column focus moves to', () => {

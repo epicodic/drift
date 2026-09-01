@@ -6,4 +6,8 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.shortcutFocusLeft).toBe('Meta+Shift+Tab');
         expect(DEFAULT_SETTINGS.shortcutFocusRight).toBe('Meta+Tab');
     });
+
+    it('auto-hides the minimap after 1200ms by default', () => {
+        expect(DEFAULT_SETTINGS.minimapAutoHideMs).toBe(1200);
+    });
 });

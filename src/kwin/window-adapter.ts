@@ -4,6 +4,7 @@
 
 import { Rect } from '../core/coordinates';
 import { DEBUG_CONSOLE_WINDOW_TITLE } from './debug-console';
+import { MINIMAP_OVERLAY_WINDOW_TITLE } from './minimap-overlay';
 
 export class WindowAdapter {
     constructor(private readonly window: Window) {}
@@ -16,6 +17,10 @@ export class WindowAdapter {
         return this.window.caption;
     }
 
+    icon(): QIcon {
+        return this.window.icon;
+    }
+
     /** A normal, non-transient, non-fullscreen window that Drift should tile. */
     isTileable(): boolean {
         return (
@@ -25,7 +30,8 @@ export class WindowAdapter {
             !this.window.skipTaskbar &&
             !this.window.onScreenDisplay &&
             !this.window.deleted &&
-            this.window.caption !== DEBUG_CONSOLE_WINDOW_TITLE
+            this.window.caption !== DEBUG_CONSOLE_WINDOW_TITLE &&
+            this.window.caption !== MINIMAP_OVERLAY_WINDOW_TITLE
         );
     }
 

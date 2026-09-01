@@ -28,6 +28,8 @@ export interface Settings {
     shortcutViewportShiftRight: string;
     /** Distance the viewport pans per shortcut press, in pixels. */
     viewportShiftStep: number;
+    /** How long the minimap overlay stays visible after the last focus-step press, in milliseconds. */
+    minimapAutoHideMs: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -44,6 +46,7 @@ export const DEFAULT_SETTINGS: Settings = {
     shortcutViewportShiftLeft: 'Meta+Shift+Left',
     shortcutViewportShiftRight: 'Meta+Shift+Right',
     viewportShiftStep: 400,
+    minimapAutoHideMs: 1200,
 };
 
 /** Reads user-configurable settings from kwinrc (docs §5). Untestable glue (docs §8). */
@@ -55,6 +58,7 @@ export function loadSettings(): Settings {
         defaultColumnWidth: readNumberConfig('defaultColumnWidth', DEFAULT_SETTINGS.defaultColumnWidth),
         animationDurationMs: readNumberConfig('animationDurationMs', DEFAULT_SETTINGS.animationDurationMs),
         viewportShiftStep: readNumberConfig('viewportShiftStep', DEFAULT_SETTINGS.viewportShiftStep),
+        minimapAutoHideMs: readNumberConfig('minimapAutoHideMs', DEFAULT_SETTINGS.minimapAutoHideMs),
         shortcutFocusLeft: readStringConfig('shortcutFocusLeft', DEFAULT_SETTINGS.shortcutFocusLeft),
         shortcutFocusRight: readStringConfig('shortcutFocusRight', DEFAULT_SETTINGS.shortcutFocusRight),
         shortcutToggleDebugConsole: readStringConfig(

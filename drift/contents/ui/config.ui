@@ -154,6 +154,32 @@
                                     </property>
                                 </widget>
                             </item>
+                            <item row="2" column="0">
+                                <widget class="QLabel" name="label_minimapAutoHideMs">
+                                    <property name="text">
+                                        <string>Minimap auto-hide delay:</string>
+                                    </property>
+                                </widget>
+                            </item>
+                            <item row="2" column="1">
+                                <widget class="QSpinBox" name="kcfg_minimapAutoHideMs">
+                                    <property name="toolTip">
+                                        <string>How long the minimap overlay stays visible after the last focus-step press</string>
+                                    </property>
+                                    <property name="suffix">
+                                        <string> ms</string>
+                                    </property>
+                                    <property name="minimum">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="maximum">
+                                        <number>10000</number>
+                                    </property>
+                                    <property name="value">
+                                        <number>1200</number>
+                                    </property>
+                                </widget>
+                            </item>
                         </layout>
                     </widget>
                     <widget class="QWidget" name="tab_shortcuts">

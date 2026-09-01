@@ -14,6 +14,7 @@ import { registerDragReorder } from '../input/drag';
 import { GeometrySync } from '../kwin/geometry-sync';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
+import { buildMinimapSnapshot, type MinimapSnapshot } from '../ui/minimap';
 import { alignOffsets, nextAlignStep, type AlignDirection, type AlignOffsets } from '../viewport/align-cycle';
 import { Animator, type Timer } from '../viewport/animator';
 import { ColumnMotion } from '../viewport/column-motion';
@@ -113,6 +114,19 @@ export class Strip {
             this.viewport.offsetToReveal(rect.x, rect.width),
             this.settings.animationDurationMs,
         );
+    }
+
+    minimapSnapshot(): MinimapSnapshot {
+        return buildMinimapSnapshot(this.grid, this.viewport, this.registry);
+    }
+
+    /** The output the focused column's window sits on, or null if nothing is focused. */
+    focusedWindowOutput(): Output | null {
+        const focused = this.grid.focusedColumn();
+        if (focused === null) {
+            return null;
+        }
+        return this.registry.get(focused.id)?.output() ?? null;
     }
 
     addWindow(win: WindowAdapter): void {
