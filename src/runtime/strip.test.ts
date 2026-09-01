@@ -324,6 +324,66 @@ describe('Strip', () => {
         });
     });
 
+    describe('cycleAlignLeft / cycleAlignRight — multi-monitor', () => {
+        const screens: ScreenInfo[] = [
+            { name: 'L', geometry: { x: 0, y: 0, width: 1000, height: 1000 } },
+            { name: 'R', geometry: { x: 1000, y: 0, width: 1000, height: 1000 } },
+        ];
+
+        it('cycles within the current screen, then crosses to the neighbor and wraps around', () => {
+            const strip = new Strip(MULTI_MONITOR_AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter(screens));
+            const win = fakeWindow('w1', { width: 400 });
+            strip.addWindow(win.adapter); // offset 0 — already left-aligned on the left screen
+
+            strip.cycleAlignRight(); // centered on the left screen
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 300 }));
+
+            strip.cycleAlignRight(); // right-aligned on the left screen (its own edge)
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 600 }));
+
+            strip.cycleAlignRight(); // crosses onto the right screen, at its left edge
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 1000 }));
+
+            strip.cycleAlignRight(); // centered on the right screen
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 1300 }));
+
+            strip.cycleAlignRight(); // right-aligned on the right screen (its own edge)
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 1600 }));
+
+            strip.cycleAlignRight(); // wraps around to the left screen's left edge
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 0 }));
+        });
+
+        it('wraps leftward off the first screen onto the last screen, at its right edge', () => {
+            const strip = new Strip(MULTI_MONITOR_AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter(screens));
+            const win = fakeWindow('w1', { width: 400 });
+            strip.addWindow(win.adapter); // offset 0 — already at the left screen's own left edge
+
+            strip.cycleAlignLeft(); // already at its own edge: wraps to the right screen's right edge
+
+            expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 1600 }));
+        });
+
+        it('does not cross onto a neighboring screen the column is too wide to fit on', () => {
+            const area: Rect = { x: 0, y: 0, width: 1300, height: 1000 };
+            const narrowNeighbor: ScreenInfo[] = [
+                { name: 'L', geometry: { x: 0, y: 0, width: 1000, height: 1000 } },
+                { name: 'R', geometry: { x: 1000, y: 0, width: 300, height: 1000 } },
+            ];
+            const strip = new Strip(area, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter(narrowNeighbor));
+            const win = fakeWindow('w1', { width: 400 });
+            strip.addWindow(win.adapter);
+
+            strip.cycleAlignRight(); // centered
+            strip.cycleAlignRight(); // right-aligned on the left screen (its own edge)
+            win.setFrameGeometry.mockClear();
+
+            strip.cycleAlignRight(); // right screen is too narrow (300 < 400) to cross onto: no-op
+
+            expect(win.setFrameGeometry).not.toHaveBeenCalled();
+        });
+    });
+
     describe('shiftViewportLeft / shiftViewportRight', () => {
         const SHIFT_SETTINGS = { ...INSTANT_SETTINGS, viewportShiftStep: 100 };
 
