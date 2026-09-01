@@ -83,6 +83,14 @@ describe('WindowAdapter.icon', () => {
     });
 });
 
+describe('WindowAdapter.windowHandle', () => {
+    it('returns the underlying window', () => {
+        const window = createWindow();
+
+        expect(new WindowAdapter(window).windowHandle()).toBe(window);
+    });
+});
+
 describe('WindowAdapter.output', () => {
     it('returns the window output', () => {
         const output = { name: 'output-2', geometry: { x: 1920, y: 0, width: 1920, height: 1080 } };

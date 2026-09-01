@@ -10,4 +10,8 @@ describe('DEFAULT_SETTINGS', () => {
     it('auto-hides the minimap after 1200ms by default', () => {
         expect(DEFAULT_SETTINGS.minimapAutoHideMs).toBe(1200);
     });
+
+    it('shows minimap thumbnails by default', () => {
+        expect(DEFAULT_SETTINGS.minimapShowThumbnails).toBe(true);
+    });
 });

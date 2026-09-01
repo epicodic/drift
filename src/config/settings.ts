@@ -30,6 +30,9 @@ export interface Settings {
     viewportShiftStep: number;
     /** How long the minimap overlay stays visible after the last focus-step press, in milliseconds. */
     minimapAutoHideMs: number;
+    /** Whether the minimap's column boxes show a live preview of each window's content
+     * (docs: 2026-09-01-minimap-thumbnails-design). Off falls back to icon-only, as before. */
+    minimapShowThumbnails: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -47,6 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
     shortcutViewportShiftRight: 'Meta+Shift+Right',
     viewportShiftStep: 400,
     minimapAutoHideMs: 1200,
+    minimapShowThumbnails: true,
 };
 
 /** Reads user-configurable settings from kwinrc (docs §5). Untestable glue (docs §8). */
@@ -59,6 +63,7 @@ export function loadSettings(): Settings {
         animationDurationMs: readNumberConfig('animationDurationMs', DEFAULT_SETTINGS.animationDurationMs),
         viewportShiftStep: readNumberConfig('viewportShiftStep', DEFAULT_SETTINGS.viewportShiftStep),
         minimapAutoHideMs: readNumberConfig('minimapAutoHideMs', DEFAULT_SETTINGS.minimapAutoHideMs),
+        minimapShowThumbnails: readBooleanConfig('minimapShowThumbnails', DEFAULT_SETTINGS.minimapShowThumbnails),
         shortcutFocusLeft: readStringConfig('shortcutFocusLeft', DEFAULT_SETTINGS.shortcutFocusLeft),
         shortcutFocusRight: readStringConfig('shortcutFocusRight', DEFAULT_SETTINGS.shortcutFocusRight),
         shortcutToggleDebugConsole: readStringConfig(
@@ -95,6 +100,17 @@ function readStringConfig(key: string, defaultValue: string): string {
     try {
         const value = KWin.readConfig(key, defaultValue);
         return typeof value === 'string' && value.length > 0 ? value : defaultValue;
+    } catch (error) {
+        void error;
+        return defaultValue;
+    }
+}
+
+// Same rationale as readNumberConfig: never let a bad config value take down init().
+function readBooleanConfig(key: string, defaultValue: boolean): boolean {
+    try {
+        const value = KWin.readConfig(key, defaultValue);
+        return typeof value === 'boolean' ? value : defaultValue;
     } catch (error) {
         void error;
         return defaultValue;

@@ -1,6 +1,7 @@
 // A centered OSD overlay showing the current strip's columns and viewport extent,
-// shown on Meta+Tab/Meta+Shift+Tab (docs: 2026-09-01-minimap-design). Built via
-// `Qt.createQmlObject`, the same pattern as `debug-console.ts`.
+// shown on Meta+Tab/Meta+Shift+Tab (docs: 2026-09-01-minimap-design,
+// 2026-09-01-minimap-thumbnails-design). Built via `Qt.createQmlObject`, the same
+// pattern as `debug-console.ts`.
 
 import type { Rect } from '../core/coordinates';
 import type { MinimapSnapshot } from '../ui/minimap';
@@ -18,10 +19,13 @@ const DIALOG_HEIGHT = PANEL_HEIGHT + PANEL_MARGIN * 2;
 const MINIMAP_QML = `import QtQuick 6.0
 import org.kde.plasma.core as PlasmaCore
 import org.kde.kirigami as Kirigami
+import org.kde.kwin 3.0 as KWinComponents
 PlasmaCore.Dialog {
     id: dialog
     property var columns: []
     property var viewportBox: ({ x: 0, width: 0 })
+    property real thumbnailHeight: 0
+    property bool showThumbnails: false
     title: "${MINIMAP_OVERLAY_WINDOW_TITLE}"
     type: PlasmaCore.Dialog.OnScreenDisplay
     backgroundHints: PlasmaCore.Types.NoBackground
@@ -46,12 +50,31 @@ PlasmaCore.Dialog {
                     color: modelData.focused ? "#3daee9" : "#5c5c5c"
                     border.color: "#ffffff"
                     border.width: modelData.focused ? 2 : 0
+                    clip: true
+                    KWinComponents.WindowThumbnail {
+                        client: modelData.thumbnail
+                        visible: dialog.showThumbnails && modelData.thumbnail !== null
+                        width: parent.width
+                        height: dialog.thumbnailHeight
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
                     Kirigami.Icon {
                         anchors.centerIn: parent
                         width: Math.min(parent.width - 8, 32)
                         height: width
                         source: modelData.icon
-                        visible: modelData.icon !== null && parent.width > 12
+                        visible: !dialog.showThumbnails && modelData.icon !== null && parent.width > 12
+                    }
+                    Kirigami.Icon {
+                        anchors {
+                            right: parent.right
+                            bottom: parent.bottom
+                            margins: 2
+                        }
+                        width: Math.min(parent.width - 4, 20)
+                        height: width
+                        source: modelData.icon
+                        visible: dialog.showThumbnails && modelData.icon !== null && parent.width > 12
                     }
                 }
             }
@@ -74,6 +97,7 @@ interface PanelColumn {
     width: number;
     focused: boolean;
     icon: QIcon | null;
+    thumbnail: Window | null;
 }
 
 interface PanelViewportBox {
@@ -85,14 +109,17 @@ export interface MinimapOverlay {
     show(snapshot: MinimapSnapshot, screen: Rect): void;
 }
 
-export function createMinimapOverlay(parent: QmlObject, autoHideMs: number): MinimapOverlay {
+export function createMinimapOverlay(parent: QmlObject, autoHideMs: number, showThumbnails: boolean): MinimapOverlay {
     const dialog = Qt.createQmlObject(MINIMAP_QML, parent) as QmlMinimapDialog;
+    dialog.showThumbnails = showThumbnails;
     const hideTimer = createQmlTimer(parent);
 
     return {
         show(snapshot: MinimapSnapshot, screen: Rect): void {
+            const { scale } = panelScale(snapshot);
             dialog.columns = toPanelColumns(snapshot);
             dialog.viewportBox = toPanelViewportBox(snapshot);
+            dialog.thumbnailHeight = scale * snapshot.gridHeight;
             dialog.x = Math.round(screen.x + (screen.width - DIALOG_WIDTH) / 2);
             dialog.y = Math.round(screen.y + (screen.height - DIALOG_HEIGHT) / 2);
             dialog.visible = true;
@@ -118,6 +145,7 @@ function toPanelColumns(snapshot: MinimapSnapshot): PanelColumn[] {
         width: column.width * scale,
         focused: column.focused,
         icon: column.icon,
+        thumbnail: column.thumbnail,
     }));
 }
 

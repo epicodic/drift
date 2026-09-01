@@ -21,6 +21,14 @@ export class WindowAdapter {
         return this.window.icon;
     }
 
+    /** The underlying KWin window, for binding directly to QML's
+     * `WindowThumbnail.client` (docs: 2026-09-01-minimap-thumbnails-design). The only
+     * place `this.window` itself — rather than a value derived from it — leaves
+     * `WindowAdapter`. */
+    windowHandle(): Window {
+        return this.window;
+    }
+
     /** A normal, non-transient, non-fullscreen window that Drift should tile. */
     isTileable(): boolean {
         return (

@@ -31,6 +31,14 @@ export class Grid {
         return this.ordered.slice();
     }
 
+    /** The strip's constant screen height — every column's rect uses this same value
+     * (see `columnRect`), so a consumer needing the real aspect ratio without an
+     * existing column (the minimap's live thumbnails) can read it directly
+     * (docs: 2026-09-01-minimap-thumbnails-design). */
+    screenHeight(): number {
+        return this.height;
+    }
+
     focusedColumn(): Column | null {
         if (this.focusedColumnId === null) {
             return null;

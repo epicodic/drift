@@ -34,7 +34,7 @@ export class Controller {
         const area = this.workspaceAdapter.combinedGeometry();
         // Create the debug console before the animation timer, matching the original init() order.
         this.debugConsole = createDebugConsole(root);
-        this.minimapOverlay = createMinimapOverlay(root, settings.minimapAutoHideMs);
+        this.minimapOverlay = createMinimapOverlay(root, settings.minimapAutoHideMs, settings.minimapShowThumbnails);
         this.stripManager = new StripManager(area, settings, createQmlTimer(root), this.workspaceAdapter);
         this.windowManager = new WindowManager(this.stripManager);
     }
