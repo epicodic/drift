@@ -2,6 +2,12 @@
 // separate from the layout (docs §6.1) — this is where the viewport lives, the
 // grid is where columns logically are. Pure and KWin-free.
 
+/** A screen's horizontal extent, in the same coordinate space as Viewport's offset. */
+export interface ScreenBounds {
+    left: number;
+    width: number;
+}
+
 export class Viewport {
     private offsetX = 0;
     private contentSize = 0;
@@ -52,10 +58,13 @@ export class Viewport {
 
     /** Sets the camera position exactly, bypassing the "never scroll past content"
      * clamp. Used by the animator's tick callback, which is shared by every animated
-     * scroll: `revealFocused` already computes a bounded target via `offsetToReveal`,
-     * while align-cycle deliberately targets positions outside the content's own
-     * bounds (e.g. placing a column narrower than the viewport flush against its
-     * right edge) — the camera must be free to show empty space to do that. */
+     * scroll: `revealFocused` computes its target via `offsetToRevealOnScreen`, which
+     * is only bounded by this clamp when it falls back to `offsetToReveal` (no screen
+     * is wide enough for the column) — otherwise its per-screen candidates are
+     * unclamped by design. Align-cycle likewise deliberately targets positions outside
+     * the content's own bounds (e.g. placing a column narrower than the viewport flush
+     * against its right edge) — the camera must be free to show empty space to do
+     * either. */
     setOffset(offset: number): void {
         this.offsetX = offset;
     }
@@ -84,6 +93,47 @@ export class Viewport {
             return this.clamp(rectRight - this.width);
         }
         return this.offsetX;
+    }
+
+    /** Minimal viewLeft that brings [rectX, rectX + rectWidth] fully into [viewLeft, viewLeft + viewWidth),
+     * regardless of how far the starting viewLeft is from doing so already. Used by
+     * offsetToRevealOnScreen's per-screen candidates. */
+    private viewLeftToReveal(rectX: number, rectWidth: number, viewLeft: number, viewWidth: number): number {
+        const viewRight = viewLeft + viewWidth;
+        const rectRight = rectX + rectWidth;
+        if (rectX < viewLeft) {
+            return rectX;
+        }
+        if (rectRight > viewRight) {
+            return rectRight - viewWidth;
+        }
+        return viewLeft;
+    }
+
+    /** Minimal-movement offset that reveals [rectX, rectX + rectWidth] fully within a single screen —
+     * whichever eligible screen requires the least movement from the current offset. A screen is
+     * eligible when it's at least as wide as the column; only an eligible screen can fully contain it.
+     * Falls back to offsetToReveal (the combined-area behavior, clamped as always) when no screen is
+     * eligible.
+     *
+     * Deliberately not run through the combined-content clamp() at all: each candidate is the exact
+     * minimal-movement position, even if that means a neighboring screen shows empty desktop space —
+     * normal for a tiling WM with few windows open. Without this, content narrower than the combined
+     * desktop would clamp every candidate back to the same single offset and silently prevent
+     * alignment from ever firing. */
+    offsetToRevealOnScreen(rectX: number, rectWidth: number, screens: ScreenBounds[]): number {
+        const candidates = screens
+            .filter((screen) => rectWidth <= screen.width)
+            .map((screen) => {
+                const viewLeft = this.offsetX + screen.left;
+                return this.viewLeftToReveal(rectX, rectWidth, viewLeft, screen.width) - screen.left;
+            });
+        if (candidates.length === 0) {
+            return this.offsetToReveal(rectX, rectWidth);
+        }
+        return candidates.reduce((best, candidate) =>
+            Math.abs(candidate - this.offsetX) < Math.abs(best - this.offsetX) ? candidate : best,
+        );
     }
 
     revealColumn(rectX: number, rectWidth: number): void {
