@@ -20,7 +20,7 @@ interface QSize {
 /** An opaque Qt icon value (`Window.icon`). Never introspected — passed straight
  * through to QML for rendering (docs: 2026-09-01-minimap-design). */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- intentionally opaque
-interface QIcon { }
+interface QIcon {}
 
 /** A KWin/Qt signal. Handlers are connected and disconnected, not awaited. */
 interface Signal<Handler> {
