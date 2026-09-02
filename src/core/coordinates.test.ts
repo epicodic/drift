@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { virtualWidth, columnRect, resizedEdge, rectsEqualRounded, edgeDirection } from './coordinates';
+import {
+    virtualWidth,
+    columnRect,
+    resizedEdge,
+    verticalResizedEdge,
+    rectsEqualRounded,
+    edgeDirection,
+} from './coordinates';
 
 describe('virtualWidth', () => {
     it('is 0 for an empty strip', () => {
@@ -42,6 +49,26 @@ describe('resizedEdge', () => {
         const oldRect = { x: 100, y: 0, width: 300, height: 1080 };
         const newRect = { x: 100.4, y: 0, width: 360, height: 1080 };
         expect(resizedEdge(oldRect, newRect)).toBe('right');
+    });
+});
+
+describe('verticalResizedEdge', () => {
+    it('reports "top" when the top edge (y) moved', () => {
+        const oldRect = { x: 0, y: 100, width: 200, height: 300 };
+        const newRect = { x: 0, y: 50, width: 200, height: 350 };
+        expect(verticalResizedEdge(oldRect, newRect)).toBe('top');
+    });
+
+    it('reports "bottom" when only the height changed and y stayed put', () => {
+        const oldRect = { x: 0, y: 100, width: 200, height: 300 };
+        const newRect = { x: 0, y: 100, width: 200, height: 350 };
+        expect(verticalResizedEdge(oldRect, newRect)).toBe('bottom');
+    });
+
+    it('rounds before comparing, like resizedEdge does for x', () => {
+        const oldRect = { x: 0, y: 100.4, width: 200, height: 300 };
+        const newRect = { x: 0, y: 100.49, width: 200, height: 300 };
+        expect(verticalResizedEdge(oldRect, newRect)).toBe('bottom');
     });
 });
 
