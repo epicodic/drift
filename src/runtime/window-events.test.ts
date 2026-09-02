@@ -25,11 +25,15 @@ function fakeWindow(
 function fakeDeps(overrides: Partial<WindowEventDeps> = {}): WindowEventDeps {
     return {
         columnOf: () => 1,
+        tileOf: () => null,
         isHidden: () => false,
         isEcho: () => false,
         resizeColumn: vi.fn(),
+        resizeTile: vi.fn(),
         hideColumn: vi.fn(),
         showColumn: vi.fn(),
+        hideTile: vi.fn(),
+        showTile: vi.fn(),
         setFullScreen: vi.fn(),
         render: vi.fn(),
         revealFocused: vi.fn(),
@@ -143,21 +147,55 @@ describe('onWindowGeometryChanged', () => {
         expect(deps.resizeColumn).not.toHaveBeenCalled();
         expect(deps.render).not.toHaveBeenCalled();
     });
+
+    describe('onWindowGeometryChanged — tile height resize', () => {
+        it('resizes the tile when a stacked window\'s height-only change is interactive', () => {
+            const win = fakeWindow('w1', { x: 0, y: 0, width: 300, height: 550 }, { interactiveResize: true });
+            const deps = fakeDeps({ tileOf: () => ({ columnId: 1, tileId: 2 }) });
+            const oldRect = { x: 0, y: 0, width: 300, height: 500 };
+
+            onWindowGeometryChanged(win, oldRect, deps);
+
+            expect(deps.resizeTile).toHaveBeenCalledWith(1, 2, 550, 'bottom');
+            expect(deps.render).toHaveBeenCalledWith('w1', true);
+        });
+
+        it('does nothing for a height-only change on a plain (non-stacked) column', () => {
+            const win = fakeWindow('w1', { x: 0, y: 0, width: 300, height: 550 });
+            const deps = fakeDeps({ tileOf: () => null });
+            const oldRect = { x: 0, y: 0, width: 300, height: 500 };
+
+            onWindowGeometryChanged(win, oldRect, deps);
+
+            expect(deps.resizeTile).not.toHaveBeenCalled();
+            expect(deps.resizeColumn).not.toHaveBeenCalled();
+        });
+
+        it('ignores a pure move (neither width nor height changed)', () => {
+            const win = fakeWindow('w1', { x: 50, y: 0, width: 300, height: 500 });
+            const deps = fakeDeps({ tileOf: () => ({ columnId: 1, tileId: 2 }) });
+            const oldRect = { x: 0, y: 0, width: 300, height: 500 };
+
+            onWindowGeometryChanged(win, oldRect, deps);
+
+            expect(deps.resizeTile).not.toHaveBeenCalled();
+        });
+    });
 });
 
 describe('onMinimizedChanged', () => {
-    it('hides the column when the window is minimized', () => {
-        const deps = fakeDeps();
+    it('hides the tile when the window is minimized', () => {
+        const deps = fakeDeps({ tileOf: () => ({ columnId: 1, tileId: 2 }) });
         const win = fakeWindow('w1', { x: 0, y: 0, width: 800, height: 600 }, { minimized: true });
 
         onMinimizedChanged(win, deps);
 
-        expect(deps.hideColumn).toHaveBeenCalledWith(1);
+        expect(deps.hideTile).toHaveBeenCalledWith(1, 2);
         expect(deps.render).toHaveBeenCalledTimes(1);
     });
 
     it('reveals the focused column after minimizing, so collapsing the gap cannot scroll it out of view', () => {
-        const deps = fakeDeps();
+        const deps = fakeDeps({ tileOf: () => ({ columnId: 1, tileId: 2 }) });
         const win = fakeWindow('w1', { x: 0, y: 0, width: 800, height: 600 }, { minimized: true });
 
         onMinimizedChanged(win, deps);
@@ -165,17 +203,17 @@ describe('onMinimizedChanged', () => {
         expect(deps.revealFocused).toHaveBeenCalledTimes(1);
     });
 
-    it('shows the column when the window is restored', () => {
-        const deps = fakeDeps();
+    it('shows the tile when the window is restored', () => {
+        const deps = fakeDeps({ tileOf: () => ({ columnId: 1, tileId: 2 }) });
         const win = fakeWindow('w1', { x: 0, y: 0, width: 800, height: 600 }, { minimized: false });
 
         onMinimizedChanged(win, deps);
 
-        expect(deps.showColumn).toHaveBeenCalledWith(1);
+        expect(deps.showTile).toHaveBeenCalledWith(1, 2);
     });
 
     it('does not reveal on restore — restoring must not move the camera (design decision)', () => {
-        const deps = fakeDeps();
+        const deps = fakeDeps({ tileOf: () => ({ columnId: 1, tileId: 2 }) });
         const win = fakeWindow('w1', { x: 0, y: 0, width: 800, height: 600 }, { minimized: false });
 
         onMinimizedChanged(win, deps);
@@ -186,27 +224,27 @@ describe('onMinimizedChanged', () => {
 
 describe('onFullScreenChanged', () => {
     it('marks the column fullscreen and re-renders when the window enters fullscreen', () => {
-        const deps = fakeDeps();
+        const deps = fakeDeps({ tileOf: () => ({ columnId: 1, tileId: 2 }) });
         const win = fakeWindow('w1', { x: 0, y: 0, width: 1920, height: 1080 }, { fullScreen: true });
 
         onFullScreenChanged(win, deps);
 
-        expect(deps.setFullScreen).toHaveBeenCalledWith(1, true);
+        expect(deps.setFullScreen).toHaveBeenCalledWith(1, 2, true);
         expect(deps.render).toHaveBeenCalledTimes(1);
     });
 
     it('unmarks the column and re-renders when the window leaves fullscreen', () => {
-        const deps = fakeDeps();
+        const deps = fakeDeps({ tileOf: () => ({ columnId: 1, tileId: 2 }) });
         const win = fakeWindow('w1', { x: 0, y: 0, width: 800, height: 600 }, { fullScreen: false });
 
         onFullScreenChanged(win, deps);
 
-        expect(deps.setFullScreen).toHaveBeenCalledWith(1, false);
+        expect(deps.setFullScreen).toHaveBeenCalledWith(1, 2, false);
         expect(deps.render).toHaveBeenCalledTimes(1);
     });
 
-    it('ignores an unknown column', () => {
-        const deps = fakeDeps({ columnOf: () => null });
+    it('does nothing when the window is not registered to any tile', () => {
+        const deps = fakeDeps({ tileOf: () => null });
         const win = fakeWindow('w1', { x: 0, y: 0, width: 1920, height: 1080 }, { fullScreen: true });
 
         onFullScreenChanged(win, deps);
