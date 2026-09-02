@@ -9,7 +9,7 @@ import type { Viewport } from '../viewport/viewport';
 
 export function debugRows(grid: Grid, registry: ColumnRegistry): WindowDebugRow[] {
     return grid.columns().map((column) => {
-        const win = registry.get(column.id);
+        const win = registry.get(column.id, column.focusedTileId);
         return {
             id: win?.id ?? '(none)',
             title: win?.caption ?? '',
