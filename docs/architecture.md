@@ -53,14 +53,14 @@ Grids always span every screen, so screen is not part of the key.
 
 ### Rows
 
-Each `StripStack` holds an ordered set of rows, addressed by a non-negative integer index.
+Each `StripStack` holds an ordered set of rows, addressed by an integer index that can be positive, negative, or zero — the stack is unbounded in both directions.
 A row is exactly what a `Strip` has always been: its own `Grid` + `Viewport` + `Animator` + `GeometrySync` + `ColumnRegistry`.
-Row `0` is the default, topmost row and always exists; other rows are created lazily (paging past the last one, or moving a window into a new one) and pruned once empty, the same lazy-create/prune shape `StripManager` already applies to activity/desktop keys.
+Row `0` is created eagerly as the stack's starting position; every row, in either direction, is created lazily after that (paging past the edge of the existing rows, or moving a window into a new one) and pruned once empty and inactive — including row `0`, which is no longer special-cased once the stack has grown beyond it, the same lazy-create/prune shape `StripManager` already applies to activity/desktop keys.
 `StripStack` tracks an `activeRowIndex` and pages between rows with a second, vertical `Animator`, so a row transition animates as a one-row-height vertical slide rather than a jump — see the `shortcutRowUp`/`shortcutRowDown` and `shortcutMoveWindowToRowAbove`/`shortcutMoveWindowToRowBelow` shortcuts.
 A window parked in an inactive row is moved off-screen rather than minimized, so the row transition has something to animate, and has `skipTaskbar` toggled while parked so it doesn't clutter the taskbar.
 Activating such a window (from the taskbar, Alt-Tab, a notification) pages `StripStack` to the row that owns it before delegating to that row's `Strip`, extending the "every focus change triggers a reveal" model from [Focus Model](#focus-model) up one level.
 KWin's Alt-Tab switcher and Overview/Present Windows are not affected by `skipTaskbar`, though, so a window parked in an inactive row can still show up there, positioned off-screen — a known, accepted limitation rather than an oversight.
-See [`docs/agents/specs/2026-09-01-row-navigation-design.md`](agents/specs/2026-09-01-row-navigation-design.md) for the full design, including the vertical coordinate math.
+See [`docs/agents/specs/2026-09-01-row-navigation-design.md`](agents/specs/2026-09-01-row-navigation-design.md) for the original design, including the vertical coordinate math, and [`docs/agents/specs/2026-09-02-symmetric-row-stack-design.md`](agents/specs/2026-09-02-symmetric-row-stack-design.md) for how the row-0 boundary was later removed.
 
 ## Module Map
 
