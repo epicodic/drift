@@ -61,3 +61,56 @@ export function buildMinimapSnapshot(
         gridHeight: grid.screenHeight(),
     };
 }
+
+export interface MinimapRow {
+    rowIndex: number;
+    columns: MinimapColumn[];
+}
+
+/** A stack-level viewport: where the user is actually looking, in both dimensions — which
+ * row (`rowIndex`) plus the horizontal scroll/content extent within it. Only the active row
+ * ever has a real on-screen viewport, so a stack snapshot carries exactly one of these. */
+export interface StripStackMinimapViewport {
+    rowIndex: number;
+    offset: number;
+    width: number;
+    contentLeft: number;
+    contentWidth: number;
+}
+
+export interface StripStackMinimapSnapshot {
+    rows: MinimapRow[];
+    viewport: StripStackMinimapViewport;
+    gridHeight: number;
+    /** Real-pixel vertical distance between adjacent rows' origins (`StripStack`'s own
+     * `area.height`) — may exceed `gridHeight` (which excludes `settings.bottomMargin`),
+     * leaving a real gap between rows in the rendered map, matching their on-screen look. */
+    rowPitch: number;
+}
+
+/** Merges every row currently in a `StripStack` into one aggregate snapshot. A row's own
+ * `Grid` always remembers its last-focused column even while inactive — that isn't real
+ * (OS-level) focus, so every row except `activeRowIndex` has `focused` forced to `false`
+ * on its columns (docs: 2026-09-02-multi-strip-minimap-design). */
+export function combineStripStackSnapshot(
+    rows: { rowIndex: number; snapshot: MinimapSnapshot }[],
+    activeRowIndex: number,
+    rowPitch: number,
+): StripStackMinimapSnapshot {
+    const active = rows.find((row) => row.rowIndex === activeRowIndex);
+    if (active === undefined) {
+        throw new Error(`combineStripStackSnapshot: no row at active index ${activeRowIndex}`);
+    }
+    return {
+        rows: rows.map((row) => ({
+            rowIndex: row.rowIndex,
+            columns:
+                row.rowIndex === activeRowIndex
+                    ? row.snapshot.columns
+                    : row.snapshot.columns.map((column) => Object.assign({}, column, { focused: false })),
+        })),
+        viewport: Object.assign({ rowIndex: activeRowIndex }, active.snapshot.viewport),
+        gridHeight: active.snapshot.gridHeight,
+        rowPitch,
+    };
+}
