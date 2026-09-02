@@ -1,7 +1,7 @@
 // Drift entry point. `init` is the single exported boot function the QML host calls
 // (docs §6.2), receiving the QML root as the parent for runtime QML objects, and the
 // resolved URL of `ui/main.qml`'s own directory (used to locate shipped sibling files
-// like contents/bin/release-shortcuts.sh). All orchestration now lives in runtime/ —
+// like contents/bin/setup-shortcuts.sh). All orchestration now lives in runtime/ —
 // this file only boots the Controller.
 
 import { loadSettings } from './config/settings';

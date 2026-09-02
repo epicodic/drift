@@ -1,5 +1,5 @@
 // Detects two kinds of KWin shortcut cleanup Drift can offer, and if either applies,
-// tells the user to run the shipped release-shortcuts.sh script (contents/bin/) to
+// tells the user to run the shipped setup-shortcuts.sh script (contents/bin/) to
 // free the affected KWin actions:
 //  1. Drift's own Meta+Tab / Meta+Shift+Tab (focus), Meta+Left/Right (align-cycle),
 //     and Meta+Page_Up / Meta+Page_Down (row navigation) shortcuts couldn't be granted
@@ -20,9 +20,8 @@
 // array of strings always marshals as DBus type "av" (array-of-variant), never "as"
 // (array-of-string), so `org.kde.KGlobalAccel.setShortcut`'s required `QStringList`
 // argument can't be built this way (confirmed empirically against a live KWin — see
-// repo notes). `qdbus6`'s own CLI argument parsing builds the correctly-typed
-// argument, which is why release-shortcuts.sh (using qdbus6) works where an in-script
-// DBusCall wouldn't.
+// repo notes). `busctl`'s explicit type signature sidesteps that entirely, which is
+// why setup-shortcuts.sh (using busctl) works where an in-script DBusCall wouldn't.
 
 import { debug } from '../debug';
 
@@ -93,7 +92,7 @@ const KGLOBALACCEL_SERVICE = 'org.kde.kglobalaccel';
 const KGLOBALACCEL_COMPONENT_PATH = '/component/kwin';
 const KGLOBALACCEL_COMPONENT_INTERFACE = 'org.kde.kglobalaccel.Component';
 
-const RELEASE_SCRIPT_RELATIVE_PATH = '../bin/release-shortcuts.sh';
+const RELEASE_SCRIPT_RELATIVE_PATH = '../bin/setup-shortcuts.sh';
 
 /** A row of `allShortcutInfos()`'s `a(ssssssaiai)` reply, positionally destructured. Only
  * the two fields this module needs are named; the DBus signature is otherwise opaque
@@ -120,7 +119,7 @@ function hasActiveGrant(row: ShortcutInfoRow | undefined): boolean {
     return row !== undefined && Array.isArray(row.activeKeys) && row.activeKeys.length > 0;
 }
 
-/** Resolves the on-disk path to release-shortcuts.sh from `ui/main.qml`'s own resolved
+/** Resolves the on-disk path to setup-shortcuts.sh from `ui/main.qml`'s own resolved
  * directory URL, so the message is correct regardless of install location (user vs.
  * global kpackagetool6 install). */
 function resolveReleaseScriptPath(scriptUiDirUrl: string): string {
