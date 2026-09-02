@@ -1,7 +1,8 @@
 // One (activity, virtualDesktop) pair's full vertical stack of rows: an ordered set of
 // independent Strips (each one row, unchanged), paged between via a Drift-native vertical
-// camera. Row 0 always exists; rows above/below are created lazily and pruned once empty
-// (docs: 2026-09-01-row-navigation-design).
+// camera. Rows are created lazily in either direction (positive or negative index) and pruned
+// once empty and inactive, including row 0 (docs: 2026-09-01-row-navigation-design,
+// 2026-09-02-symmetric-row-stack-design).
 //
 // Owns the one SharedTicker for every row it creates — see the "Important Implementation
 // Note" in docs/agents/plans/2026-09-01-row-navigation.md for why this can't be left to
@@ -118,9 +119,6 @@ export class StripStack {
     }
 
     rowUp(): void {
-        if (this.activeRowIndex === 0) {
-            return;
-        }
         this.switchToRow(this.activeRowIndex - 1);
     }
 
@@ -144,7 +142,8 @@ export class StripStack {
         return this.row(this.activeRowIndex);
     }
 
-    /** Row 0 always exists; other rows are created lazily on first access. */
+    /** Row 0 is created eagerly as the stack's starting position; every row, in either
+     * direction, is created lazily on first access after that. */
     private row(index: number): Strip {
         let strip = this.rows.get(index);
         if (strip === undefined) {
@@ -214,9 +213,6 @@ export class StripStack {
         targetIndex: number,
         options: { excludeWindowId?: string; initiallyDragging?: boolean } = {},
     ): void {
-        if (targetIndex < 0) {
-            return;
-        }
         const sourceIndex = this.activeRowIndex;
         const win = this.requireRow(sourceIndex).detachFocusedColumn();
         if (win === null) {
@@ -308,8 +304,8 @@ export class StripStack {
     }
 
     private pruneIfEmpty(index: number): void {
-        if (index === 0 || index === this.activeRowIndex) {
-            return; // row 0 is never pruned; you can't prune the row you're standing in
+        if (index === this.activeRowIndex) {
+            return; // you can't prune the row you're standing in
         }
         const strip = this.rows.get(index);
         if (strip === undefined || !strip.isEmpty()) {

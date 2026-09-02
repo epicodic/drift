@@ -196,14 +196,15 @@ describe('StripStack', () => {
 });
 
 describe('StripStack row paging', () => {
-    it('rowUp is a no-op at row 0', () => {
+    it('rowUp pages into a new row -1 when at row 0', () => {
         const { stack, created } = makeStack();
 
         stack.rowUp();
         stack.render();
 
-        expect(created).toHaveLength(1); // still only row 0
-        expect(created[0].render).toHaveBeenCalled(); // render() still targets row 0
+        expect(created).toHaveLength(2); // row 0 and the newly created row -1
+        expect(created[1].render).toHaveBeenCalled(); // render() now targets row -1
+        expect(created[0].render).not.toHaveBeenCalled();
     });
 
     it('rowDown creates row 1 and makes it active', () => {
@@ -219,6 +220,7 @@ describe('StripStack row paging', () => {
 
     it('rowUp after rowDown returns to row 0', () => {
         const { stack, created } = makeStack();
+        created[0].isEmpty.mockReturnValue(false); // has a window, so leaving it won't prune it
         stack.rowDown();
 
         stack.rowUp();
@@ -227,8 +229,20 @@ describe('StripStack row paging', () => {
         expect(created[0].render).toHaveBeenCalled();
     });
 
+    it('rowDown after rowUp returns to row 0', () => {
+        const { stack, created } = makeStack();
+        created[0].isEmpty.mockReturnValue(false); // has a window, so leaving it won't prune it
+        stack.rowUp(); // row 0 -> row -1
+
+        stack.rowDown();
+        stack.render();
+
+        expect(created[0].render).toHaveBeenCalled();
+    });
+
     it('animates the vertical transition, rendering both the outgoing and incoming row on each tick', () => {
         const { stack, created, timer } = makeStack({ animationDurationMs: 100 });
+        created[0].isEmpty.mockReturnValue(false); // has a window, so leaving it won't prune it
 
         stack.rowDown();
         timer.fire();
@@ -248,13 +262,14 @@ describe('StripStack row paging', () => {
 
     it('snaps every other row to its resting offset instantly when paging', () => {
         const { stack, created } = makeStack();
-        stack.rowDown(); // row 1 active
         // Has a window, so leaving it won't prune it: without this, the prior rowDown()'s
-        // pruneIfEmpty would delete row 1 from this.rows, silently dropping it from
+        // pruneIfEmpty would delete row 0 from this.rows, silently dropping it from
         // snapRestingRows's iteration and breaking the render assertion below.
+        created[0].isEmpty.mockReturnValue(false);
+        stack.rowDown(); // row 1 active
+        // Same reasoning as above, now for row 1.
         created[1].isEmpty.mockReturnValue(false);
         stack.rowDown(); // row 2 active, row 0 and row 1 both now "other"
-        created[0].isEmpty.mockReturnValue(false);
         created[0].render.mockClear();
         created[1].render.mockClear();
 
@@ -305,13 +320,17 @@ describe('StripStack row paging', () => {
 });
 
 describe('StripStack.moveWindowToRowAbove/Below', () => {
-    it('moveWindowToRowAbove is a no-op at row 0', () => {
+    it('moveWindowToRowAbove moves the focused window into row -1 when at row 0', () => {
         const { stack, created } = makeStack();
+        const win = fakeWin('w1');
+        created[0].detachFocusedColumn.mockReturnValue(win);
 
         stack.moveWindowToRowAbove();
+        stack.render();
 
-        expect(created).toHaveLength(1); // no row -1 created
-        expect(created[0].detachFocusedColumn).not.toHaveBeenCalled();
+        expect(created[0].detachFocusedColumn).toHaveBeenCalled();
+        expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object));
+        expect(created[1].render).toHaveBeenCalled(); // row -1 is now active
     });
 
     it('moveWindowToRowAbove is a no-op when the active row has no focused window', () => {
@@ -358,6 +377,7 @@ describe('StripStack.moveWindowToRowAbove/Below', () => {
 
     it('prunes the source row if moving its last window empties it', () => {
         const { stack, created } = makeStack();
+        created[0].isEmpty.mockReturnValue(false); // has a window, so leaving it won't prune it
         stack.rowDown(); // row 1 active
         const win = fakeWin('w1');
         created[1].detachFocusedColumn.mockReturnValue(win);
@@ -367,6 +387,30 @@ describe('StripStack.moveWindowToRowAbove/Below', () => {
         stack.rowDown(); // page back toward row 1 to prove it was pruned and recreated empty
 
         expect(created).toHaveLength(3); // row 0, the original (now-pruned) row 1, and a fresh row 1
+    });
+
+    it('moveWindowToRowAbove twice moves a window from row 0 through row -1 into row -2', () => {
+        const { stack, created } = makeStack();
+        const win = fakeWin('w1');
+        created[0].detachFocusedColumn.mockReturnValue(win);
+
+        stack.moveWindowToRowAbove(); // win: row 0 -> row -1
+        created[1].isEmpty.mockReturnValue(false); // row -1 now owns a window; don't prune it on the next move
+        created[1].detachFocusedColumn.mockReturnValue(win);
+
+        stack.moveWindowToRowAbove(); // win: row -1 -> row -2
+
+        expect(created[2].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object));
+    });
+
+    it('prunes row 0 once it becomes empty and inactive, recreating it fresh on return', () => {
+        const { stack, created } = makeStack();
+        // row 0 starts empty (created[0].isEmpty defaults to true)
+
+        stack.rowDown(); // row 0 -> row 1; leaving empty row 0 behind prunes it
+        stack.rowUp(); // page back toward row 0 to prove it was pruned and recreated
+
+        expect(created).toHaveLength(3); // the original (now-pruned) row 0, row 1, and a fresh row 0
     });
 });
 
@@ -426,6 +470,7 @@ describe('StripStack cross-row drag', () => {
                 animationDurationMs: 0,
                 rowDragDwellMs: 100,
             });
+            created[0].isEmpty.mockReturnValue(false); // has a window, so leaving it won't prune it
             stack.rowDown(); // row 1 active
             const win = fakeWin('w1');
             stack.addWindow(win); // lands in row 1, wires the row-drag hooks
@@ -480,6 +525,7 @@ describe('StripStack cross-row drag', () => {
                 animationDurationMs: 0,
                 rowDragDwellMs: 100,
             });
+            created[0].isEmpty.mockReturnValue(false); // has a window, so leaving it won't prune it
             stack.rowDown(); // row 1 active
             const win = fakeWin('w1');
             stack.addWindow(win);
