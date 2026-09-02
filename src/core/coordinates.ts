@@ -31,6 +31,16 @@ export function resizedEdge(oldRect: Rect, newRect: Rect): ResizeEdge {
     return Math.round(newRect.x) !== Math.round(oldRect.x) ? 'left' : 'right';
 }
 
+export type VerticalResizeEdge = 'top' | 'bottom';
+
+/** Which border moved between two geometries of the same window, vertically — the
+ * sibling of `resizedEdge` for tile-height resize within a column (docs:
+ * 2026-09-03-vertical-tiling-design). A changed top edge (y) means the top border
+ * was dragged, otherwise the bottom border moved. */
+export function verticalResizedEdge(oldRect: Rect, newRect: Rect): VerticalResizeEdge {
+    return Math.round(newRect.y) !== Math.round(oldRect.y) ? 'top' : 'bottom';
+}
+
 /** Rect equality after rounding — KWin/Wayland can report fractional geometry. */
 export function rectsEqualRounded(a: Rect, b: Rect): boolean {
     return (
