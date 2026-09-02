@@ -36,6 +36,9 @@ export interface Settings {
     shortcutMoveWindowToRowBelow: string;
     /** Distance the viewport pans per shortcut press, in pixels. */
     viewportShiftStep: number;
+    /** How long a dragged window must stay past the screen's top/bottom edge before it
+     * flips into the row above/below, in milliseconds (docs: 2026-09-02-cross-row-drag-design). */
+    rowDragDwellMs: number;
     /** How long the minimap overlay stays visible after the last focus-step press, in milliseconds. */
     minimapAutoHideMs: number;
     /** Whether the minimap's column boxes show a live preview of each window's content
@@ -61,6 +64,7 @@ export const DEFAULT_SETTINGS: Settings = {
     shortcutMoveWindowToRowAbove: 'Meta+Shift+Page_Up',
     shortcutMoveWindowToRowBelow: 'Meta+Shift+Page_Down',
     viewportShiftStep: 400,
+    rowDragDwellMs: 400,
     minimapAutoHideMs: 1200,
     minimapShowThumbnails: true,
 };
@@ -74,6 +78,7 @@ export function loadSettings(): Settings {
         defaultColumnWidth: readNumberConfig('defaultColumnWidth', DEFAULT_SETTINGS.defaultColumnWidth),
         animationDurationMs: readNumberConfig('animationDurationMs', DEFAULT_SETTINGS.animationDurationMs),
         viewportShiftStep: readNumberConfig('viewportShiftStep', DEFAULT_SETTINGS.viewportShiftStep),
+        rowDragDwellMs: readNumberConfig('rowDragDwellMs', DEFAULT_SETTINGS.rowDragDwellMs),
         minimapAutoHideMs: readNumberConfig('minimapAutoHideMs', DEFAULT_SETTINGS.minimapAutoHideMs),
         minimapShowThumbnails: readBooleanConfig('minimapShowThumbnails', DEFAULT_SETTINGS.minimapShowThumbnails),
         shortcutFocusLeft: readStringConfig('shortcutFocusLeft', DEFAULT_SETTINGS.shortcutFocusLeft),

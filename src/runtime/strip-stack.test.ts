@@ -4,7 +4,7 @@ import type { Rect } from '../core/coordinates';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import type { Timer } from '../viewport/animator';
-import type { Strip } from './strip';
+import type { RowDragHooks, Strip } from './strip';
 import { StripStack, type StripFactory } from './strip-stack';
 
 const AREA: Rect = { x: 0, y: 0, width: 1280, height: 1000 };
@@ -82,8 +82,15 @@ function recordingFactory(): { factory: StripFactory; created: FakeStrip[] } {
     return { factory, created };
 }
 
-function fakeWin(id: string): WindowAdapter {
-    return { id, setSkipTaskbar: vi.fn() } as unknown as WindowAdapter;
+/** Pulls the `RowDragHooks` StripStack passed into a `fake.addWindow` call, so a test can
+ * simulate a live drag by invoking them directly (docs: 2026-09-02-cross-row-drag-design). */
+function capturedRowDragHooks(fake: FakeStrip): RowDragHooks {
+    const lastCall = fake.addWindow.mock.calls[fake.addWindow.mock.calls.length - 1];
+    return lastCall[2] as RowDragHooks;
+}
+
+function fakeWin(id: string, rect: Rect = { x: 0, y: 0, width: 400, height: 1000 }): WindowAdapter {
+    return { id, setSkipTaskbar: vi.fn(), frameGeometry: () => rect } as unknown as WindowAdapter;
 }
 
 function makeStack(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
@@ -111,7 +118,7 @@ describe('StripStack', () => {
 
         stack.addWindow(win);
 
-        expect(created[0].addWindow).toHaveBeenCalledWith(win);
+        expect(created[0].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object));
     });
 
     it('clears skipTaskbar on a window entering a row via addWindow (regression)', () => {
@@ -320,7 +327,7 @@ describe('StripStack.moveWindowToRowAbove/Below', () => {
         stack.render();
 
         expect(created[0].detachFocusedColumn).toHaveBeenCalled();
-        expect(created[1].addWindow).toHaveBeenCalledWith(win);
+        expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object));
         expect(created[1].render).toHaveBeenCalled(); // row 1 is now active
     });
 
@@ -390,5 +397,135 @@ describe('StripStack.activateWindow', () => {
 
         expect(() => stack.activateWindow(fakeWin('ghost'))).not.toThrow();
         expect(created[0].activateWindow).not.toHaveBeenCalled();
+    });
+});
+
+describe('StripStack cross-row drag', () => {
+    it('keyboard-driven moveWindowToRowBelow still passes initiallyDragging=false and no exclusion (regression)', () => {
+        const { stack, created } = makeStack();
+        const win = fakeWin('w1');
+        created[0].detachFocusedColumn.mockReturnValue(win);
+
+        stack.moveWindowToRowBelow();
+
+        expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object));
+    });
+
+    it('flips to the row above once the dwell elapses while the window is held past the top edge', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const { stack, created, timer } = makeStack({ animationDurationMs: 0, rowDragDwellMs: 100 });
+            stack.rowDown(); // row 1 active
+            const win = fakeWin('w1', { x: 0, y: -50, width: 400, height: 1000 }); // already past the top edge
+            stack.addWindow(win); // lands in row 1, wires the row-drag hooks
+            created[1].isEmpty.mockReturnValue(false);
+            created[1].detachFocusedColumn.mockReturnValue(win);
+            const hooks = capturedRowDragHooks(created[1]);
+
+            hooks.onDragStarted?.(win);
+            hooks.onDragTick?.(win); // rect.y = -50 < area.y = 0 -> 'above'
+            vi.setSystemTime(100);
+            timer.fire(); // dwell elapses
+
+            expect(created[1].detachFocusedColumn).toHaveBeenCalled();
+            expect(created[0].addWindow).toHaveBeenCalledWith(win, true, expect.any(Object));
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("excludes the dragged window from the target row's priming render during a drag-triggered flip", () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const { stack, created, timer } = makeStack({ animationDurationMs: 0, rowDragDwellMs: 100 });
+            stack.rowDown(); // row 1 active
+            const win = fakeWin('w1', { x: 0, y: -50, width: 400, height: 1000 });
+            stack.addWindow(win);
+            created[1].isEmpty.mockReturnValue(false);
+            created[1].detachFocusedColumn.mockReturnValue(win);
+            const hooks = capturedRowDragHooks(created[1]);
+            hooks.onDragStarted?.(win);
+            hooks.onDragTick?.(win);
+
+            vi.setSystemTime(100);
+            timer.fire();
+
+            const primeCall = created[0].render.mock.calls.find((call) => call[0] === win.id);
+            expect(primeCall).toBeDefined();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('does not flip while the window is within bounds', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const { stack, created, timer } = makeStack({ animationDurationMs: 0, rowDragDwellMs: 100 });
+            const win = fakeWin('w1', { x: 0, y: 0, width: 400, height: 1000 }); // within AREA bounds
+            stack.addWindow(win);
+            const hooks = capturedRowDragHooks(created[0]);
+            hooks.onDragStarted?.(win);
+            hooks.onDragTick?.(win); // direction is null - never arms
+
+            vi.setSystemTime(100);
+            timer.fire();
+
+            expect(created[0].detachFocusedColumn).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('stops watching once the drag finishes, so a later stray tick cannot fire', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const { stack, created, timer } = makeStack({ animationDurationMs: 0, rowDragDwellMs: 100 });
+            const win = fakeWin('w1', { x: 0, y: -50, width: 400, height: 1000 }); // past the top edge
+            stack.addWindow(win);
+            const hooks = capturedRowDragHooks(created[0]);
+            hooks.onDragStarted?.(win);
+            hooks.onDragTick?.(win);
+
+            hooks.onDragFinished?.();
+            vi.setSystemTime(100);
+            timer.fire();
+
+            expect(created[0].detachFocusedColumn).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('stops watching once the dragged window is removed mid-drag, so a stale timer cannot relocate the wrong window', () => {
+        // Regression: a closed/crashed window tears down its signals without ever firing
+        // interactiveMoveResizeFinished, so onDragFinished never runs for it. Without an explicit
+        // stop in removeWindow, the armed dwell timer would keep ticking after the window is gone
+        // and re-fire onEdgeDwellFired, relocating whatever window happens to be focused in the
+        // row instead of the one that was actually being dragged.
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const { stack, created, timer } = makeStack({ animationDurationMs: 0, rowDragDwellMs: 100 });
+            stack.rowDown(); // row 1 active, so an 'above' flip targets row 0 - a valid row
+            const win = fakeWin('w1', { x: 0, y: -50, width: 400, height: 1000 }); // past the top edge
+            stack.addWindow(win); // lands in row 1, wires the row-drag hooks
+            created[1].isEmpty.mockReturnValue(false);
+            const hooks = capturedRowDragHooks(created[1]);
+            hooks.onDragStarted?.(win);
+            hooks.onDragTick?.(win); // arms the watch, no onDragFinished ever follows
+
+            stack.removeWindow(win); // window closes/crashes mid-drag
+
+            vi.setSystemTime(100);
+            timer.fire();
+
+            expect(created[1].detachFocusedColumn).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });
