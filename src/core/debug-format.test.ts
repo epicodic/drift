@@ -38,8 +38,8 @@ describe('formatDebugState', () => {
                 nextId: 3,
                 originX: -120,
                 columns: [
-                    { id: 1, width: 800, hidden: false },
-                    { id: 2, width: 640, hidden: false },
+                    { id: 1, width: 800, hidden: false, tileCount: 1 },
+                    { id: 2, width: 640, hidden: false, tileCount: 1 },
                 ],
             },
         );
@@ -79,7 +79,7 @@ describe('formatDebugState', () => {
                 focusedColumnId: 1,
                 nextId: 2,
                 originX: 0,
-                columns: [{ id: 1, width: 800, hidden: true }],
+                columns: [{ id: 1, width: 800, hidden: true, tileCount: 1 }],
             },
         );
 

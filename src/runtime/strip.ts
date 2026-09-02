@@ -49,10 +49,16 @@ export class Strip {
     private readonly columnMotion = new ColumnMotion();
     private readonly columnMotionTimer: Timer;
     private readonly registry = new ColumnRegistry();
-    // Tracks fullscreen state per column, updated only by the window's fullScreenChanged
-    // signal (never by re-reading the live property from an unrelated render() call — KWin's
-    // own docs warn the property is only reliably observed via its notify signal).
-    private readonly fullScreenColumns = new Set<number>();
+    // Tracks fullscreen/minimized state per TILE (not per column, since a stacked column
+    // can have one tile fullscreen/minimized while its siblings stay visible underneath),
+    // keyed by `${columnId}:${tileId}`. Fullscreen state is updated only by the window's
+    // fullScreenChanged signal (never by re-reading the live property from an unrelated
+    // render() call — KWin's own docs warn the property is only reliably observed via its
+    // notify signal). Minimized state mirrors this for the same "don't corrupt siblings"
+    // reason — a 1-tile column keeps using Grid's column-level hideColumn/showColumn
+    // instead, unchanged (docs: 2026-09-03-vertical-tiling-design).
+    private readonly fullScreenTiles = new Set<string>();
+    private readonly minimizedTiles = new Set<string>();
     // The vertical offset every render() call applies until told otherwise — see render()'s own
     // doc comment for why this is "sticky" rather than reset on every call.
     private verticalOffsetY = 0;
@@ -94,26 +100,67 @@ export class Strip {
         }
         this.viewport.setContentGeometry(this.grid.contentLeft(), this.grid.virtualWidth());
         for (const column of this.grid.columns()) {
-            const win = this.registry.get(column.id);
-            if (!win || win.id === excludeWindowId || this.fullScreenColumns.has(column.id)) {
+            const columnRect = this.grid.columnRect(column.id);
+            if (column.hidden) {
+                for (const tile of column.tiles()) {
+                    const win = this.registry.get(column.id, tile.id);
+                    if (
+                        !win ||
+                        win.id === excludeWindowId ||
+                        this.fullScreenTiles.has(this.tileKey(column.id, tile.id))
+                    ) {
+                        continue;
+                    }
+                    // No position animation for a minimized window — nothing on screen to smooth,
+                    // and this keeps its real x tracking the viewport pan instead of freezing it
+                    // (a taskbar sorted by real x would otherwise see it drift out of order).
+                    this.geometrySync.apply(
+                        win,
+                        column.tileRect(tile.id, columnRect),
+                        this.viewport.offset(),
+                        this.verticalOffsetY,
+                    );
+                }
                 continue;
             }
-            const rect = this.grid.columnRect(column.id);
-            if (column.hidden) {
-                // No position animation for a minimized window — nothing on screen to smooth,
-                // and this keeps its real x tracking the viewport pan instead of freezing it
-                // (a taskbar sorted by real x would otherwise see it drift out of order).
-                this.geometrySync.apply(win, rect, this.viewport.offset(), this.verticalOffsetY);
+            // Mirrors the pre-Task-7 per-column early-continue exactly (generalized across a
+            // stack's tiles): only skip columnMotion tracking entirely when EVERY tile is
+            // excluded — a lone fullscreen tile must not silently re-establish (and then
+            // mid-animate) the column's tracked x while nothing is actually being drawn for
+            // it, or exiting fullscreen would animate from a stale position instead of
+            // snapping straight to wherever the column moved to in the meantime.
+            const allTilesExcluded = column.tiles().every((tile) => {
+                const tileWin = this.registry.get(column.id, tile.id);
+                const key = this.tileKey(column.id, tile.id);
+                return !tileWin || tileWin.id === excludeWindowId || this.fullScreenTiles.has(key);
+            });
+            if (allTilesExcluded) {
                 continue;
             }
             let x: number;
             if (instant) {
-                this.columnMotion.snapTo(column.id, rect.x);
-                x = rect.x;
+                this.columnMotion.snapTo(column.id, columnRect.x);
+                x = columnRect.x;
             } else {
-                x = this.columnMotion.update(column.id, rect.x, Date.now(), this.settings.animationDurationMs);
+                x = this.columnMotion.update(column.id, columnRect.x, Date.now(), this.settings.animationDurationMs);
             }
-            this.geometrySync.apply(win, Object.assign({}, rect, { x }), this.viewport.offset(), this.verticalOffsetY);
+            for (const tile of column.tiles()) {
+                const key = this.tileKey(column.id, tile.id);
+                if (this.fullScreenTiles.has(key) || this.minimizedTiles.has(key)) {
+                    continue;
+                }
+                const win = this.registry.get(column.id, tile.id);
+                if (!win || win.id === excludeWindowId) {
+                    continue;
+                }
+                const rect = column.tileRect(tile.id, columnRect);
+                this.geometrySync.apply(
+                    win,
+                    Object.assign({}, rect, { x }),
+                    this.viewport.offset(),
+                    this.verticalOffsetY,
+                );
+            }
         }
         if (this.columnMotion.isAnimating()) {
             // Preserve excludeWindowId: a live drag-reorder must keep skipping the
@@ -156,6 +203,10 @@ export class Strip {
             .sort((a, b) => a.left - b.left);
     }
 
+    private tileKey(columnId: number, tileId: number): string {
+        return `${columnId}:${tileId}`;
+    }
+
     minimapSnapshot(): MinimapSnapshot {
         return buildMinimapSnapshot(this.grid, this.viewport, this.registry, this.animator.targetOffset());
     }
@@ -164,12 +215,12 @@ export class Strip {
         const width = Math.round(win.frameGeometry().width) || this.settings.defaultColumnWidth;
         const column = this.grid.addColumn(width);
         const signals = new SignalManager();
-        this.registry.set(column.id, win, signals);
+        this.registry.set(column.id, column.focusedTileId, win, signals);
         if (win.isMinimized()) {
             this.grid.hideColumn(column.id);
         }
         if (win.isFullScreen()) {
-            this.fullScreenColumns.add(column.id);
+            this.fullScreenTiles.add(this.tileKey(column.id, column.focusedTileId));
         }
         signals.add(win.onFrameGeometryChanged((oldReal) => onWindowGeometryChanged(win, oldReal, this.eventDeps())));
         signals.add(win.onMinimizedChanged(() => onMinimizedChanged(win, this.eventDeps())));
@@ -204,35 +255,61 @@ export class Strip {
     }
 
     removeWindow(win: WindowAdapter): void {
-        const columnId = this.registry.columnOf(win.id);
-        if (columnId === null) {
+        const location = this.registry.tileOf(win.id);
+        if (location === null) {
             return;
         }
-        this.detachColumn(columnId, win);
+        const column = this.grid.column(location.columnId);
+        if (column !== null && column.tileCount() > 1) {
+            this.registry.deleteTile(location.columnId, location.tileId);
+            column.removeTile(location.tileId);
+            this.geometrySync.forget(win.id);
+            this.fullScreenTiles.delete(this.tileKey(location.columnId, location.tileId));
+            this.minimizedTiles.delete(this.tileKey(location.columnId, location.tileId));
+            this.render();
+            this.revealFocused();
+            return;
+        }
+        this.detachColumn(location.columnId, [win]);
     }
 
-    /** Removes the focused column and returns its window, without touching the window's real
-     * geometry — used when moving a window to a different row (docs:
-     * 2026-09-01-row-navigation-design). Returns null if this row has no focused column. */
-    detachFocusedColumn(): WindowAdapter | null {
+    /** Detaches the whole focused column — every tile's window, as a unit — from this
+     * strip, returning them so a caller (StripStack's cross-row move) can re-add them
+     * elsewhere. A stacked column's tiles are NOT preserved as a stack in the target
+     * row this pass — each is re-added via addWindow as its own column there (docs:
+     * 2026-09-03-vertical-tiling-design, Out of Scope). Empty array if there's nothing
+     * to detach. */
+    detachFocusedColumn(): WindowAdapter[] {
         const focused = this.grid.focusedColumn();
         if (focused === null) {
-            return null;
+            return [];
         }
-        const win = this.registry.get(focused.id);
-        if (win === undefined) {
-            return null;
+        const windows = this.registry.windowsInColumn(focused.id);
+        if (windows.length === 0) {
+            return [];
         }
-        this.detachColumn(focused.id, win);
-        return win;
+        this.detachColumn(focused.id, windows);
+        return windows;
     }
 
-    /** Shared teardown for `removeWindow` and `detachFocusedColumn`: forgets every
-     * per-column tracking state and removes the column from the grid. */
-    private detachColumn(columnId: number, win: WindowAdapter): void {
-        this.registry.delete(columnId);
-        this.geometrySync.forget(win.id);
-        this.fullScreenColumns.delete(columnId);
+    /** Shared teardown for `removeWindow` (single-tile column case) and
+     * `detachFocusedColumn`: forgets every one of `windows`' geometry-sync/motion/
+     * fullscreen/minimize state, removes the column from the grid, and re-renders. */
+    private detachColumn(columnId: number, windows: WindowAdapter[]): void {
+        this.registry.deleteColumn(columnId);
+        for (const win of windows) {
+            this.geometrySync.forget(win.id);
+        }
+        this.fullScreenTiles.forEach((key) => {
+            if (key.startsWith(`${columnId}:`)) {
+                this.fullScreenTiles.delete(key);
+            }
+        });
+        this.minimizedTiles.forEach((key) => {
+            if (key.startsWith(`${columnId}:`)) {
+                this.minimizedTiles.delete(key);
+            }
+        });
         this.columnMotion.forget(columnId);
         this.grid.removeColumn(columnId);
         this.render();
@@ -255,11 +332,12 @@ export class Strip {
     }
 
     activateWindow(win: WindowAdapter): void {
-        const columnId = this.registry.columnOf(win.id);
-        if (columnId === null) {
+        const location = this.registry.tileOf(win.id);
+        if (location === null) {
             return;
         }
-        this.grid.setFocus(columnId);
+        this.grid.setFocus(location.columnId);
+        this.grid.column(location.columnId)?.setFocusedTile(location.tileId);
         this.revealFocused();
     }
 
@@ -271,11 +349,73 @@ export class Strip {
         this.activateColumn(this.grid.focusRight());
     }
 
+    /** Moves tile focus up within the focused column's stack and activates the newly
+     * focused tile's window. No-op if there's no focused column or it's not a stack. */
+    focusUp(): void {
+        this.moveTileFocus((column) => column.focusUp());
+    }
+
+    /** Moves tile focus down within the focused column's stack. */
+    focusDown(): void {
+        this.moveTileFocus((column) => column.focusDown());
+    }
+
+    private moveTileFocus(move: (column: Column) => void): void {
+        const column = this.grid.focusedColumn();
+        if (column === null) {
+            return;
+        }
+        const before = column.focusedTileId;
+        move(column);
+        // A no-op move (already at the top/bottom of the stack) must not re-activate the
+        // still-focused tile's window a second time.
+        if (column.focusedTileId !== before) {
+            this.registry.get(column.id, column.focusedTileId)?.activate();
+        }
+        this.revealFocused();
+    }
+
+    /** Absorb: pull the column to the right of the focused one into its stack, as a
+     * new tile at the bottom. No-op if there's no right neighbor or it's already a
+     * stack (docs: 2026-09-03-vertical-tiling-design). */
+    absorbRight(): void {
+        const focused = this.grid.focusedColumn();
+        if (focused === null) {
+            return;
+        }
+        const result = this.grid.absorbColumnRight(focused.id);
+        if (result === null) {
+            return;
+        }
+        this.registry.moveWindow(result.fromColumnId, result.fromTileId, focused.id, result.toTileId);
+        this.fullScreenTiles.delete(this.tileKey(result.fromColumnId, result.fromTileId));
+        this.minimizedTiles.delete(this.tileKey(result.fromColumnId, result.fromTileId));
+        this.columnMotion.forget(result.fromColumnId);
+        this.render();
+        this.revealFocused();
+    }
+
+    /** Expel: remove the focused tile from the focused column's stack and give it its
+     * own new column to the right. No-op on a single-tile column. */
+    expel(): void {
+        const focused = this.grid.focusedColumn();
+        if (focused === null) {
+            return;
+        }
+        const result = this.grid.expelFocusedTile(focused.id, this.settings.defaultColumnWidth);
+        if (result === null) {
+            return;
+        }
+        this.registry.moveWindow(focused.id, result.fromTileId, result.toColumnId, result.toTileId);
+        this.render();
+        this.revealFocused();
+    }
+
     /** Focus-stepping only moves Drift's own notion of the focused column (`Grid`) —
      * this is what also makes KWin actually hand keyboard focus to that column's window. */
     private activateColumn(column: Column | null): void {
         if (column !== null) {
-            this.registry.get(column.id)?.activate();
+            this.registry.get(column.id, column.focusedTileId)?.activate();
         }
         this.revealFocused();
     }
@@ -344,20 +484,42 @@ export class Strip {
     private eventDeps(): WindowEventDeps {
         return {
             columnOf: (windowId) => this.registry.columnOf(windowId),
+            tileOf: (windowId) => this.registry.tileOf(windowId),
             isHidden: (columnId) => this.grid.isHidden(columnId),
             isEcho: (windowId, rect) => this.geometrySync.isEcho(windowId, rect),
             resizeColumn: (columnId, width, edge) => this.grid.resizeColumn(columnId, width, edge),
+            resizeTile: (columnId, tileId, height, edge) => {
+                this.grid.column(columnId)?.resizeTile(tileId, height, edge);
+            },
             hideColumn: (columnId) => {
                 this.grid.hideColumn(columnId);
                 this.columnMotion.forget(columnId);
             },
             showColumn: (columnId) => this.grid.showColumn(columnId),
-            setFullScreen: (columnId, fullScreen) => {
+            hideTile: (columnId, tileId) => {
+                const column = this.grid.column(columnId);
+                if (column !== null && column.tileCount() > 1) {
+                    this.minimizedTiles.add(this.tileKey(columnId, tileId));
+                    return;
+                }
+                this.grid.hideColumn(columnId);
+                this.columnMotion.forget(columnId);
+            },
+            showTile: (columnId, tileId) => {
+                const column = this.grid.column(columnId);
+                if (column !== null && column.tileCount() > 1) {
+                    this.minimizedTiles.delete(this.tileKey(columnId, tileId));
+                    return;
+                }
+                this.grid.showColumn(columnId);
+            },
+            setFullScreen: (columnId, tileId, fullScreen) => {
+                const key = this.tileKey(columnId, tileId);
                 if (fullScreen) {
-                    this.fullScreenColumns.add(columnId);
+                    this.fullScreenTiles.add(key);
                     this.columnMotion.forget(columnId);
                 } else {
-                    this.fullScreenColumns.delete(columnId);
+                    this.fullScreenTiles.delete(key);
                 }
             },
             render: (excludeWindowId, instant) => this.render(excludeWindowId, instant),
