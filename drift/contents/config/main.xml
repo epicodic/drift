@@ -51,16 +51,16 @@
             <default>Meta+Alt+Right</default>
         </entry>
         <entry name="shortcutRowUp" type="String">
-            <default>Meta+Page_Up</default>
+            <default>Meta+Up</default>
         </entry>
         <entry name="shortcutRowDown" type="String">
-            <default>Meta+Page_Down</default>
+            <default>Meta+Down</default>
         </entry>
         <entry name="shortcutMoveWindowToRowAbove" type="String">
-            <default>Meta+Shift+Page_Up</default>
+            <default>Meta+Shift+Up</default>
         </entry>
         <entry name="shortcutMoveWindowToRowBelow" type="String">
-            <default>Meta+Shift+Page_Down</default>
+            <default>Meta+Shift+Down</default>
         </entry>
     </group>
 </kcfg>
