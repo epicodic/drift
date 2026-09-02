@@ -62,7 +62,7 @@ describe('EdgeDwell', () => {
         expect(fired).toEqual(['above']);
     });
 
-    it('re-arms and fires again if still held past the edge', () => {
+    it('disarms after firing, so it does not refire while still held past the same edge', () => {
         const timer = new FakeTimer();
         let clock = 0;
         const fired: string[] = [];
@@ -78,6 +78,57 @@ describe('EdgeDwell', () => {
         clock = 100;
         timer.fire();
         clock = 200;
+        timer.fire();
+
+        expect(fired).toEqual(['above']);
+        expect(timer.stopped).toBe(true);
+    });
+
+    it('ignores further same-direction updates after firing, so a continuous drag only flips once (regression)', () => {
+        // update() is driven by every drag tick, so a window held past an edge keeps reporting
+        // the same direction on every frame — not just once. Firing must not re-arm from those
+        // continued reports; only an actual return to null (leaving the zone) may re-arm it.
+        const timer = new FakeTimer();
+        let clock = 0;
+        const fired: string[] = [];
+        const dwell = new EdgeDwell(
+            timer,
+            () => clock,
+            16,
+            100,
+            (direction) => fired.push(direction),
+        );
+
+        dwell.update('above');
+        clock = 100;
+        timer.fire(); // fires and disarms
+
+        dwell.update('above'); // still held past the edge, unmoved - a later drag tick reporting in
+        clock = 200;
+        timer.fire();
+
+        expect(fired).toEqual(['above']);
+    });
+
+    it('fires again after leaving and re-entering the same edge', () => {
+        const timer = new FakeTimer();
+        let clock = 0;
+        const fired: string[] = [];
+        const dwell = new EdgeDwell(
+            timer,
+            () => clock,
+            16,
+            100,
+            (direction) => fired.push(direction),
+        );
+
+        dwell.update('above');
+        clock = 100;
+        timer.fire(); // fires and disarms
+
+        dwell.update(null); // pointer back within bounds
+        dwell.update('above'); // pointer past the edge again
+        clock = 300; // 200ms later, but only 100ms since re-arming
         timer.fire();
 
         expect(fired).toEqual(['above', 'above']);

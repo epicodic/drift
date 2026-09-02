@@ -43,15 +43,19 @@ export function rectsEqualRounded(a: Rect, b: Rect): boolean {
 
 export type EdgeDirection = 'above' | 'below';
 
-/** Which screen edge, if any, `rect` has crossed past within `area`'s vertical bounds — used
- * to detect a window dragged past the strip's top/bottom edge, the trigger for a cross-row
- * drag (docs: 2026-09-02-cross-row-drag-design). `null` when `rect` is still fully within
- * `area` vertically. */
-export function edgeDirection(rect: Rect, area: Rect): EdgeDirection | null {
-    if (rect.y < area.y) {
+/** Which screen edge, if any, `pointerY` is within `borderWidth` pixels of, inside `area`'s
+ * vertical bounds — used to detect the mouse pointer dragged to the strip's top/bottom edge,
+ * the trigger for a cross-row drag (docs: 2026-09-02-cross-row-drag-design). Driven by the
+ * pointer rather than the dragged window's own frame geometry, since the window is typically
+ * grabbed away from its center (e.g. near the titlebar), so its far edge crosses the boundary
+ * well before the pointer does. Checks "at or within the border", not "past" it: the OS clamps
+ * the pointer to the screen, so it can never actually go past an edge the way an unclamped
+ * dragged window's geometry can. `null` when `pointerY` is outside the border on both sides. */
+export function edgeDirection(pointerY: number, area: Rect, borderWidth: number): EdgeDirection | null {
+    if (pointerY <= area.y + borderWidth) {
         return 'above';
     }
-    if (rect.y + rect.height > area.y + area.height) {
+    if (pointerY >= area.y + area.height - borderWidth) {
         return 'below';
     }
     return null;

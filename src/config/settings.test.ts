@@ -25,4 +25,8 @@ describe('DEFAULT_SETTINGS', () => {
     it('defaults the row-drag dwell to 400ms', () => {
         expect(DEFAULT_SETTINGS.rowDragDwellMs).toBe(400);
     });
+
+    it('defaults the row-drag edge border to 2px', () => {
+        expect(DEFAULT_SETTINGS.rowDragEdgeBorderPx).toBe(2);
+    });
 });

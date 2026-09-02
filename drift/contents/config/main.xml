@@ -20,6 +20,9 @@
         <entry name="rowDragDwellMs" type="UInt">
             <default>400</default>
         </entry>
+        <entry name="rowDragEdgeBorderPx" type="UInt">
+            <default>2</default>
+        </entry>
         <entry name="minimapAutoHideMs" type="UInt">
             <default>1200</default>
         </entry>

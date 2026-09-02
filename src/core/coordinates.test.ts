@@ -60,21 +60,33 @@ describe('rectsEqualRounded', () => {
 });
 
 describe('edgeDirection', () => {
+    // area's vertical bounds: top = 100, bottom = 1100.
     const area = { x: 0, y: 100, width: 1920, height: 1000 };
 
-    it('is null when the rect is fully within the area vertically', () => {
-        expect(edgeDirection({ x: 0, y: 150, width: 800, height: 500 }, area)).toBeNull();
+    it('is null when the pointer is well within the area vertically', () => {
+        expect(edgeDirection(600, area, 10)).toBeNull();
     });
 
-    it('reports "above" when the top edge crosses above the area', () => {
-        expect(edgeDirection({ x: 0, y: 50, width: 800, height: 500 }, area)).toBe('above');
+    it('is null just outside the border on either side', () => {
+        expect(edgeDirection(111, area, 10)).toBeNull(); // 11px from the top, border is 10px
+        expect(edgeDirection(1089, area, 10)).toBeNull(); // 11px from the bottom
     });
 
-    it('reports "below" when the bottom edge crosses below the area', () => {
-        expect(edgeDirection({ x: 0, y: 700, width: 800, height: 500 }, area)).toBe('below');
+    it('reports "above" once the pointer is within the border of the top edge', () => {
+        expect(edgeDirection(110, area, 10)).toBe('above'); // exactly 10px from the top
     });
 
-    it('prefers "above" when a rect somehow spans past both edges', () => {
-        expect(edgeDirection({ x: 0, y: 50, width: 800, height: 2000 }, area)).toBe('above');
+    it('reports "above" when the pointer is clamped exactly at the top edge', () => {
+        // The pointer can never go past a screen edge - the OS clamps it there - so even a
+        // zero-width border must still catch the pointer sitting exactly on the boundary.
+        expect(edgeDirection(100, area, 0)).toBe('above');
+    });
+
+    it('reports "below" once the pointer is within the border of the bottom edge', () => {
+        expect(edgeDirection(1090, area, 10)).toBe('below'); // exactly 10px from the bottom
+    });
+
+    it('reports "below" when the pointer is clamped exactly at the bottom edge', () => {
+        expect(edgeDirection(1100, area, 0)).toBe('below');
     });
 });
