@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(awk '{ if \\(length > 120\\) print NR\": \"length\" chars: \"$0 }' ~/workspace/epicodic/drift/src/viewport/edge-dwell.ts)",
-      "Bash(awk '{ if \\(length > 120\\) print NR\": \"length\" chars: \"$0 }' ~/workspace/epicodic/drift/src/viewport/edge-dwell.test.ts)",
-      "Bash(npx prettier *)"
-    ]
-  }
-}
