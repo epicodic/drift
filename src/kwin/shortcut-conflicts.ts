@@ -1,9 +1,10 @@
 // Detects two kinds of KWin shortcut cleanup Drift can offer, and if either applies,
 // tells the user to run the shipped release-shortcuts.sh script (contents/bin/) to
 // free the affected KWin actions:
-//  1. Drift's own Meta+Tab / Meta+Shift+Tab (focus) and Meta+Left/Right (align-cycle)
-//     shortcuts couldn't be granted (claimed by KWin's built-in window-walking
-//     and Quick Tile actions respectively).
+//  1. Drift's own Meta+Tab / Meta+Shift+Tab (focus), Meta+Left/Right (align-cycle),
+//     and Meta+Page_Up / Meta+Page_Down (row navigation) shortcuts couldn't be granted
+//     (claimed by KWin's built-in window-walking, Quick Tile, and Maximize/Minimize
+//     actions respectively).
 //  2. Meta+Shift+Left/Right are still claimed by KWin's built-in Move Window to
 //     Screen actions — checked unconditionally, independent of Drift's own bindings
 //     (Drift itself now uses Meta+Tab / Meta+Shift+Tab for focus), purely so the user can
@@ -38,7 +39,10 @@ interface KnownConflict extends ReleaseTarget {
 // KWin core actions whose defaults collide with Drift's own shortcut defaults (see
 // settings.ts). Hardcoded rather than discovered dynamically — these are stable,
 // well-known KWin action identifiers, confirmed against a live session
-// (kglobalshortcutsrc).
+// (kglobalshortcutsrc). Exception: the DriftRowUp/DriftRowDown entries (Window
+// Maximize/Minimize) are the standard KWin action identifiers by convention but have
+// not yet been confirmed against a live session — verify against kglobalshortcutsrc
+// before relying on them.
 const KNOWN_CONFLICTS: KnownConflict[] = [
     {
         driftActionName: 'DriftFocusLeft',
@@ -63,6 +67,18 @@ const KNOWN_CONFLICTS: KnownConflict[] = [
         driftActionText: 'Drift: Cycle Column Align Right',
         kwinActionName: 'Window Quick Tile Right',
         kwinActionText: 'Quick Tile Window to the Right',
+    },
+    {
+        driftActionName: 'DriftRowUp',
+        driftActionText: 'Drift: Page Row Up',
+        kwinActionName: 'Window Maximize',
+        kwinActionText: 'Maximize Window',
+    },
+    {
+        driftActionName: 'DriftRowDown',
+        driftActionText: 'Drift: Page Row Down',
+        kwinActionName: 'Window Minimize',
+        kwinActionText: 'Minimize Window',
     },
 ];
 

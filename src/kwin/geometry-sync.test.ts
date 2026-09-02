@@ -28,6 +28,21 @@ describe('toRealRect', () => {
         expect(rect.width).toBe(640);
         expect(rect.height).toBe(480);
     });
+
+    it('subtracts the vertical viewport offset from the virtual y, defaulting to 0', () => {
+        expect(toRealRect({ x: 0, y: 0, width: 300, height: 1080 }, area, 0)).toEqual({
+            x: 0,
+            y: 0,
+            width: 300,
+            height: 1080,
+        });
+        expect(toRealRect({ x: 0, y: 0, width: 300, height: 1080 }, area, 0, 1080)).toEqual({
+            x: 0,
+            y: -1080,
+            width: 300,
+            height: 1080,
+        });
+    });
 });
 
 describe('toVirtualX', () => {

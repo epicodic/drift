@@ -8,5 +8,4 @@ Not yet implemented, in no particular priority order:
 - **Multi-monitor slot alignment** — monitors already form one continuous strip (`WorkspaceAdapter.combinedGeometry`), but the viewport does not yet snap to monitor boundaries during focus-scroll, so a column can end up visually split across a bezel.
 - **Vertical tiling** — stacking more than one window within a single column. `Column` currently models one window per column only.
 - **Undock/redock** — detaching a window from the strip to normal floating behavior (staying always-on-top) and re-docking it later.
-- **Row navigation** — creating/scrolling to additional rows above or below the current one.
 - **Configurable navigation feel** — mouse wheel sensitivity and edge-hover thresholds; navigation is entirely shortcut-driven (focus, align-cycle, viewport-shift) or click-to-activate today, with no pointer-driven scrolling.

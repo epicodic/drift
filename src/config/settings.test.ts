@@ -14,4 +14,11 @@ describe('DEFAULT_SETTINGS', () => {
     it('shows minimap thumbnails by default', () => {
         expect(DEFAULT_SETTINGS.minimapShowThumbnails).toBe(true);
     });
+
+    it('defaults the four row-navigation shortcuts', () => {
+        expect(DEFAULT_SETTINGS.shortcutRowUp).toBe('Meta+Page_Up');
+        expect(DEFAULT_SETTINGS.shortcutRowDown).toBe('Meta+Page_Down');
+        expect(DEFAULT_SETTINGS.shortcutMoveWindowToRowAbove).toBe('Meta+Shift+Page_Up');
+        expect(DEFAULT_SETTINGS.shortcutMoveWindowToRowBelow).toBe('Meta+Shift+Page_Down');
+    });
 });

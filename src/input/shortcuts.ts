@@ -13,6 +13,10 @@ export interface ShortcutActions {
     cycleAlignRight(): void;
     shiftViewportLeft(): void;
     shiftViewportRight(): void;
+    rowUp(): void;
+    rowDown(): void;
+    moveWindowToRowAbove(): void;
+    moveWindowToRowBelow(): void;
 }
 
 export function registerShortcuts(parent: QmlObject, settings: Settings, actions: ShortcutActions): void {
@@ -58,6 +62,22 @@ export function registerShortcuts(parent: QmlObject, settings: Settings, actions
         'Drift: Shift Viewport Right',
         settings.shortcutViewportShiftRight,
         actions.shiftViewportRight,
+    );
+    createShortcut(parent, 'DriftRowUp', 'Drift: Page Row Up', settings.shortcutRowUp, actions.rowUp);
+    createShortcut(parent, 'DriftRowDown', 'Drift: Page Row Down', settings.shortcutRowDown, actions.rowDown);
+    createShortcut(
+        parent,
+        'DriftMoveWindowToRowAbove',
+        'Drift: Move Window To Row Above',
+        settings.shortcutMoveWindowToRowAbove,
+        actions.moveWindowToRowAbove,
+    );
+    createShortcut(
+        parent,
+        'DriftMoveWindowToRowBelow',
+        'Drift: Move Window To Row Below',
+        settings.shortcutMoveWindowToRowBelow,
+        actions.moveWindowToRowBelow,
     );
 }
 

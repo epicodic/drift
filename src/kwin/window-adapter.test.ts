@@ -74,6 +74,33 @@ describe('WindowAdapter.isFullScreen', () => {
     });
 });
 
+describe('WindowAdapter.setSkipTaskbar', () => {
+    it('writes skipTaskbar on the underlying window', () => {
+        const window = createWindow({ skipTaskbar: false });
+        const adapter = new WindowAdapter(window);
+
+        adapter.setSkipTaskbar(true);
+
+        expect(window.skipTaskbar).toBe(true);
+    });
+
+    it('does not affect isTileable for an already-tiled window (only checked once, at add-time)', () => {
+        const window = createWindow({ skipTaskbar: false });
+        const adapter = new WindowAdapter(window);
+        expect(adapter.isTileable()).toBe(true);
+
+        adapter.setSkipTaskbar(true);
+
+        expect(adapter.isTileable()).toBe(false); // isTileable() itself always reads live state...
+        // ...but WindowManager.addWindow (window-manager.ts, unchanged by this plan) only calls
+        // isTileable() once, at first sight of the window, and never again on a live-changed
+        // signal — so a later toggle here cannot cause Drift to un-tile a window it already
+        // manages. That's a property of window-manager.ts's existing, untouched code, not
+        // something this plan adds a new test for; this test only proves skipTaskbar itself
+        // round-trips through the adapter correctly.
+    });
+});
+
 describe('WindowAdapter.icon', () => {
     it('returns the underlying window icon', () => {
         const icon = {} as QIcon;

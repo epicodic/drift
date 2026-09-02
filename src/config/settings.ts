@@ -26,6 +26,14 @@ export interface Settings {
     shortcutViewportShiftLeft: string;
     /** Shortcut sequence for panning the viewport right without changing focus. */
     shortcutViewportShiftRight: string;
+    /** Shortcut sequence for paging to the row above (docs: 2026-09-01-row-navigation-design). */
+    shortcutRowUp: string;
+    /** Shortcut sequence for paging to the row below. */
+    shortcutRowDown: string;
+    /** Shortcut sequence for moving the focused window to the row above and following it there. */
+    shortcutMoveWindowToRowAbove: string;
+    /** Shortcut sequence for moving the focused window to the row below and following it there. */
+    shortcutMoveWindowToRowBelow: string;
     /** Distance the viewport pans per shortcut press, in pixels. */
     viewportShiftStep: number;
     /** How long the minimap overlay stays visible after the last focus-step press, in milliseconds. */
@@ -48,6 +56,10 @@ export const DEFAULT_SETTINGS: Settings = {
     shortcutCycleAlignRight: 'Meta+Right',
     shortcutViewportShiftLeft: 'Meta+Shift+Left',
     shortcutViewportShiftRight: 'Meta+Shift+Right',
+    shortcutRowUp: 'Meta+Page_Up',
+    shortcutRowDown: 'Meta+Page_Down',
+    shortcutMoveWindowToRowAbove: 'Meta+Shift+Page_Up',
+    shortcutMoveWindowToRowBelow: 'Meta+Shift+Page_Down',
     viewportShiftStep: 400,
     minimapAutoHideMs: 1200,
     minimapShowThumbnails: true,
@@ -79,6 +91,16 @@ export function loadSettings(): Settings {
         shortcutViewportShiftRight: readStringConfig(
             'shortcutViewportShiftRight',
             DEFAULT_SETTINGS.shortcutViewportShiftRight,
+        ),
+        shortcutRowUp: readStringConfig('shortcutRowUp', DEFAULT_SETTINGS.shortcutRowUp),
+        shortcutRowDown: readStringConfig('shortcutRowDown', DEFAULT_SETTINGS.shortcutRowDown),
+        shortcutMoveWindowToRowAbove: readStringConfig(
+            'shortcutMoveWindowToRowAbove',
+            DEFAULT_SETTINGS.shortcutMoveWindowToRowAbove,
+        ),
+        shortcutMoveWindowToRowBelow: readStringConfig(
+            'shortcutMoveWindowToRowBelow',
+            DEFAULT_SETTINGS.shortcutMoveWindowToRowBelow,
         ),
     });
 }
