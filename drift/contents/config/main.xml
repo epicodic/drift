@@ -30,25 +30,25 @@
             <default>true</default>
         </entry>
         <entry name="shortcutFocusLeft" type="String">
-            <default>Meta+Shift+Tab</default>
+            <default>Meta+Left</default>
         </entry>
         <entry name="shortcutFocusRight" type="String">
-            <default>Meta+Tab</default>
+            <default>Meta+Right</default>
         </entry>
         <entry name="shortcutToggleDebugConsole" type="String">
             <default>Meta+Shift+D</default>
         </entry>
         <entry name="shortcutCycleAlignLeft" type="String">
-            <default>Meta+Left</default>
-        </entry>
-        <entry name="shortcutCycleAlignRight" type="String">
-            <default>Meta+Right</default>
-        </entry>
-        <entry name="shortcutViewportShiftLeft" type="String">
             <default>Meta+Shift+Left</default>
         </entry>
-        <entry name="shortcutViewportShiftRight" type="String">
+        <entry name="shortcutCycleAlignRight" type="String">
             <default>Meta+Shift+Right</default>
+        </entry>
+        <entry name="shortcutViewportShiftLeft" type="String">
+            <default>Meta+Alt+Left</default>
+        </entry>
+        <entry name="shortcutViewportShiftRight" type="String">
+            <default>Meta+Alt+Right</default>
         </entry>
         <entry name="shortcutRowUp" type="String">
             <default>Meta+Page_Up</default>

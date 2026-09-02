@@ -69,9 +69,9 @@ KWin only (re)loads a script's QML/JS on a full restart or a fresh login — see
 
 | Shortcut | Action |
 |---|---|
-| `Meta+Tab` / `Meta+Shift+Tab` | Focus the column to the right / left |
-| `Meta+Left` / `Meta+Right` | Cycle the focused column's align (left edge → center → right edge) |
-| `Meta+Shift+Left` / `Meta+Shift+Right` | Pan the viewport without changing focus |
+| `Meta+Right` / `Meta+Left` | Focus the column to the right / left |
+| `Meta+Shift+Left` / `Meta+Shift+Right` | Cycle the focused column's align (left edge → center → right edge) |
+| `Meta+Alt+Left` / `Meta+Alt+Right` | Pan the viewport without changing focus |
 | `Meta+Page_Up` / `Meta+Page_Down` | Page to the row above / below |
 | `Meta+Shift+Page_Up` / `Meta+Shift+Page_Down` | Move the focused window to the row above / below, and follow it there |
 | `Meta+Shift+D` | Toggle the live debug console |

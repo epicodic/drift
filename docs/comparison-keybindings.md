@@ -30,8 +30,8 @@ Empty cells mean the project has no equivalent (by design, or not yet built).
 
 | Action | Niri | PaperWM | Karousel | Drift | Drift Target |
 |---|---|---|---|---|---|
-| Focus column/window left | `Mod+H` / `Mod+←` | `Super+Left` | `Meta+A` | `Meta+Shift+Tab` | Meta+Left |
-| Focus column/window right | `Mod+L` / `Mod+→` | `Super+Right` | `Meta+D` | `Meta+Tab` | Meta+Right |
+| Focus column/window left | `Mod+H` / `Mod+←` | `Super+Left` | `Meta+A` | `Meta+Left` | Meta+Left |
+| Focus column/window right | `Mod+L` / `Mod+→` | `Super+Right` | `Meta+D` | `Meta+Right` | Meta+Right |
 | Focus window above (in-column) | `Mod+K` / `Mod+↑` | `Super+Up` | `Meta+W` | — (no vertical stacking yet) | Meta+Up |
 | Focus window below (in-column) | `Mod+J` / `Mod+↓` | `Super+Down` | `Meta+S` | — (no vertical stacking yet) | Meta+Down |
 | Focus first/last column | — | `Super+Home` / `Super+End` | `Meta+Home` / `Meta+End` | — | Meta+Home / Meta+End |
@@ -45,19 +45,19 @@ Empty cells mean the project has no equivalent (by design, or not yet built).
 | Increase/decrease window height | `Mod+Shift+=` / `Mod+Shift+-` | `Shift+Super++` / `Shift+Super+-` | — | — | Meta+Shift++ / Meta+Shift-- |
 | Maximize column width | `Mod+M` | `Super+F` | — | — |  |
 | Center focused column | `Mod+C` | `Super+C` | `Meta+Alt+Return` | — |  |
-| Cycle column align (left/center/right) | — | — | — | `Meta+Left` / `Meta+Right` |  |
+| Cycle column align (left/center/right) | — | — | — | `Meta+Shift+Left` / `Meta+Shift+Right` | Meta+Shift+Left / Meta+Shift+Right |
 | Equalize / squeeze column widths | — | — | `Meta+Ctrl+X` (equalize), `Meta+Ctrl+A` / `D` (squeeze) | — |  |
-| Scroll viewport without changing focus | — | — | `Meta+Alt+A` / `D` (one column), `Meta+Alt+PgUp` / `PgDown` (page) | `Meta+Shift+Left` / `Meta+Shift+Right` | `Meta+Alt+Left` / `Meta+Alt+Right` |
+| Scroll viewport without changing focus | — | — | `Meta+Alt+A` / `D` (one column), `Meta+Alt+PgUp` / `PgDown` (page) | `Meta+Alt+Left` / `Meta+Alt+Right` | `Meta+Alt+Left` / `Meta+Alt+Right` |
 | Scroll viewport to start/end | — | — | `Meta+Alt+Home` / `End` | — | `Meta+Alt+Home` / `End` |
 | Absorb/expel window (vertical stacking) | `Mod+[` / `Mod+]` (consume/expel) | `Super+I` (absorb) / `Super+O` (expel) | — | — (no vertical stacking yet, see roadmap) | Meta+I  (absorb)/ Meta+O (expel) |
 | Toggle stacked layout for column | — | — | `Meta+X` | — |  |
 | Toggle floating | `Mod+V` | `Shift+Super+Escape` (scratch layer) | `Meta+Space` | — (no float/undock yet, see roadmap) | Meta+Space |
 | Toggle fullscreen | `Mod+Shift+F` | `Shift+Super+F` | — | — |  |
 | Close focused window | `Mod+Q` | `Super+Backspace` | — | — |  |
-| Switch workspace/row up | `Mod+I` / `Mod+PageUp` | `Super+PageUp` | — (no workspace concept) | `Meta+Page_Up` |  |
-| Switch workspace/row down | `Mod+U` / `Mod+PageDown` | `Super+PageDown` | — (no workspace concept) | `Meta+Page_Down` |  |
-| Move column to workspace/row above | `Mod+Ctrl+I` / `Mod+Ctrl+PageUp` | `Ctrl+Super+PageUp` | — | `Meta+Shift+Page_Up` |  |
-| Move column to workspace/row below | `Mod+Ctrl+U` / `Mod+Ctrl+PageDown` | `Ctrl+Super+PageDown` | — | `Meta+Shift+Page_Down` |  |
+| Switch workspace/row up | `Mod+I` / `Mod+PageUp` | `Super+PageUp` | — (no workspace concept) | `Meta+Page_Up` | `Meta+Page_Up` |
+| Switch workspace/row down | `Mod+U` / `Mod+PageDown` | `Super+PageDown` | — (no workspace concept) | `Meta+Page_Down` | `Meta+Page_Down` |
+| Move column to workspace/row above | `Mod+Ctrl+I` / `Mod+Ctrl+PageUp` | `Ctrl+Super+PageUp` | — | `Meta+Shift+Page_Up` | `Meta+Shift+Page_Up` |
+| Move column to workspace/row below | `Mod+Ctrl+U` / `Mod+Ctrl+PageDown` | `Ctrl+Super+PageDown` | — | `Meta+Shift+Page_Down` | `Meta+Shift+Page_Down` |
 | Move whole workspace up/down | `Mod+Shift+I` / `Mod+Shift+PageUp` etc. | — | — | — |  |
 | Focus monitor left/right/up/down | `Mod+Shift+H/J/K/L` | `Super+Shift+Left/Right/Up/Down` | — | — |  |
 | Move column to monitor left/right/up/down | `Mod+Ctrl+Shift+H/J/K/L` | `Shift+Ctrl+Super+Left/Right/Up/Down` | — | — |  |
@@ -65,7 +65,7 @@ Empty cells mean the project has no equivalent (by design, or not yet built).
 | Take/drop window (grab, then navigate, then drop) | — | `Super+T` | — | — |  |
 | Toggle scratch/floating layer visibility | — | `Ctrl+Super+Escape` (attach/detach), `Super+Escape` (toggle recent) | — | — |  |
 | Show hotkey list | `Mod+Shift+/` | — | — | — |  |
-| Toggle debug console (Drift dev tool) | — | — | — | `Meta+Shift+D` |  |
+| Toggle debug console (Drift dev tool) | — | — | — | `Meta+Shift+D` | `Meta+Shift+D` |
 
 ## Observations for a future keybinding decision
 

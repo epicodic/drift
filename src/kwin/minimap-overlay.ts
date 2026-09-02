@@ -1,5 +1,5 @@
 // A centered OSD overlay showing every strip in the active StripStack, aligned to their real
-// relative positions, shown on Meta+Tab/Meta+Shift+Tab/Meta+PgUp/Meta+PgDown (docs:
+// relative positions, shown on Meta+Left/Meta+Right/Meta+PgUp/Meta+PgDown (docs:
 // 2026-09-01-minimap-design, 2026-09-01-minimap-thumbnails-design,
 // 2026-09-02-multi-strip-minimap-design). Built via `Qt.createQmlObject`, the same pattern as
 // `debug-console.ts`.
