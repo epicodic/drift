@@ -32,8 +32,8 @@ describe('Grid — debugState', () => {
             nextId: 3,
             originX: 0,
             columns: [
-                { id: 1, width: 300, hidden: false },
-                { id: 2, width: 500, hidden: false },
+                { id: 1, width: 300, hidden: false, tileCount: 1 },
+                { id: 2, width: 500, hidden: false, tileCount: 1 },
             ],
         });
     });
@@ -381,5 +381,78 @@ describe('Grid — reordering', () => {
         expect(grid.columnRect(c.id).x).toBe(0);
         expect(grid.columnRect(a.id).x).toBe(210);
         expect(grid.columnRect(b.id).x).toBe(520);
+    });
+});
+
+describe('Grid — column()', () => {
+    it('returns the Column instance for a known id, or null for an unknown one', () => {
+        const grid = new Grid(1000, 0);
+        const column = grid.addColumn(300);
+        expect(grid.column(column.id)).toBe(column);
+        expect(grid.column(9999)).toBeNull();
+    });
+
+    it("seeds a new column's first tile with the grid's screen height", () => {
+        const grid = new Grid(1000, 0);
+        const column = grid.addColumn(300);
+        expect(column.tiles()[0].height).toBe(1000);
+    });
+});
+
+describe('Grid — absorbColumnRight', () => {
+    it('merges the right-neighbor column into the focused column as a new tile, removing it from the strip', () => {
+        const grid = new Grid(1000, 8);
+        const left = grid.addColumn(300);
+        const right = grid.addColumn(300);
+        grid.setFocus(left.id);
+
+        const result = grid.absorbColumnRight(left.id);
+
+        expect(result).toEqual({
+            fromColumnId: right.id,
+            fromTileId: right.tiles()[0].id,
+            toTileId: expect.any(Number),
+        });
+        expect(grid.columns().map((c) => c.id)).toEqual([left.id]);
+        expect(left.tileCount()).toBe(2);
+    });
+
+    it('returns null when there is no right neighbor', () => {
+        const grid = new Grid(1000, 8);
+        const only = grid.addColumn(300);
+        expect(grid.absorbColumnRight(only.id)).toBeNull();
+    });
+
+    it('returns null when the right neighbor is already a stack', () => {
+        const grid = new Grid(1000, 8);
+        const left = grid.addColumn(300);
+        const right = grid.addColumn(300);
+        right.addTile();
+        expect(grid.absorbColumnRight(left.id)).toBeNull();
+        expect(grid.columns().map((c) => c.id)).toEqual([left.id, right.id]);
+    });
+});
+
+describe('Grid — expelFocusedTile', () => {
+    it('removes the focused tile and gives it a new column to the right, focused', () => {
+        const grid = new Grid(1000, 8);
+        const column = grid.addColumn(300);
+        column.addTile();
+        grid.setFocus(column.id);
+
+        const result = grid.expelFocusedTile(column.id, 250);
+
+        expect(column.tileCount()).toBe(1);
+        expect(result).not.toBeNull();
+        expect(grid.columns().map((c) => c.id)).toEqual([column.id, result!.toColumnId]);
+        expect(grid.focusedColumn()?.id).toBe(result!.toColumnId);
+        expect(grid.column(result!.toColumnId)?.width).toBe(250);
+    });
+
+    it('returns null (no-op) when the column only has one tile', () => {
+        const grid = new Grid(1000, 8);
+        const column = grid.addColumn(300);
+        expect(grid.expelFocusedTile(column.id, 250)).toBeNull();
+        expect(grid.columns().map((c) => c.id)).toEqual([column.id]);
     });
 });
