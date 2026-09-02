@@ -16,10 +16,10 @@ describe('DEFAULT_SETTINGS', () => {
     });
 
     it('defaults the four row-navigation shortcuts', () => {
-        expect(DEFAULT_SETTINGS.shortcutRowUp).toBe('Meta+Page_Up');
-        expect(DEFAULT_SETTINGS.shortcutRowDown).toBe('Meta+Page_Down');
-        expect(DEFAULT_SETTINGS.shortcutMoveWindowToRowAbove).toBe('Meta+Shift+Page_Up');
-        expect(DEFAULT_SETTINGS.shortcutMoveWindowToRowBelow).toBe('Meta+Shift+Page_Down');
+        expect(DEFAULT_SETTINGS.shortcutRowUp).toBe('Meta+Up');
+        expect(DEFAULT_SETTINGS.shortcutRowDown).toBe('Meta+Down');
+        expect(DEFAULT_SETTINGS.shortcutMoveWindowToRowAbove).toBe('Meta+Shift+Up');
+        expect(DEFAULT_SETTINGS.shortcutMoveWindowToRowBelow).toBe('Meta+Shift+Down');
     });
 
     it('defaults the row-drag dwell to 400ms', () => {

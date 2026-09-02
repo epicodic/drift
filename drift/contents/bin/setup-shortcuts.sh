@@ -52,10 +52,10 @@ DriftCycleAlignLeft|Drift: Cycle Column Align Left|Meta+Shift+Left
 DriftCycleAlignRight|Drift: Cycle Column Align Right|Meta+Shift+Right
 DriftViewportShiftLeft|Drift: Shift Viewport Left|Meta+Alt+Left
 DriftViewportShiftRight|Drift: Shift Viewport Right|Meta+Alt+Right
-DriftRowUp|Drift: Page Row Up|Meta+Page_Up
-DriftRowDown|Drift: Page Row Down|Meta+Page_Down
-DriftMoveWindowToRowAbove|Drift: Move Window To Row Above|Meta+Shift+Page_Up
-DriftMoveWindowToRowBelow|Drift: Move Window To Row Below|Meta+Shift+Page_Down
+DriftRowUp|Drift: Page Row Up|Meta+Up
+DriftRowDown|Drift: Page Row Down|Meta+Down
+DriftMoveWindowToRowAbove|Drift: Move Window To Row Above|Meta+Shift+Up
+DriftMoveWindowToRowBelow|Drift: Move Window To Row Below|Meta+Shift+Down
 '
 
 if ! command -v busctl >/dev/null 2>&1; then

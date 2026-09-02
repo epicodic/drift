@@ -11,7 +11,9 @@
 key_code() {
 	case "$1" in
 		Left) echo 16777234 ;;
+		Up) echo 16777235 ;;
 		Right) echo 16777236 ;;
+		Down) echo 16777237 ;;
 		Page_Up) echo 16777238 ;;
 		Page_Down) echo 16777239 ;;
 		D) echo 68 ;;
