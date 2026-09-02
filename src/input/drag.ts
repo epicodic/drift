@@ -17,9 +17,9 @@ export interface DragReorderDeps {
     render(excludeWindowId?: string, instant?: boolean): void;
     snapColumn(columnId: number): void;
     /** Row-crossing hooks (docs: 2026-09-02-cross-row-drag-design) — StripStack supplies
-     * these to watch the dragged window's vertical position without a second, independent
-     * signal connection on the same window. All optional; omitted when not row-aware
-     * (e.g. a Strip used outside a StripStack). */
+     * these to watch the pointer's vertical position on every drag tick without a second,
+     * independent signal connection on the same window. All optional; omitted when not
+     * row-aware (e.g. a Strip used outside a StripStack). */
     onDragStarted?(win: WindowAdapter): void;
     onDragTick?(win: WindowAdapter): void;
     onDragFinished?(): void;

@@ -181,13 +181,39 @@
                                 </widget>
                             </item>
                             <item row="3" column="0">
+                                <widget class="QLabel" name="label_rowDragEdgeBorderPx">
+                                    <property name="text">
+                                        <string>Row-drag edge border:</string>
+                                    </property>
+                                </widget>
+                            </item>
+                            <item row="3" column="1">
+                                <widget class="QSpinBox" name="kcfg_rowDragEdgeBorderPx">
+                                    <property name="toolTip">
+                                        <string>How close to the screen's top/bottom edge the pointer must be for a cross-row drag to arm</string>
+                                    </property>
+                                    <property name="suffix">
+                                        <string> px</string>
+                                    </property>
+                                    <property name="minimum">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="maximum">
+                                        <number>100</number>
+                                    </property>
+                                    <property name="value">
+                                        <number>2</number>
+                                    </property>
+                                </widget>
+                            </item>
+                            <item row="4" column="0">
                                 <widget class="QLabel" name="label_minimapAutoHideMs">
                                     <property name="text">
                                         <string>Minimap auto-hide delay:</string>
                                     </property>
                                 </widget>
                             </item>
-                            <item row="3" column="1">
+                            <item row="4" column="1">
                                 <widget class="QSpinBox" name="kcfg_minimapAutoHideMs">
                                     <property name="toolTip">
                                         <string>How long the minimap overlay stays visible after the last focus-step press</string>
@@ -206,7 +232,7 @@
                                     </property>
                                 </widget>
                             </item>
-                            <item row="4" column="1">
+                            <item row="5" column="1">
                                 <widget class="QCheckBox" name="kcfg_minimapShowThumbnails">
                                     <property name="toolTip">
                                         <string>Show a live preview of each window's content instead of just its icon</string>

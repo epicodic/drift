@@ -29,8 +29,20 @@ function fakeTimer(): ManualTimer {
     return new ManualTimer();
 }
 
-function fakeWorkspaceAdapter(): WorkspaceAdapter {
-    return {} as unknown as WorkspaceAdapter;
+interface FakeWorkspaceAdapter extends WorkspaceAdapter {
+    cursor: { x: number; y: number };
+}
+
+/** `cursor` starts within `AREA`'s bounds and can be mutated by a test to simulate the pointer
+ * moving past the top/bottom edge during a drag (docs: 2026-09-02-cross-row-drag-design). */
+function fakeWorkspaceAdapter(): FakeWorkspaceAdapter {
+    const adapter = {
+        cursor: { x: 0, y: 500 },
+        cursorPos(): { x: number; y: number } {
+            return adapter.cursor;
+        },
+    };
+    return adapter as unknown as FakeWorkspaceAdapter;
 }
 
 interface FakeStrip {
@@ -96,14 +108,9 @@ function fakeWin(id: string, rect: Rect = { x: 0, y: 0, width: 400, height: 1000
 function makeStack(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
     const { factory, created } = recordingFactory();
     const timer = fakeTimer();
-    const stack = new StripStack(
-        AREA,
-        { ...DEFAULT_SETTINGS, ...settingsOverride },
-        timer,
-        fakeWorkspaceAdapter(),
-        factory,
-    );
-    return { stack, created, timer };
+    const workspaceAdapter = fakeWorkspaceAdapter();
+    const stack = new StripStack(AREA, { ...DEFAULT_SETTINGS, ...settingsOverride }, timer, workspaceAdapter, factory);
+    return { stack, created, timer, workspaceAdapter };
 }
 
 describe('StripStack', () => {
@@ -411,20 +418,24 @@ describe('StripStack cross-row drag', () => {
         expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object));
     });
 
-    it('flips to the row above once the dwell elapses while the window is held past the top edge', () => {
+    it('flips to the row above once the dwell elapses while the pointer is held past the top edge', () => {
         vi.useFakeTimers();
         vi.setSystemTime(0);
         try {
-            const { stack, created, timer } = makeStack({ animationDurationMs: 0, rowDragDwellMs: 100 });
+            const { stack, created, timer, workspaceAdapter } = makeStack({
+                animationDurationMs: 0,
+                rowDragDwellMs: 100,
+            });
             stack.rowDown(); // row 1 active
-            const win = fakeWin('w1', { x: 0, y: -50, width: 400, height: 1000 }); // already past the top edge
+            const win = fakeWin('w1');
             stack.addWindow(win); // lands in row 1, wires the row-drag hooks
             created[1].isEmpty.mockReturnValue(false);
             created[1].detachFocusedColumn.mockReturnValue(win);
             const hooks = capturedRowDragHooks(created[1]);
 
             hooks.onDragStarted?.(win);
-            hooks.onDragTick?.(win); // rect.y = -50 < area.y = 0 -> 'above'
+            workspaceAdapter.cursor = { x: 0, y: -50 }; // pointer past the top edge (area.y = 0)
+            hooks.onDragTick?.(win);
             vi.setSystemTime(100);
             timer.fire(); // dwell elapses
 
@@ -435,18 +446,48 @@ describe('StripStack cross-row drag', () => {
         }
     });
 
+    it('flips to the row below once the dwell elapses while the pointer is held past the bottom edge', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const { stack, created, timer, workspaceAdapter } = makeStack({
+                animationDurationMs: 0,
+                rowDragDwellMs: 100,
+            });
+            const win = fakeWin('w1');
+            stack.addWindow(win); // lands in row 0, wires the row-drag hooks
+            created[0].detachFocusedColumn.mockReturnValue(win);
+            const hooks = capturedRowDragHooks(created[0]);
+
+            hooks.onDragStarted?.(win);
+            workspaceAdapter.cursor = { x: 0, y: 1050 }; // pointer past the bottom edge (area bottom = 1000)
+            hooks.onDragTick?.(win);
+            vi.setSystemTime(100);
+            timer.fire(); // dwell elapses
+
+            expect(created[0].detachFocusedColumn).toHaveBeenCalled();
+            expect(created[1].addWindow).toHaveBeenCalledWith(win, true, expect.any(Object));
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it("excludes the dragged window from the target row's priming render during a drag-triggered flip", () => {
         vi.useFakeTimers();
         vi.setSystemTime(0);
         try {
-            const { stack, created, timer } = makeStack({ animationDurationMs: 0, rowDragDwellMs: 100 });
+            const { stack, created, timer, workspaceAdapter } = makeStack({
+                animationDurationMs: 0,
+                rowDragDwellMs: 100,
+            });
             stack.rowDown(); // row 1 active
-            const win = fakeWin('w1', { x: 0, y: -50, width: 400, height: 1000 });
+            const win = fakeWin('w1');
             stack.addWindow(win);
             created[1].isEmpty.mockReturnValue(false);
             created[1].detachFocusedColumn.mockReturnValue(win);
             const hooks = capturedRowDragHooks(created[1]);
             hooks.onDragStarted?.(win);
+            workspaceAdapter.cursor = { x: 0, y: -50 };
             hooks.onDragTick?.(win);
 
             vi.setSystemTime(100);
@@ -459,16 +500,16 @@ describe('StripStack cross-row drag', () => {
         }
     });
 
-    it('does not flip while the window is within bounds', () => {
+    it('does not flip while the pointer is within bounds', () => {
         vi.useFakeTimers();
         vi.setSystemTime(0);
         try {
             const { stack, created, timer } = makeStack({ animationDurationMs: 0, rowDragDwellMs: 100 });
-            const win = fakeWin('w1', { x: 0, y: 0, width: 400, height: 1000 }); // within AREA bounds
+            const win = fakeWin('w1');
             stack.addWindow(win);
             const hooks = capturedRowDragHooks(created[0]);
             hooks.onDragStarted?.(win);
-            hooks.onDragTick?.(win); // direction is null - never arms
+            hooks.onDragTick?.(win); // cursor within AREA bounds (default fake position) - never arms
 
             vi.setSystemTime(100);
             timer.fire();
@@ -483,11 +524,15 @@ describe('StripStack cross-row drag', () => {
         vi.useFakeTimers();
         vi.setSystemTime(0);
         try {
-            const { stack, created, timer } = makeStack({ animationDurationMs: 0, rowDragDwellMs: 100 });
-            const win = fakeWin('w1', { x: 0, y: -50, width: 400, height: 1000 }); // past the top edge
+            const { stack, created, timer, workspaceAdapter } = makeStack({
+                animationDurationMs: 0,
+                rowDragDwellMs: 100,
+            });
+            const win = fakeWin('w1');
             stack.addWindow(win);
             const hooks = capturedRowDragHooks(created[0]);
             hooks.onDragStarted?.(win);
+            workspaceAdapter.cursor = { x: 0, y: -50 }; // past the top edge
             hooks.onDragTick?.(win);
 
             hooks.onDragFinished?.();
@@ -509,18 +554,57 @@ describe('StripStack cross-row drag', () => {
         vi.useFakeTimers();
         vi.setSystemTime(0);
         try {
-            const { stack, created, timer } = makeStack({ animationDurationMs: 0, rowDragDwellMs: 100 });
+            const { stack, created, timer, workspaceAdapter } = makeStack({
+                animationDurationMs: 0,
+                rowDragDwellMs: 100,
+            });
             stack.rowDown(); // row 1 active, so an 'above' flip targets row 0 - a valid row
-            const win = fakeWin('w1', { x: 0, y: -50, width: 400, height: 1000 }); // past the top edge
+            const win = fakeWin('w1');
             stack.addWindow(win); // lands in row 1, wires the row-drag hooks
             created[1].isEmpty.mockReturnValue(false);
             const hooks = capturedRowDragHooks(created[1]);
             hooks.onDragStarted?.(win);
+            workspaceAdapter.cursor = { x: 0, y: -50 }; // past the top edge
             hooks.onDragTick?.(win); // arms the watch, no onDragFinished ever follows
 
             stack.removeWindow(win); // window closes/crashes mid-drag
 
             vi.setSystemTime(100);
+            timer.fire();
+
+            expect(created[1].detachFocusedColumn).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('does not flip a second time while the pointer keeps holding past the same edge (regression)', () => {
+        // A single continuous drag that lingers past an edge (e.g. while the user completes the
+        // drop) must only flip once — flipping repeatedly makes it impossible to move a window
+        // exactly one row over.
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const { stack, created, timer, workspaceAdapter } = makeStack({
+                animationDurationMs: 0,
+                rowDragDwellMs: 100,
+            });
+            const win = fakeWin('w1');
+            stack.addWindow(win); // lands in row 0
+            created[0].detachFocusedColumn.mockReturnValue(win);
+            const hooks = capturedRowDragHooks(created[0]);
+
+            hooks.onDragStarted?.(win);
+            workspaceAdapter.cursor = { x: 0, y: 1050 }; // pointer past the bottom edge
+            hooks.onDragTick?.(win);
+            vi.setSystemTime(100);
+            timer.fire(); // first flip: row 0 -> row 1
+            created[1].isEmpty.mockReturnValue(false);
+            created[1].detachFocusedColumn.mockReturnValue(win);
+
+            const newHooks = capturedRowDragHooks(created[1]);
+            newHooks.onDragTick?.(win); // pointer still held past the bottom edge, unmoved
+            vi.setSystemTime(200);
             timer.fire();
 
             expect(created[1].detachFocusedColumn).not.toHaveBeenCalled();

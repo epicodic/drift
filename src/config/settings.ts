@@ -36,9 +36,15 @@ export interface Settings {
     shortcutMoveWindowToRowBelow: string;
     /** Distance the viewport pans per shortcut press, in pixels. */
     viewportShiftStep: number;
-    /** How long a dragged window must stay past the screen's top/bottom edge before it
-     * flips into the row above/below, in milliseconds (docs: 2026-09-02-cross-row-drag-design). */
+    /** How long the pointer must stay at the screen's top/bottom edge before the dragged
+     * window flips into the row above/below, in milliseconds (docs:
+     * 2026-09-02-cross-row-drag-design). */
     rowDragDwellMs: number;
+    /** How close to the screen's top/bottom edge, in pixels, the pointer must be for a
+     * cross-row drag to arm. The OS clamps the pointer to the screen, so it can only ever
+     * reach the edge itself, not go past it — this border gives that a little slack against
+     * rounding/jitter rather than requiring the exact boundary pixel. */
+    rowDragEdgeBorderPx: number;
     /** How long the minimap overlay stays visible after the last focus-step press, in milliseconds. */
     minimapAutoHideMs: number;
     /** Whether the minimap's column boxes show a live preview of each window's content
@@ -65,6 +71,7 @@ export const DEFAULT_SETTINGS: Settings = {
     shortcutMoveWindowToRowBelow: 'Meta+Shift+Page_Down',
     viewportShiftStep: 400,
     rowDragDwellMs: 400,
+    rowDragEdgeBorderPx: 2,
     minimapAutoHideMs: 1200,
     minimapShowThumbnails: true,
 };
@@ -79,6 +86,7 @@ export function loadSettings(): Settings {
         animationDurationMs: readNumberConfig('animationDurationMs', DEFAULT_SETTINGS.animationDurationMs),
         viewportShiftStep: readNumberConfig('viewportShiftStep', DEFAULT_SETTINGS.viewportShiftStep),
         rowDragDwellMs: readNumberConfig('rowDragDwellMs', DEFAULT_SETTINGS.rowDragDwellMs),
+        rowDragEdgeBorderPx: readNumberConfig('rowDragEdgeBorderPx', DEFAULT_SETTINGS.rowDragEdgeBorderPx),
         minimapAutoHideMs: readNumberConfig('minimapAutoHideMs', DEFAULT_SETTINGS.minimapAutoHideMs),
         minimapShowThumbnails: readBooleanConfig('minimapShowThumbnails', DEFAULT_SETTINGS.minimapShowThumbnails),
         shortcutFocusLeft: readStringConfig('shortcutFocusLeft', DEFAULT_SETTINGS.shortcutFocusLeft),

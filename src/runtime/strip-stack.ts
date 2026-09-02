@@ -243,7 +243,7 @@ export class StripStack {
     private rowDragHooks(): RowDragHooks {
         return {
             onDragStarted: (win) => this.beginEdgeWatch(win),
-            onDragTick: (win) => this.updateEdgeWatch(win),
+            onDragTick: () => this.updateEdgeWatch(),
             onDragFinished: () => this.endEdgeWatch(),
         };
     }
@@ -266,12 +266,17 @@ export class StripStack {
         );
     }
 
-    /** Feeds `win`'s current vertical position to the armed edge watch on every drag tick,
-     * wherever `win` currently lives — see `rowDragHooks`' doc comment for why this keeps
-     * working across a mid-drag row reparent even though it's a different Strip's connection
-     * calling in before and after. */
-    private updateEdgeWatch(win: WindowAdapter): void {
-        this.edgeDwell?.update(edgeDirection(win.frameGeometry(), this.area));
+    /** Feeds the mouse pointer's current vertical position to the armed edge watch on every drag
+     * tick — the pointer, not the dragged window's own frame geometry, since the window is
+     * typically grabbed away from its center (e.g. near the titlebar), so relying on the
+     * window's edge either overshoots (its far edge crosses well before the pointer does) or
+     * never crosses at all. Keeps working across a mid-drag row reparent — see `rowDragHooks`'
+     * doc comment — even though it's a different Strip's connection calling in before and
+     * after. */
+    private updateEdgeWatch(): void {
+        this.edgeDwell?.update(
+            edgeDirection(this.workspaceAdapter.cursorPos().y, this.area, this.settings.rowDragEdgeBorderPx),
+        );
     }
 
     /** Disarms the edge watch unconditionally — used both when the drag itself ends normally

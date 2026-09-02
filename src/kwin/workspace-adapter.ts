@@ -50,6 +50,12 @@ export class WorkspaceAdapter {
         Workspace.desktopsChanged.connect(handler);
     }
 
+    /** The mouse pointer's current position in global screen coordinates. */
+    cursorPos(): { x: number; y: number } {
+        const cursor = Workspace.cursorPos;
+        return { x: cursor.x, y: cursor.y };
+    }
+
     screens(): ScreenInfo[] {
         return Workspace.screens.map((output) => ({ name: output.name, geometry: toRect(output.geometry) }));
     }
