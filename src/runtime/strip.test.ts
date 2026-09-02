@@ -359,14 +359,14 @@ describe('Strip', () => {
 
         const detached = strip.detachFocusedColumn();
 
-        expect(detached).toBe(win2.adapter);
+        expect(detached).toEqual([win2.adapter]);
         expect(strip.isEmpty()).toBe(false); // win1's column remains
     });
 
-    it('detachFocusedColumn returns null when the strip has no columns', () => {
+    it('detachFocusedColumn returns an empty array when the strip has no columns', () => {
         const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
 
-        expect(strip.detachFocusedColumn()).toBeNull();
+        expect(strip.detachFocusedColumn()).toEqual([]);
     });
 
     it('isEmpty reflects whether any window is registered', () => {
@@ -890,5 +890,144 @@ describe('Strip — revealFocused multi-monitor alignment', () => {
 
         // Realigned fully onto the right screen: real x = 908 - (-92) = 1000
         expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 1000 }));
+    });
+});
+
+describe('Strip — absorb/expel', () => {
+    it('absorbRight merges the right column into the focused one as a new tile', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const left = fakeWindow('left');
+        const right = fakeWindow('right');
+        strip.addWindow(left.adapter);
+        strip.addWindow(right.adapter);
+        // addWindow focuses the newly added column each time — refocus "left" explicitly.
+        strip.focusLeft();
+
+        strip.absorbRight();
+
+        expect(left.setFrameGeometry).toHaveBeenCalled();
+        expect(right.setFrameGeometry).toHaveBeenCalled();
+        const leftCalls = left.setFrameGeometry.mock.calls;
+        const rightCalls = right.setFrameGeometry.mock.calls;
+        const leftRect = leftCalls[leftCalls.length - 1][0];
+        const rightRect = rightCalls[rightCalls.length - 1][0];
+        expect(leftRect.x).toBe(rightRect.x); // same column now
+        expect(leftRect.y).toBe(0);
+        expect(rightRect.y).toBe(leftRect.height); // stacked below
+    });
+
+    it('absorbRight is a no-op with no right neighbor', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const only = fakeWindow('only');
+        strip.addWindow(only.adapter);
+        const callsBefore = only.setFrameGeometry.mock.calls.length;
+
+        strip.absorbRight();
+
+        expect(only.setFrameGeometry.mock.calls.length).toBe(callsBefore);
+    });
+
+    it('expel moves the focused tile back into its own column to the right', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const left = fakeWindow('left');
+        const right = fakeWindow('right');
+        strip.addWindow(left.adapter);
+        strip.addWindow(right.adapter);
+        strip.focusLeft();
+        strip.absorbRight(); // left column now has 2 tiles: left (focused), right
+
+        strip.expel();
+
+        const leftCalls = left.setFrameGeometry.mock.calls;
+        const rightCalls = right.setFrameGeometry.mock.calls;
+        const leftRect = leftCalls[leftCalls.length - 1][0];
+        const rightRect = rightCalls[rightCalls.length - 1][0];
+        expect(rightRect.height).toBe(AREA.height); // right is alone in the original column now, full height
+        expect(leftRect.x).toBeGreaterThan(rightRect.x); // left (expelled, focused) got the new column to the right
+    });
+
+    it('expel is a no-op on a single-tile column', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const only = fakeWindow('only');
+        strip.addWindow(only.adapter);
+        const callsBefore = only.setFrameGeometry.mock.calls.length;
+
+        strip.expel();
+
+        expect(only.setFrameGeometry.mock.calls.length).toBe(callsBefore);
+    });
+});
+
+describe('Strip — focusUp/focusDown', () => {
+    it("move activation between tiles in the focused column's stack", () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const left = fakeWindow('left');
+        const right = fakeWindow('right');
+        strip.addWindow(left.adapter);
+        strip.addWindow(right.adapter);
+        strip.focusLeft();
+        strip.absorbRight(); // left column: [left (focused), right]
+        left.activate.mockClear();
+        right.activate.mockClear();
+
+        strip.focusDown();
+        expect(right.activate).toHaveBeenCalledTimes(1);
+
+        strip.focusDown(); // already at the bottom — no-op
+        expect(right.activate).toHaveBeenCalledTimes(1);
+
+        strip.focusUp();
+        expect(left.activate).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('Strip — removeWindow on a stacked column', () => {
+    it('removes just that tile, redistributing height, when siblings remain', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const left = fakeWindow('left');
+        const right = fakeWindow('right');
+        strip.addWindow(left.adapter);
+        strip.addWindow(right.adapter);
+        strip.focusLeft();
+        strip.absorbRight(); // left column: [left, right]
+
+        strip.removeWindow(right.adapter);
+
+        const leftCalls = left.setFrameGeometry.mock.calls;
+        const leftRect = leftCalls[leftCalls.length - 1][0];
+        expect(leftRect.height).toBe(AREA.height); // left alone again, full height
+    });
+
+    it('removes the whole column when it was the only tile', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const only = fakeWindow('only');
+        strip.addWindow(only.adapter);
+
+        strip.removeWindow(only.adapter);
+
+        expect(strip.isEmpty()).toBe(true);
+    });
+});
+
+describe("Strip — detachFocusedColumn returns every tile's window", () => {
+    it('returns all windows in a stacked column, and clears the strip', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const left = fakeWindow('left');
+        const right = fakeWindow('right');
+        strip.addWindow(left.adapter);
+        strip.addWindow(right.adapter);
+        strip.focusLeft();
+        strip.absorbRight();
+
+        const detached = strip.detachFocusedColumn();
+
+        expect(detached.map((w) => w.id)).toEqual(expect.arrayContaining(['left', 'right']));
+        expect(detached).toHaveLength(2);
+        expect(strip.isEmpty()).toBe(true);
+    });
+
+    it('returns an empty array when the strip has no columns', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        expect(strip.detachFocusedColumn()).toEqual([]);
     });
 });

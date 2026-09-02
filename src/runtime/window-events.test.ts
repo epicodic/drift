@@ -149,7 +149,7 @@ describe('onWindowGeometryChanged', () => {
     });
 
     describe('onWindowGeometryChanged — tile height resize', () => {
-        it('resizes the tile when a stacked window\'s height-only change is interactive', () => {
+        it("resizes the tile when a stacked window's height-only change is interactive", () => {
             const win = fakeWindow('w1', { x: 0, y: 0, width: 300, height: 550 }, { interactiveResize: true });
             const deps = fakeDeps({ tileOf: () => ({ columnId: 1, tileId: 2 }) });
             const oldRect = { x: 0, y: 0, width: 300, height: 500 };
