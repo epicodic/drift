@@ -40,7 +40,7 @@ export function buildMinimapSnapshot(
         .filter((column) => !column.hidden)
         .map((column) => {
             const rect = grid.columnRect(column.id);
-            const window = registry.get(column.id);
+            const window = registry.get(column.id, column.focusedTileId);
             return {
                 id: column.id,
                 x: rect.x,

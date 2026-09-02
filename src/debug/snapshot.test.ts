@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Grid } from '../core/grid';
+import type { WindowAdapter } from '../kwin/window-adapter';
 import { ColumnRegistry } from '../runtime/column-registry';
+import { SignalManager } from '../utils/signal-manager';
 import { Viewport } from '../viewport/viewport';
 import { debugCamera, debugRows } from './snapshot';
 
@@ -28,6 +30,39 @@ describe('debugRows', () => {
 
         expect(rows[0].hidden).toBe(true);
         expect(rows[0].virtual).toEqual({ x: 0, y: 0, width: 400, height: 0 });
+    });
+
+    it("shows the focused tile's window for a stacked column", () => {
+        const grid = new Grid(1000, 0);
+        const registry = new ColumnRegistry();
+        const column = grid.addColumn(300);
+        const topId = column.tiles()[0].id;
+        const bottomId = column.addTile();
+        registry.set(
+            column.id,
+            topId,
+            {
+                id: 'top',
+                caption: 'Top',
+                frameGeometry: () => ({ x: 0, y: 0, width: 300, height: 500 }),
+            } as unknown as WindowAdapter,
+            new SignalManager(),
+        );
+        registry.set(
+            column.id,
+            bottomId,
+            {
+                id: 'bottom',
+                caption: 'Bottom',
+                frameGeometry: () => ({ x: 0, y: 500, width: 300, height: 500 }),
+            } as unknown as WindowAdapter,
+            new SignalManager(),
+        );
+        column.setFocusedTile(bottomId);
+
+        const [row] = debugRows(grid, registry);
+
+        expect(row.id).toBe('bottom');
     });
 });
 

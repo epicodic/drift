@@ -20,7 +20,8 @@ describe('buildMinimapSnapshot', () => {
         const registry = new ColumnRegistry();
         const icon = {} as QIcon;
         const handle = {} as Window;
-        registry.set(second.id, fakeWindow(icon, handle), new SignalManager());
+        const secondTileId = second.tiles()[0].id;
+        registry.set(second.id, secondTileId, fakeWindow(icon, handle), new SignalManager());
         const viewport = new Viewport(1280);
         viewport.setContentGeometry(0, grid.virtualWidth());
 
@@ -55,6 +56,28 @@ describe('buildMinimapSnapshot', () => {
 
         expect(snapshot.viewport).toEqual({ offset: 0, width: 1280, contentLeft: 0, contentWidth: 2000 });
         expect(snapshot.gridHeight).toBe(1000);
+    });
+
+    it("shows the focused tile's icon and thumbnail for a stacked column", () => {
+        const grid = new Grid(1000, 8);
+        const column = grid.addColumn(400);
+        const topId = column.tiles()[0].id;
+        const bottomId = column.addTile();
+        const registry = new ColumnRegistry();
+        const topIcon = {} as QIcon;
+        const bottomIcon = {} as QIcon;
+        const handle = {} as Window;
+        registry.set(column.id, topId, fakeWindow(topIcon, null), new SignalManager());
+        registry.set(column.id, bottomId, fakeWindow(bottomIcon, handle), new SignalManager());
+        column.setFocusedTile(bottomId);
+        const viewport = new Viewport(1280);
+        viewport.setContentGeometry(0, grid.virtualWidth());
+
+        const snapshot = buildMinimapSnapshot(grid, viewport, registry);
+
+        expect(snapshot.columns).toHaveLength(1);
+        expect(snapshot.columns[0].icon).toBe(bottomIcon);
+        expect(snapshot.columns[0].thumbnail).toBe(handle);
     });
 });
 
