@@ -13,7 +13,7 @@ export interface GridDebugState {
     focusedColumnId: number | null;
     nextId: number;
     originX: number;
-    columns: { id: number; width: number; hidden: boolean }[];
+    columns: { id: number; width: number; hidden: boolean; tileCount: number }[];
 }
 
 export class Grid {
@@ -53,7 +53,7 @@ export class Grid {
 
     /** Adds a column to the right of the focused one (or at the end) and focuses it. */
     addColumn(width: number): Column {
-        const column = new Column(this.nextId++, width);
+        const column = new Column(this.nextId++, width, this.height);
         const insertAt = this.focusedColumnId === null ? this.ordered.length : this.indexOf(this.focusedColumnId) + 1;
         this.ordered.splice(insertAt, 0, column);
         this.focusedColumnId = column.id;
@@ -154,13 +154,61 @@ export class Grid {
         return this.ordered.findIndex((column) => column.id === id);
     }
 
+    /** Direct access to a column instance for callers that need its per-tile methods
+     * (Strip) — unlike the rest of Grid's API, which is id-based. Null if unknown. */
+    column(id: number): Column | null {
+        return this.columnById(id);
+    }
+
+    /** Absorb: pull the column immediately to the right of `columnId` into its stack,
+     * appended as a new tile. Null (no-op) if there is no right neighbor, or it
+     * already holds more than one tile (docs: 2026-09-03-vertical-tiling-design). */
+    absorbColumnRight(columnId: number): { fromColumnId: number; fromTileId: number; toTileId: number } | null {
+        const index = this.requireIndex(columnId);
+        const rightIndex = this.visibleNeighborIndex(index, 1);
+        if (rightIndex === null) {
+            return null;
+        }
+        const rightColumn = this.ordered[rightIndex];
+        if (rightColumn.tileCount() !== 1) {
+            return null;
+        }
+        const targetColumn = this.ordered[index];
+        const fromTileId = rightColumn.tiles()[0].id;
+        this.ordered.splice(rightIndex, 1);
+        const toTileId = targetColumn.addTile();
+        return { fromColumnId: rightColumn.id, fromTileId, toTileId };
+    }
+
+    /** Expel: remove `columnId`'s focused tile and give it a brand-new column
+     * immediately to its right, at `newColumnWidth`, focused. Null (no-op) if
+     * `columnId` only has one tile — there's nothing to expel. */
+    expelFocusedTile(
+        columnId: number,
+        newColumnWidth: number,
+    ): { fromTileId: number; toColumnId: number; toTileId: number } | null {
+        const column = this.requireColumn(columnId);
+        if (column.tileCount() <= 1) {
+            return null;
+        }
+        const fromTileId = column.focusedTileId;
+        column.removeTile(fromTileId);
+        const newColumn = this.addColumn(newColumnWidth);
+        return { fromTileId, toColumnId: newColumn.id, toTileId: newColumn.tiles()[0].id };
+    }
+
     /** Raw internal state for the debug console (docs §8) — not used by layout logic. */
     debugState(): GridDebugState {
         return {
             focusedColumnId: this.focusedColumnId,
             nextId: this.nextId,
             originX: this.originX,
-            columns: this.ordered.map((column) => ({ id: column.id, width: column.width, hidden: column.hidden })),
+            columns: this.ordered.map((column) => ({
+                id: column.id,
+                width: column.width,
+                hidden: column.hidden,
+                tileCount: column.tileCount(),
+            })),
         };
     }
 
