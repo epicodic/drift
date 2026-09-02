@@ -40,3 +40,19 @@ export function rectsEqualRounded(a: Rect, b: Rect): boolean {
         Math.round(a.height) === Math.round(b.height)
     );
 }
+
+export type EdgeDirection = 'above' | 'below';
+
+/** Which screen edge, if any, `rect` has crossed past within `area`'s vertical bounds — used
+ * to detect a window dragged past the strip's top/bottom edge, the trigger for a cross-row
+ * drag (docs: 2026-09-02-cross-row-drag-design). `null` when `rect` is still fully within
+ * `area` vertically. */
+export function edgeDirection(rect: Rect, area: Rect): EdgeDirection | null {
+    if (rect.y < area.y) {
+        return 'above';
+    }
+    if (rect.y + rect.height > area.y + area.height) {
+        return 'below';
+    }
+    return null;
+}

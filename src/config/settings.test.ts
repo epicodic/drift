@@ -21,4 +21,8 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.shortcutMoveWindowToRowAbove).toBe('Meta+Shift+Page_Up');
         expect(DEFAULT_SETTINGS.shortcutMoveWindowToRowBelow).toBe('Meta+Shift+Page_Down');
     });
+
+    it('defaults the row-drag dwell to 400ms', () => {
+        expect(DEFAULT_SETTINGS.rowDragDwellMs).toBe(400);
+    });
 });

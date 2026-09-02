@@ -51,6 +51,10 @@ interface FakeWindow {
     triggerFullScreenChanged(): void;
     minimize(): void;
     restore(): void;
+    setFrameGeometryValue(rect: Rect): void;
+    triggerFrameGeometryChanged(oldGeometry: Rect): void;
+    startDrag(): void;
+    finishDrag(): void;
 }
 
 function fakeWindow(
@@ -68,12 +72,17 @@ function fakeWindow(
     const activate = vi.fn();
     let isFullScreen = options.fullScreen ?? false;
     let isMinimized = options.minimized ?? false;
+    let isInteractiveMove = false;
+    let currentRect: Rect = { x: 0, y: 0, width: options.width ?? 800, height: 1000 };
     let fullScreenHandler: (() => void) | undefined;
     let minimizedHandler: (() => void) | undefined;
+    let moveStartedHandler: (() => void) | undefined;
+    let moveFinishedHandler: (() => void) | undefined;
+    const frameGeometryHandlers: ((oldGeometry: Rect) => void)[] = [];
     const adapter = {
         id,
         caption: id,
-        frameGeometry: () => ({ x: 0, y: 0, width: options.width ?? 800, height: 1000 }),
+        frameGeometry: () => currentRect,
         setFrameGeometry,
         activate,
         icon: () => null,
@@ -82,8 +91,11 @@ function fakeWindow(
         isMinimized: () => isMinimized,
         isFullScreen: () => isFullScreen,
         isInteractiveResize: () => false,
-        isInteractiveMove: () => false,
-        onFrameGeometryChanged: () => disconnects.frameGeometry,
+        isInteractiveMove: () => isInteractiveMove,
+        onFrameGeometryChanged: (handler: (oldGeometry: Rect) => void) => {
+            frameGeometryHandlers.push(handler);
+            return disconnects.frameGeometry;
+        },
         onMinimizedChanged: (handler: () => void) => {
             minimizedHandler = handler;
             return disconnects.minimized;
@@ -92,8 +104,14 @@ function fakeWindow(
             fullScreenHandler = handler;
             return disconnects.fullScreen;
         },
-        onInteractiveMoveResizeStarted: () => disconnects.moveStarted,
-        onInteractiveMoveResizeFinished: () => disconnects.moveFinished,
+        onInteractiveMoveResizeStarted: (handler: () => void) => {
+            moveStartedHandler = handler;
+            return disconnects.moveStarted;
+        },
+        onInteractiveMoveResizeFinished: (handler: () => void) => {
+            moveFinishedHandler = handler;
+            return disconnects.moveFinished;
+        },
     } as unknown as WindowAdapter;
     return {
         adapter,
@@ -111,6 +129,21 @@ function fakeWindow(
         restore: () => {
             isMinimized = false;
             minimizedHandler?.();
+        },
+        setFrameGeometryValue: (rect) => {
+            currentRect = rect;
+        },
+        triggerFrameGeometryChanged: (oldGeometry) => {
+            for (const handler of frameGeometryHandlers) {
+                handler(oldGeometry);
+            }
+        },
+        startDrag: () => {
+            isInteractiveMove = true;
+            moveStartedHandler?.();
+        },
+        finishDrag: () => {
+            moveFinishedHandler?.();
         },
     };
 }
@@ -346,6 +379,122 @@ describe('Strip', () => {
 
         strip.removeWindow(win.adapter);
         expect(strip.isEmpty()).toBe(true);
+    });
+
+    it('excludes the newly-added window from its own trailing render when added mid-drag', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const existing = fakeWindow('existing', { width: 400 });
+        strip.addWindow(existing.adapter);
+        existing.setFrameGeometry.mockClear();
+        const dragged = fakeWindow('dragged', { width: 400 });
+
+        strip.addWindow(dragged.adapter, true);
+
+        expect(dragged.setFrameGeometry).not.toHaveBeenCalled();
+        expect(existing.setFrameGeometry).toHaveBeenCalled(); // neighbor still gets positioned normally
+    });
+
+    it('does not exclude the newly-added window when added normally (regression)', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1', { width: 400 });
+
+        strip.addWindow(win.adapter);
+
+        expect(win.setFrameGeometry).toHaveBeenCalled();
+    });
+
+    it('skips revealFocused for a window added mid-drag, so a row-overflow reveal-pan never fights the live drag (regression)', () => {
+        // AREA is 1280 wide; two 800-wide columns overflow it (1608 virtual width), so
+        // revealFocused() for the second one already pans the viewport — the scenario in
+        // which an un-guarded revealFocused() on a mid-drag add would start a real Animator
+        // pan whose tick calls render() with no excludeWindowId, writing real geometry to
+        // the actively-dragged window and fighting the live KWin interactive move.
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const timer = fakeTimer();
+            const strip = new Strip(AREA, DEFAULT_SETTINGS, timer, fakeWorkspaceAdapter());
+            const existing1 = fakeWindow('existing1', { width: 800 });
+            const existing2 = fakeWindow('existing2', { width: 800 });
+            strip.addWindow(existing1.adapter); // col1 @ x=0, focused
+            strip.addWindow(existing2.adapter); // col2 @ x=808, focused; reveal pans right (overflow)
+
+            // Let existing2's own reveal-pan settle fully first, so any later geometry write on
+            // "dragged" can only come from the mid-drag add's own (would-be) reveal, not this one.
+            vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs);
+            timer.fire();
+
+            const dragged = fakeWindow('dragged', { width: 400 });
+            strip.addWindow(dragged.adapter, true); // mid-drag add: must not trigger a reveal-pan
+            dragged.setFrameGeometry.mockClear();
+
+            // Advance further in case a wrongly-called revealFocused() started a new pan animation.
+            vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs * 2);
+            timer.fire();
+
+            expect(dragged.setFrameGeometry).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('still reveals the focused column when a window is added normally (regression)', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const revealFocusedSpy = vi.spyOn(strip, 'revealFocused');
+        const win = fakeWindow('w1', { width: 400 });
+
+        strip.addWindow(win.adapter);
+
+        expect(revealFocusedSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('seeds an already-dragging connection when added mid-drag, so a geometry tick reorders without a Started signal', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const existing = fakeWindow('existing', { width: 400 });
+        strip.addWindow(existing.adapter);
+        const dragged = fakeWindow('dragged', { width: 400 });
+        strip.addWindow(dragged.adapter, true); // reparented mid-drag - Started never fires on this connection
+        existing.setFrameGeometry.mockClear();
+        dragged.setFrameGeometry.mockClear();
+
+        // Move the dragged window's real geometry (as KWin would during the live move) back over
+        // "existing"'s center, without ever firing interactiveMoveResizeStarted on this connection.
+        dragged.setFrameGeometryValue({ x: 50, y: 0, width: 400, height: 1000 });
+        dragged.triggerFrameGeometryChanged({ x: 0, y: 0, width: 400, height: 1000 });
+
+        // The dragged window's own geometry must still never be written mid-drag...
+        expect(dragged.setFrameGeometry).not.toHaveBeenCalled();
+        // ...while "existing" (displaced) gets a real geometry write from the live-preview reorder.
+        expect(existing.setFrameGeometry).toHaveBeenCalled();
+    });
+
+    it('invokes the supplied row-drag hooks on start/tick/finish', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1', { width: 400 });
+        const onDragStarted = vi.fn();
+        const onDragTick = vi.fn();
+        const onDragFinished = vi.fn();
+        strip.addWindow(win.adapter, false, { onDragStarted, onDragTick, onDragFinished });
+
+        win.startDrag();
+        expect(onDragStarted).toHaveBeenCalledWith(win.adapter);
+
+        win.triggerFrameGeometryChanged({ x: 0, y: 0, width: 400, height: 1000 });
+        expect(onDragTick).toHaveBeenCalledWith(win.adapter);
+
+        win.finishDrag();
+        expect(onDragFinished).toHaveBeenCalled();
+    });
+
+    it('does not invoke onDragTick when the window is not currently dragging (regression)', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1', { width: 400 });
+        const onDragTick = vi.fn();
+        strip.addWindow(win.adapter, false, { onDragTick });
+
+        win.triggerFrameGeometryChanged({ x: 0, y: 0, width: 400, height: 1000 });
+
+        expect(onDragTick).not.toHaveBeenCalled();
     });
 
     it('setSkipTaskbar toggles every window currently in the strip', () => {

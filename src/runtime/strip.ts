@@ -10,7 +10,7 @@ import { Grid } from '../core/grid';
 import type { Settings } from '../config/settings';
 import { debug, setDebugState } from '../debug';
 import { debugCamera, debugRows } from '../debug/snapshot';
-import { registerDragReorder } from '../input/drag';
+import { registerDragReorder, type DragReorderDeps } from '../input/drag';
 import { GeometrySync } from '../kwin/geometry-sync';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
@@ -35,6 +35,11 @@ import {
     type WindowEventDeps,
 } from './window-events';
 import { SignalManager } from '../utils/signal-manager';
+
+/** The subset of `DragReorderDeps` a caller can supply per-window without knowing about
+ * `Grid`/`Viewport`/rendering internals — used by `StripStack` to watch a dragged window's
+ * vertical position (docs: 2026-09-02-cross-row-drag-design). */
+export type RowDragHooks = Pick<DragReorderDeps, 'onDragStarted' | 'onDragTick' | 'onDragFinished'>;
 
 export class Strip {
     private readonly grid: Grid;
@@ -155,7 +160,7 @@ export class Strip {
         return buildMinimapSnapshot(this.grid, this.viewport, this.registry, this.animator.targetOffset());
     }
 
-    addWindow(win: WindowAdapter): void {
+    addWindow(win: WindowAdapter, initiallyDragging = false, rowDragHooks?: RowDragHooks): void {
         const width = Math.round(win.frameGeometry().width) || this.settings.defaultColumnWidth;
         const column = this.grid.addColumn(width);
         const signals = new SignalManager();
@@ -170,16 +175,32 @@ export class Strip {
         signals.add(win.onMinimizedChanged(() => onMinimizedChanged(win, this.eventDeps())));
         signals.add(win.onFullScreenChanged(() => onFullScreenChanged(win, this.eventDeps())));
         signals.add(
-            registerDragReorder(win, column.id, {
-                grid: this.grid,
-                viewport: this.viewport,
-                area: this.area,
-                render: (excludeWindowId, instant) => this.render(excludeWindowId, instant),
-                snapColumn: (id) => this.snapColumn(id),
-            }),
+            registerDragReorder(
+                win,
+                column.id,
+                Object.assign(
+                    {
+                        grid: this.grid,
+                        viewport: this.viewport,
+                        area: this.area,
+                        render: (excludeWindowId?: string, instant?: boolean) => this.render(excludeWindowId, instant),
+                        snapColumn: (id: number) => this.snapColumn(id),
+                    },
+                    rowDragHooks,
+                ),
+                initiallyDragging,
+            ),
         );
-        this.render();
-        this.revealFocused();
+        this.render(initiallyDragging ? win.id : undefined);
+        // A mid-drag add skips revealFocused(): Grid.addColumn always focuses the new column,
+        // and if this row's content already overflows the viewport, revealFocused() would kick
+        // off a real Animator pan whose tick callback calls render() with NO excludeWindowId —
+        // fighting the live KWin interactive move on the x-axis. Same rationale as
+        // registerDragReorder's interactiveMoveResizeFinished handler (src/input/drag.ts), which
+        // also skips any reveal on release: "the cursor is by definition already on-screen."
+        if (!initiallyDragging) {
+            this.revealFocused();
+        }
     }
 
     removeWindow(win: WindowAdapter): void {

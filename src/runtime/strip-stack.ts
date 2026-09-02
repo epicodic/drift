@@ -8,14 +8,16 @@
 // each row's own Strip constructor. Also drives its own vertical Animator off that same
 // ticker, to move the transition camera during row paging.
 
-import type { Rect } from '../core/coordinates';
+import type { Rect, EdgeDirection } from '../core/coordinates';
+import { edgeDirection } from '../core/coordinates';
 import type { Settings } from '../config/settings';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import type { MinimapSnapshot } from '../ui/minimap';
 import { Animator, type Timer } from '../viewport/animator';
+import { EdgeDwell } from '../viewport/edge-dwell';
 import { SharedTicker } from '../viewport/shared-ticker';
-import { Strip } from './strip';
+import { Strip, type RowDragHooks } from './strip';
 
 export type StripFactory = (area: Rect, settings: Settings, timer: Timer, workspaceAdapter: WorkspaceAdapter) => Strip;
 
@@ -26,7 +28,10 @@ export class StripStack {
     private readonly verticalAnimator: Animator;
     private activeRowIndex = 0;
     private transitionRows: [number, number] = [0, 0];
+    private transitionExcludeWindowId: string | undefined;
     private cameraY = 0;
+    private edgeDwell: EdgeDwell | null = null;
+    private draggedWindowId: string | null = null;
 
     constructor(
         private readonly area: Rect,
@@ -48,7 +53,7 @@ export class StripStack {
 
     addWindow(win: WindowAdapter): void {
         win.setSkipTaskbar(false);
-        this.activeStrip().addWindow(win);
+        this.activeStrip().addWindow(win, false, this.rowDragHooks());
         this.rowByWindow.set(win.id, this.activeRowIndex);
     }
 
@@ -56,6 +61,15 @@ export class StripStack {
         const rowIndex = this.rowByWindow.get(win.id);
         if (rowIndex === undefined) {
             return;
+        }
+        // A closed/crashed window tears down its signals (SignalManager.destroy(), via
+        // Strip.removeWindow) without ever firing interactiveMoveResizeFinished, so
+        // onDragFinished never runs for it. Without this, a still-armed edge watch for the
+        // now-gone window would keep ticking and re-fire onEdgeDwellFired forever, relocating
+        // whatever window happens to be focused in the row instead (docs:
+        // 2026-09-02-cross-row-drag-design).
+        if (win.id === this.draggedWindowId) {
+            this.endEdgeWatch();
         }
         this.requireRow(rowIndex).removeWindow(win);
         this.rowByWindow.delete(win.id);
@@ -140,7 +154,7 @@ export class StripStack {
         return strip;
     }
 
-    private switchToRow(newIndex: number): void {
+    private switchToRow(newIndex: number, excludeWindowId?: string): void {
         const oldIndex = this.activeRowIndex;
         if (newIndex === oldIndex) {
             return;
@@ -152,15 +166,16 @@ export class StripStack {
         // immediately, synchronously — before any other code (e.g. addWindow, called right
         // after this returns in moveFocusedWindowToRow) can render into it at the wrong (0)
         // offset. The animator's own ticks take over from here once it starts below.
-        this.rows.get(newIndex)?.render(undefined, true, this.restingOffset(fromCameraY, newIndex));
+        this.rows.get(newIndex)?.render(excludeWindowId, true, this.restingOffset(fromCameraY, newIndex));
         this.snapRestingRows(oldIndex, newIndex);
         this.rows.get(oldIndex)?.setSkipTaskbar(true);
         this.rows.get(newIndex)?.setSkipTaskbar(false);
         // Must be set before verticalAnimator.animate(): animate() can finish synchronously
         // (calling applyVerticalOffset immediately) when durationMs <= 0, and applyVerticalOffset
-        // reads transitionRows — reordering these two lines would render the wrong row pair
-        // on that first frame.
+        // reads transitionRows/transitionExcludeWindowId — reordering these lines would render
+        // the wrong row pair (or fail to exclude a mid-drag window) on that first frame.
         this.transitionRows = [oldIndex, newIndex];
+        this.transitionExcludeWindowId = excludeWindowId;
         this.verticalAnimator.animate(fromCameraY, newIndex * this.area.height, this.settings.animationDurationMs);
         // Leaving an unpopulated row prunes it, so plain navigation never accumulates empty rows.
         this.pruneIfEmpty(oldIndex);
@@ -169,7 +184,9 @@ export class StripStack {
     private applyVerticalOffset(cameraY: number): void {
         this.cameraY = cameraY;
         for (const rowIndex of this.transitionRows) {
-            this.rows.get(rowIndex)?.render(undefined, false, this.restingOffset(cameraY, rowIndex));
+            this.rows
+                .get(rowIndex)
+                ?.render(this.transitionExcludeWindowId, false, this.restingOffset(cameraY, rowIndex));
         }
     }
 
@@ -193,7 +210,10 @@ export class StripStack {
         }
     }
 
-    private moveFocusedWindowToRow(targetIndex: number): void {
+    private moveFocusedWindowToRow(
+        targetIndex: number,
+        options: { excludeWindowId?: string; initiallyDragging?: boolean } = {},
+    ): void {
         if (targetIndex < 0) {
             return;
         }
@@ -206,10 +226,72 @@ export class StripStack {
         // If this emptied the source row, switchToRow's trailing pruneIfEmpty(oldIndex) removes it —
         // no separate cleanup needed here. Must run before addWindow so the target row's remembered
         // offset is primed to its correct resting position before anything renders into it.
-        this.switchToRow(targetIndex);
+        this.switchToRow(targetIndex, options.excludeWindowId);
         const targetStrip = this.row(targetIndex);
-        targetStrip.addWindow(win);
+        targetStrip.addWindow(win, options.initiallyDragging ?? false, this.rowDragHooks());
         this.rowByWindow.set(win.id, targetIndex);
+    }
+
+    /** Hooks passed to every `Strip.addWindow` call so a live drag's vertical position keeps
+     * feeding this stack's edge watch across a mid-drag reparent (docs:
+     * 2026-09-02-cross-row-drag-design). A fresh object every call, but `beginEdgeWatch` is only
+     * ever actually invoked once per continuous drag: `registerDragReorder`'s `initiallyDragging`
+     * flag (set on the reparented window's new connection) means the new row's copy of these
+     * hooks never sees its own `onDragStarted` fire — only `onDragTick`/`onDragFinished` do, so
+     * `this.edgeDwell`/`this.draggedWindowId` (armed once, on the original row) keep tracking the
+     * same window straight through the reparent instead of being reset. */
+    private rowDragHooks(): RowDragHooks {
+        return {
+            onDragStarted: (win) => this.beginEdgeWatch(win),
+            onDragTick: (win) => this.updateEdgeWatch(win),
+            onDragFinished: () => this.endEdgeWatch(),
+        };
+    }
+
+    /** Starts watching `win`'s vertical position for an edge-dwell trigger. Stops any prior
+     * watch first as defensive hardening — `onDragStarted` firing at most once per continuous
+     * drag is the load-bearing invariant that keeps `this.edgeDwell` tracking the same window
+     * across a mid-drag reparent (see `rowDragHooks`), so this should never actually find a
+     * live watch to stop, but a leaked, orphaned timer if that invariant is ever violated
+     * elsewhere is silent and hard to diagnose. */
+    private beginEdgeWatch(win: WindowAdapter): void {
+        this.edgeDwell?.stop();
+        this.draggedWindowId = win.id;
+        this.edgeDwell = new EdgeDwell(
+            this.ticker.subscribe(),
+            () => Date.now(),
+            this.settings.animationTickMs,
+            this.settings.rowDragDwellMs,
+            (direction) => this.onEdgeDwellFired(direction),
+        );
+    }
+
+    /** Feeds `win`'s current vertical position to the armed edge watch on every drag tick,
+     * wherever `win` currently lives — see `rowDragHooks`' doc comment for why this keeps
+     * working across a mid-drag row reparent even though it's a different Strip's connection
+     * calling in before and after. */
+    private updateEdgeWatch(win: WindowAdapter): void {
+        this.edgeDwell?.update(edgeDirection(win.frameGeometry(), this.area));
+    }
+
+    /** Disarms the edge watch unconditionally — used both when the drag itself ends normally
+     * (via `onDragFinished`) and when the watched window disappears out from under it (closed
+     * or crashed mid-drag; see `removeWindow`, which is the only other caller). */
+    private endEdgeWatch(): void {
+        this.edgeDwell?.stop();
+        this.edgeDwell = null;
+        this.draggedWindowId = null;
+    }
+
+    /** Relocates the dragged window into the row above/below once the edge dwell elapses —
+     * reuses the exact same `moveFocusedWindowToRow` machinery as the keyboard shortcuts,
+     * reached here via a live-drag callback chain instead of a keypress. */
+    private onEdgeDwellFired(direction: EdgeDirection): void {
+        if (this.draggedWindowId === null) {
+            return;
+        }
+        const targetIndex = direction === 'above' ? this.activeRowIndex - 1 : this.activeRowIndex + 1;
+        this.moveFocusedWindowToRow(targetIndex, { excludeWindowId: this.draggedWindowId, initiallyDragging: true });
     }
 
     private requireRow(index: number): Strip {

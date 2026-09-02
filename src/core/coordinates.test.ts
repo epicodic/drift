@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { virtualWidth, columnRect, resizedEdge, rectsEqualRounded } from './coordinates';
+import { virtualWidth, columnRect, resizedEdge, rectsEqualRounded, edgeDirection } from './coordinates';
 
 describe('virtualWidth', () => {
     it('is 0 for an empty strip', () => {
@@ -56,5 +56,25 @@ describe('rectsEqualRounded', () => {
         const a = { x: 100, y: 0, width: 300, height: 1080 };
         const b = { x: 100, y: 0, width: 360, height: 1080 };
         expect(rectsEqualRounded(a, b)).toBe(false);
+    });
+});
+
+describe('edgeDirection', () => {
+    const area = { x: 0, y: 100, width: 1920, height: 1000 };
+
+    it('is null when the rect is fully within the area vertically', () => {
+        expect(edgeDirection({ x: 0, y: 150, width: 800, height: 500 }, area)).toBeNull();
+    });
+
+    it('reports "above" when the top edge crosses above the area', () => {
+        expect(edgeDirection({ x: 0, y: 50, width: 800, height: 500 }, area)).toBe('above');
+    });
+
+    it('reports "below" when the bottom edge crosses below the area', () => {
+        expect(edgeDirection({ x: 0, y: 700, width: 800, height: 500 }, area)).toBe('below');
+    });
+
+    it('prefers "above" when a rect somehow spans past both edges', () => {
+        expect(edgeDirection({ x: 0, y: 50, width: 800, height: 2000 }, area)).toBe('above');
     });
 });
