@@ -274,6 +274,97 @@ describe('Strip', () => {
         expect(win.setFrameGeometry).not.toHaveBeenCalled();
     });
 
+    it('renders a window shifted by the vertical offset passed to render()', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1');
+        strip.addWindow(win.adapter);
+        win.setFrameGeometry.mockClear();
+
+        strip.render(undefined, true, 1000);
+
+        expect(win.setFrameGeometry).toHaveBeenCalledWith(expect.objectContaining({ y: -1000 }));
+    });
+
+    it('defaults render() to no vertical offset', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1');
+        strip.addWindow(win.adapter);
+        win.setFrameGeometry.mockClear();
+
+        strip.render();
+
+        expect(win.setFrameGeometry).toHaveBeenCalledWith(expect.objectContaining({ y: 0 }));
+    });
+
+    it('remembers a parked vertical offset across an internal render() call that passes none (regression)', () => {
+        // StripStack parks an inactive row off-screen via an explicit render(undefined, true, offset)
+        // call, then never touches that row again except through Strip's own internal call sites
+        // (addWindow, removeWindow, detachFocusedColumn, window-events handlers, ...) which all omit
+        // the third argument. Before the fix, render()'s third parameter defaulted to 0, so any such
+        // internal-only call silently reset the row's already-visible windows back to y=0, right on
+        // top of whatever row was actually on screen.
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win1 = fakeWindow('w1');
+        strip.addWindow(win1.adapter);
+        strip.render(undefined, true, 1000); // park this row off-screen, as StripStack does for an inactive row
+        win1.setFrameGeometry.mockClear();
+
+        const win2 = fakeWindow('w2');
+        strip.addWindow(win2.adapter); // internal-only call: addWindow's own render() passes no offset
+
+        const calls = win1.setFrameGeometry.mock.calls;
+        const lastCall = calls[calls.length - 1][0] as { y: number };
+        expect(lastCall.y).toBe(-1000); // still parked, not reset to y=0
+    });
+
+    it('detachFocusedColumn removes the focused column and returns its window', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win1 = fakeWindow('w1');
+        const win2 = fakeWindow('w2');
+        strip.addWindow(win1.adapter); // focused
+        strip.addWindow(win2.adapter); // becomes focused (added right of the focused column)
+
+        const detached = strip.detachFocusedColumn();
+
+        expect(detached).toBe(win2.adapter);
+        expect(strip.isEmpty()).toBe(false); // win1's column remains
+    });
+
+    it('detachFocusedColumn returns null when the strip has no columns', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+
+        expect(strip.detachFocusedColumn()).toBeNull();
+    });
+
+    it('isEmpty reflects whether any window is registered', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        expect(strip.isEmpty()).toBe(true);
+
+        const win = fakeWindow('w1');
+        strip.addWindow(win.adapter);
+        expect(strip.isEmpty()).toBe(false);
+
+        strip.removeWindow(win.adapter);
+        expect(strip.isEmpty()).toBe(true);
+    });
+
+    it('setSkipTaskbar toggles every window currently in the strip', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win1 = fakeWindow('w1');
+        const win2 = fakeWindow('w2');
+        strip.addWindow(win1.adapter);
+        strip.addWindow(win2.adapter);
+        const setSkipTaskbar1 = vi.fn();
+        const setSkipTaskbar2 = vi.fn();
+        (win1.adapter as unknown as { setSkipTaskbar: typeof setSkipTaskbar1 }).setSkipTaskbar = setSkipTaskbar1;
+        (win2.adapter as unknown as { setSkipTaskbar: typeof setSkipTaskbar2 }).setSkipTaskbar = setSkipTaskbar2;
+
+        strip.setSkipTaskbar(true);
+
+        expect(setSkipTaskbar1).toHaveBeenCalledWith(true);
+        expect(setSkipTaskbar2).toHaveBeenCalledWith(true);
+    });
+
     describe('cycleAlignLeft / cycleAlignRight', () => {
         it('cycles a single oversized column through left/center/right and stops at both edges', () => {
             const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());

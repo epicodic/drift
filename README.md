@@ -41,6 +41,7 @@ flowchart LR
 - **Drag-to-reorder** — grab a window and drag it past a neighbor's center to swap places, with the displaced column sliding smoothly out of the way.
 - **Column align-cycle** — a shortcut that steps the focused column between the left edge, center, and right edge of your screen.
 - **Manual viewport panning** — glance one screen-width left or right without stealing focus from what you're working on.
+- **Row navigation** — page to a row above or below the current one, or send the focused window there, for a second axis beyond the horizontal strip.
 - **Multi-monitor aware** — your screens form one continuous strip; the layout scrolls across all of them.
 - **Plasma Activities & virtual desktops** — each activity/desktop pair gets its own independent strip, so unrelated workspaces never bump into each other's columns.
 - **Live debug console** — an on-screen overlay showing exactly what Drift thinks the layout is, for when you want to see the gears turning.
@@ -71,6 +72,8 @@ KWin only (re)loads a script's QML/JS on a full restart or a fresh login — see
 | `Meta+Tab` / `Meta+Shift+Tab` | Focus the column to the right / left |
 | `Meta+Left` / `Meta+Right` | Cycle the focused column's align (left edge → center → right edge) |
 | `Meta+Shift+Left` / `Meta+Shift+Right` | Pan the viewport without changing focus |
+| `Meta+Page_Up` / `Meta+Page_Down` | Page to the row above / below |
+| `Meta+Shift+Page_Up` / `Meta+Shift+Page_Down` | Move the focused window to the row above / below, and follow it there |
 | `Meta+Shift+D` | Toggle the live debug console |
 
 Every shortcut, plus the column gap, default width, and animation timing, is configurable from the script's **Configure...** dialog in System Settings.

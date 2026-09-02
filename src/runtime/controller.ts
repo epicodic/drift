@@ -9,7 +9,7 @@ import { createQmlTimer } from '../kwin/qml-timer';
 // import { checkForShortcutConflicts } from '../kwin/shortcut-conflicts'; // disabled, see start()
 import { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import { registerShortcuts } from '../input/shortcuts';
-import type { Strip } from './strip';
+import type { StripStack } from './strip-stack';
 import { StripManager } from './strip-manager';
 import { WindowManager } from './window-manager';
 import { initWorkspaceSignals } from './workspace-signals';
@@ -42,13 +42,17 @@ export class Controller {
     start(): void {
         initWorkspaceSignals(this.windowManager, this.stripManager, this.workspaceAdapter);
         registerShortcuts(this.root, this.settings, {
-            focusLeft: () => this.focusAndShowMinimap((strip) => strip.focusLeft()),
-            focusRight: () => this.focusAndShowMinimap((strip) => strip.focusRight()),
+            focusLeft: () => this.focusAndShowMinimap((stack) => stack.focusLeft()),
+            focusRight: () => this.focusAndShowMinimap((stack) => stack.focusRight()),
             toggleDebugConsole: () => this.debugConsole.toggle(),
-            cycleAlignLeft: () => this.stripManager.activeStrip().cycleAlignLeft(),
-            cycleAlignRight: () => this.stripManager.activeStrip().cycleAlignRight(),
-            shiftViewportLeft: () => this.stripManager.activeStrip().shiftViewportLeft(),
-            shiftViewportRight: () => this.stripManager.activeStrip().shiftViewportRight(),
+            cycleAlignLeft: () => this.stripManager.activeStripStack().cycleAlignLeft(),
+            cycleAlignRight: () => this.stripManager.activeStripStack().cycleAlignRight(),
+            shiftViewportLeft: () => this.stripManager.activeStripStack().shiftViewportLeft(),
+            shiftViewportRight: () => this.stripManager.activeStripStack().shiftViewportRight(),
+            rowUp: () => this.focusAndShowMinimap((stack) => stack.rowUp()),
+            rowDown: () => this.focusAndShowMinimap((stack) => stack.rowDown()),
+            moveWindowToRowAbove: () => this.focusAndShowMinimap((stack) => stack.moveWindowToRowAbove()),
+            moveWindowToRowBelow: () => this.focusAndShowMinimap((stack) => stack.moveWindowToRowBelow()),
         });
         // Disabled: the OSD conflict notice kept firing incorrectly. Left in place, not deleted, per user request.
         // const conflictCheckTimer = createQmlTimer(this.root);
@@ -60,10 +64,10 @@ export class Controller {
         console.log('Drift: initialized');
     }
 
-    private focusAndShowMinimap(move: (strip: Strip) => void): void {
-        const strip = this.stripManager.activeStrip();
-        move(strip);
-        const snapshot = strip.minimapSnapshot();
+    private focusAndShowMinimap(move: (stack: StripStack) => void): void {
+        const stack = this.stripManager.activeStripStack();
+        move(stack);
+        const snapshot = stack.minimapSnapshot();
         if (!snapshot.columns.some((column) => column.focused)) {
             return;
         }

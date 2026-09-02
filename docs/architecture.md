@@ -45,10 +45,22 @@ Two further shortcut pairs move the camera without moving focus: `cycleAlignLeft
 
 ### Activities and Virtual Desktops
 
-Drift keeps one independent `Grid`/`Viewport` pair — a `Strip` — per `(activity, virtual desktop)` combination, so windows on different activities or desktops never affect each other's layout.
-`StripManager` creates strips lazily and prunes them once their activity or desktop no longer exists; `WindowManager` routes each window to the strip for its current activity+desktop and moves it between strips if that assignment changes.
+Drift keeps one independent `StripStack` per `(activity, virtual desktop)` combination, so windows on different activities or desktops never affect each other's layout.
+A `StripStack` in turn owns one or more rows, each row a `Grid`/`Viewport` pair — a `Strip` (see [Rows](#rows) below).
+`StripManager` creates `StripStack`s lazily and prunes them once their activity or desktop no longer exists; `WindowManager` routes each window to the `StripStack` for its current activity+desktop and moves it between stacks if that assignment changes.
 A window on multiple activities/desktops (or none) is left unmanaged.
 Grids always span every screen, so screen is not part of the key.
+
+### Rows
+
+Each `StripStack` holds an ordered set of rows, addressed by a non-negative integer index.
+A row is exactly what a `Strip` has always been: its own `Grid` + `Viewport` + `Animator` + `GeometrySync` + `ColumnRegistry`.
+Row `0` is the default, topmost row and always exists; other rows are created lazily (paging past the last one, or moving a window into a new one) and pruned once empty, the same lazy-create/prune shape `StripManager` already applies to activity/desktop keys.
+`StripStack` tracks an `activeRowIndex` and pages between rows with a second, vertical `Animator`, so a row transition animates as a one-row-height vertical slide rather than a jump — see the `shortcutRowUp`/`shortcutRowDown` and `shortcutMoveWindowToRowAbove`/`shortcutMoveWindowToRowBelow` shortcuts.
+A window parked in an inactive row is moved off-screen rather than minimized, so the row transition has something to animate, and has `skipTaskbar` toggled while parked so it doesn't clutter the taskbar.
+Activating such a window (from the taskbar, Alt-Tab, a notification) pages `StripStack` to the row that owns it before delegating to that row's `Strip`, extending the "every focus change triggers a reveal" model from [Focus Model](#focus-model) up one level.
+KWin's Alt-Tab switcher and Overview/Present Windows are not affected by `skipTaskbar`, though, so a window parked in an inactive row can still show up there, positioned off-screen — a known, accepted limitation rather than an oversight.
+See [`docs/agents/specs/2026-09-01-row-navigation-design.md`](agents/specs/2026-09-01-row-navigation-design.md) for the full design, including the vertical coordinate math.
 
 ## Module Map
 
@@ -59,7 +71,7 @@ Grids always span every screen, so screen is not part of the key.
 | [`src/kwin/`](../src/kwin) | The only code that touches the live KWin API: `WindowAdapter`, `WorkspaceAdapter`, `GeometrySync`, `createQmlTimer`, and `createDebugConsole` (the on-screen debug overlay). Thin by design; only `toRealRect`/`toVirtualX` and `GeometrySync`'s echo tracking are unit-tested. |
 | [`src/input/`](../src/input) | Wires KWin interaction events (drag lifecycle, global shortcuts) to `core`/`viewport` calls. |
 | [`src/config/`](../src/config) | Settings defaults and `kwinrc` config loading. |
-| [`src/runtime/`](../src/runtime) | Orchestration layer that composes the pure modules and adapters: `Controller` (root), `Strip` (one surface = `Grid` + `Viewport` + `Animator` + `ColumnRegistry`), `StripManager` (one `Strip` per activity+desktop, see [Activities and Virtual Desktops](#activities-and-virtual-desktops)), and `WindowManager` (routes/reassigns windows to strips). Also holds the extracted `window-events` handlers and `workspace-signals` registration. |
+| [`src/runtime/`](../src/runtime) | Orchestration layer that composes the pure modules and adapters: `Controller` (root), `Strip` (one row = `Grid` + `Viewport` + `Animator` + `ColumnRegistry`), `StripStack` (one or more rows of `Strip`s, see [Rows](#rows)), `StripManager` (one `StripStack` per activity+desktop, see [Activities and Virtual Desktops](#activities-and-virtual-desktops)), and `WindowManager` (routes/reassigns windows to stacks). Also holds the extracted `window-events` handlers and `workspace-signals` registration. |
 | [`src/utils/`](../src/utils) | Small cross-cutting helpers: `SignalManager`, which tracks adapter disconnect thunks and tears them all down in one call. |
 | [`src/debug/`](../src/debug) | Debug-console snapshot builders (`debugRows`/`debugCamera`); the debug output channel itself remains in `src/debug.ts`. |
 | [`src/main.ts`](../src/main.ts) | Entry point (`init`) called by the QML host. Constructs and starts the `Controller`; contains no logic of its own. |

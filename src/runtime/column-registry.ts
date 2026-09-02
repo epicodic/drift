@@ -30,6 +30,14 @@ export class ColumnRegistry {
         return null;
     }
 
+    isEmpty(): boolean {
+        return this.byColumn.size === 0;
+    }
+
+    windows(): WindowAdapter[] {
+        return Array.from(this.byColumn.values(), (entry) => entry.window);
+    }
+
     delete(columnId: number): void {
         const entry = this.byColumn.get(columnId);
         if (entry === undefined) {

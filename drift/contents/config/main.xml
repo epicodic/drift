@@ -44,5 +44,17 @@
         <entry name="shortcutViewportShiftRight" type="String">
             <default>Meta+Shift+Right</default>
         </entry>
+        <entry name="shortcutRowUp" type="String">
+            <default>Meta+Page_Up</default>
+        </entry>
+        <entry name="shortcutRowDown" type="String">
+            <default>Meta+Page_Down</default>
+        </entry>
+        <entry name="shortcutMoveWindowToRowAbove" type="String">
+            <default>Meta+Shift+Page_Up</default>
+        </entry>
+        <entry name="shortcutMoveWindowToRowBelow" type="String">
+            <default>Meta+Shift+Page_Down</default>
+        </entry>
     </group>
 </kcfg>

@@ -48,6 +48,9 @@ export class Strip {
     // signal (never by re-reading the live property from an unrelated render() call — KWin's
     // own docs warn the property is only reliably observed via its notify signal).
     private readonly fullScreenColumns = new Set<number>();
+    // The vertical offset every render() call applies until told otherwise — see render()'s own
+    // doc comment for why this is "sticky" rather than reset on every call.
+    private verticalOffsetY = 0;
 
     constructor(
         private readonly area: Rect,
@@ -71,7 +74,19 @@ export class Strip {
         this.columnMotionTimer = ticker.subscribe();
     }
 
-    render(excludeWindowId?: string, instant = false): void {
+    /** `verticalOffsetY` is sticky, not defaulted: passing a value both applies it immediately
+     * and remembers it as `this.verticalOffsetY` for every later call that omits the argument
+     * (internal call sites — addWindow, detachColumn, the horizontal Animator's own tick, drag-
+     * reorder, window-events handlers — all omit it). Omitting it does NOT mean "use 0"; it means
+     * "keep whatever this row was last explicitly told to use." Only `StripStack`'s transition
+     * code (`applyVerticalOffset`, `snapRestingRows`, and its `switchToRow` priming call) ever
+     * passes an explicit value — that's what keeps a parked, off-screen row parked instead of
+     * snapping back to y=0 on the next unrelated internal render() (docs:
+     * 2026-09-01-row-navigation-design). */
+    render(excludeWindowId?: string, instant = false, verticalOffsetY?: number): void {
+        if (verticalOffsetY !== undefined) {
+            this.verticalOffsetY = verticalOffsetY;
+        }
         this.viewport.setContentGeometry(this.grid.contentLeft(), this.grid.virtualWidth());
         for (const column of this.grid.columns()) {
             const win = this.registry.get(column.id);
@@ -83,7 +98,7 @@ export class Strip {
                 // No position animation for a minimized window — nothing on screen to smooth,
                 // and this keeps its real x tracking the viewport pan instead of freezing it
                 // (a taskbar sorted by real x would otherwise see it drift out of order).
-                this.geometrySync.apply(win, rect, this.viewport.offset());
+                this.geometrySync.apply(win, rect, this.viewport.offset(), this.verticalOffsetY);
                 continue;
             }
             let x: number;
@@ -93,12 +108,12 @@ export class Strip {
             } else {
                 x = this.columnMotion.update(column.id, rect.x, Date.now(), this.settings.animationDurationMs);
             }
-            this.geometrySync.apply(win, Object.assign({}, rect, { x }), this.viewport.offset());
+            this.geometrySync.apply(win, Object.assign({}, rect, { x }), this.viewport.offset(), this.verticalOffsetY);
         }
         if (this.columnMotion.isAnimating()) {
             // Preserve excludeWindowId: a live drag-reorder must keep skipping the
             // dragged window's own geometry across continuation ticks, not just the first.
-            this.columnMotionTimer.start(this.settings.animationTickMs, () => this.render(excludeWindowId));
+            this.columnMotionTimer.start(this.settings.animationTickMs, () => this.render(excludeWindowId, false));
         } else {
             this.columnMotionTimer.stop();
         }
@@ -172,6 +187,28 @@ export class Strip {
         if (columnId === null) {
             return;
         }
+        this.detachColumn(columnId, win);
+    }
+
+    /** Removes the focused column and returns its window, without touching the window's real
+     * geometry — used when moving a window to a different row (docs:
+     * 2026-09-01-row-navigation-design). Returns null if this row has no focused column. */
+    detachFocusedColumn(): WindowAdapter | null {
+        const focused = this.grid.focusedColumn();
+        if (focused === null) {
+            return null;
+        }
+        const win = this.registry.get(focused.id);
+        if (win === undefined) {
+            return null;
+        }
+        this.detachColumn(focused.id, win);
+        return win;
+    }
+
+    /** Shared teardown for `removeWindow` and `detachFocusedColumn`: forgets every
+     * per-column tracking state and removes the column from the grid. */
+    private detachColumn(columnId: number, win: WindowAdapter): void {
         this.registry.delete(columnId);
         this.geometrySync.forget(win.id);
         this.fullScreenColumns.delete(columnId);
@@ -179,6 +216,21 @@ export class Strip {
         this.grid.removeColumn(columnId);
         this.render();
         this.revealFocused();
+    }
+
+    /** True when this row has no windows — used by row-pruning (docs:
+     * 2026-09-01-row-navigation-design). */
+    isEmpty(): boolean {
+        return this.registry.isEmpty();
+    }
+
+    /** Toggles `skipTaskbar` on every window currently in this row — used while paging rows,
+     * so an inactive row's windows don't clutter the taskbar (docs:
+     * 2026-09-01-row-navigation-design). */
+    setSkipTaskbar(skipTaskbar: boolean): void {
+        for (const win of this.registry.windows()) {
+            win.setSkipTaskbar(skipTaskbar);
+        }
     }
 
     activateWindow(win: WindowAdapter): void {

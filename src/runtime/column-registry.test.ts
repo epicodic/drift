@@ -38,4 +38,25 @@ describe('ColumnRegistry', () => {
         expect(disconnect).toHaveBeenCalledTimes(1);
         expect(registry.get(1)).toBeUndefined();
     });
+
+    it('reports empty only when it holds no columns', () => {
+        const registry = new ColumnRegistry();
+        expect(registry.isEmpty()).toBe(true);
+
+        registry.set(1, fakeWindow('w1'), new SignalManager());
+        expect(registry.isEmpty()).toBe(false);
+
+        registry.delete(1);
+        expect(registry.isEmpty()).toBe(true);
+    });
+
+    it('lists every registered window', () => {
+        const registry = new ColumnRegistry();
+        const w1 = fakeWindow('w1');
+        const w2 = fakeWindow('w2');
+        registry.set(1, w1, new SignalManager());
+        registry.set(2, w2, new SignalManager());
+
+        expect(registry.windows()).toEqual([w1, w2]);
+    });
 });

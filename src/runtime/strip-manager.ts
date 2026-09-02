@@ -1,19 +1,24 @@
-// Owns one Strip per (activity, virtualDesktop) pair and tracks which strip owns each
-// window. Grids always span all screens, so screen is not part of the key. activeStrip()
-// follows the workspace's current activity/desktop; strips are created lazily and pruned
-// when their activity or desktop disappears.
+// Owns one StripStack per (activity, virtualDesktop) pair and tracks which strip stack
+// owns each window. Grids always span all screens, so screen is not part of the key.
+// activeStripStack() follows the workspace's current activity/desktop; strip stacks are
+// created lazily and pruned when their activity or desktop disappears.
 
 import type { Rect } from '../core/coordinates';
 import type { Settings } from '../config/settings';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import type { Timer } from '../viewport/animator';
-import { Strip } from './strip';
+import { StripStack } from './strip-stack';
 
-export type StripFactory = (area: Rect, settings: Settings, timer: Timer, workspaceAdapter: WorkspaceAdapter) => Strip;
+export type StripStackFactory = (
+    area: Rect,
+    settings: Settings,
+    timer: Timer,
+    workspaceAdapter: WorkspaceAdapter,
+) => StripStack;
 
 export class StripManager {
-    private readonly strips = new Map<string, Strip>();
+    private readonly stacks = new Map<string, StripStack>();
     private readonly ownerByWindow = new Map<string, string>();
 
     constructor(
@@ -21,20 +26,20 @@ export class StripManager {
         private readonly settings: Settings,
         private readonly timer: Timer,
         private readonly workspaceAdapter: WorkspaceAdapter,
-        private readonly createStrip: StripFactory = (area, settings, timer, workspaceAdapter) =>
-            new Strip(area, settings, timer, workspaceAdapter),
+        private readonly createStripStack: StripStackFactory = (area, settings, timer, workspaceAdapter) =>
+            new StripStack(area, settings, timer, workspaceAdapter),
     ) {}
 
     keyOf(activity: string, desktop: string): string {
         return `${activity}|${desktop}`;
     }
 
-    stripFor(activity: string, desktop: string): Strip {
-        return this.strip(this.keyOf(activity, desktop));
+    stripStackFor(activity: string, desktop: string): StripStack {
+        return this.stack(this.keyOf(activity, desktop));
     }
 
-    activeStrip(): Strip {
-        return this.stripFor(this.workspaceAdapter.currentActivity(), this.workspaceAdapter.currentDesktop());
+    activeStripStack(): StripStack {
+        return this.stripStackFor(this.workspaceAdapter.currentActivity(), this.workspaceAdapter.currentDesktop());
     }
 
     ownerOf(windowId: string): string | null {
@@ -43,7 +48,7 @@ export class StripManager {
 
     addTo(activity: string, desktop: string, win: WindowAdapter): void {
         const key = this.keyOf(activity, desktop);
-        this.strip(key).addWindow(win);
+        this.stack(key).addWindow(win);
         this.ownerByWindow.set(win.id, key);
     }
 
@@ -52,7 +57,7 @@ export class StripManager {
         if (key === undefined) {
             return;
         }
-        this.strips.get(key)?.removeWindow(win);
+        this.stacks.get(key)?.removeWindow(win);
         this.ownerByWindow.delete(win.id);
     }
 
@@ -61,20 +66,20 @@ export class StripManager {
         if (key === undefined) {
             return;
         }
-        this.strips.get(key)?.activateWindow(win);
+        this.stacks.get(key)?.activateWindow(win);
     }
 
     renderActive(): void {
-        this.activeStrip().render();
+        this.activeStripStack().render();
     }
 
     prune(validActivities: ReadonlySet<string>, validDesktops: ReadonlySet<string>): void {
-        for (const key of Array.from(this.strips.keys())) {
+        for (const key of Array.from(this.stacks.keys())) {
             const [activity, desktop] = key.split('|');
             if (validActivities.has(activity) && validDesktops.has(desktop)) {
                 continue;
             }
-            this.strips.delete(key);
+            this.stacks.delete(key);
             for (const [windowId, owner] of Array.from(this.ownerByWindow)) {
                 if (owner === key) {
                     this.ownerByWindow.delete(windowId);
@@ -83,12 +88,12 @@ export class StripManager {
         }
     }
 
-    private strip(key: string): Strip {
-        let strip = this.strips.get(key);
-        if (strip === undefined) {
-            strip = this.createStrip(this.area, this.settings, this.timer, this.workspaceAdapter);
-            this.strips.set(key, strip);
+    private stack(key: string): StripStack {
+        let stack = this.stacks.get(key);
+        if (stack === undefined) {
+            stack = this.createStripStack(this.area, this.settings, this.timer, this.workspaceAdapter);
+            this.stacks.set(key, stack);
         }
-        return strip;
+        return stack;
     }
 }
