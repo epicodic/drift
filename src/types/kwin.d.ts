@@ -157,15 +157,16 @@ interface QmlDebugOverlay extends QmlObject {
     visible: boolean;
 }
 
-/** The dynamically-created minimap overlay dialog. `columns`/`viewportBox` are plain
- * data (see `PanelColumn`/`PanelViewportBox` in `kwin/minimap-overlay.ts`), typed
+/** The dynamically-created minimap overlay dialog. `rows`/`viewportBox` are plain
+ * data (see `PanelRow`/`PanelViewportBox` in `kwin/minimap-overlay.ts`), typed
  * loosely here since this file has no app-specific types (docs: 2026-09-01-minimap-design,
- * 2026-09-01-minimap-thumbnails-design). */
+ * 2026-09-01-minimap-thumbnails-design, 2026-09-02-multi-strip-minimap-design). */
 interface QmlMinimapDialog extends QmlObject {
-    columns: unknown[];
+    rows: unknown[];
     viewportBox: unknown;
     panelWidth: number;
     panelHeight: number;
+    rowHeight: number;
     showThumbnails: boolean;
     x: number;
     y: number;

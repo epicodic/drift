@@ -14,7 +14,7 @@ import { edgeDirection } from '../core/coordinates';
 import type { Settings } from '../config/settings';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
-import type { MinimapSnapshot } from '../ui/minimap';
+import { combineStripStackSnapshot, type StripStackMinimapSnapshot } from '../ui/minimap';
 import { Animator, type Timer } from '../viewport/animator';
 import { EdgeDwell } from '../viewport/edge-dwell';
 import { SharedTicker } from '../viewport/shared-ticker';
@@ -134,8 +134,11 @@ export class StripStack {
         this.moveFocusedWindowToRow(this.activeRowIndex + 1);
     }
 
-    minimapSnapshot(): MinimapSnapshot {
-        return this.activeStrip().minimapSnapshot();
+    minimapSnapshot(): StripStackMinimapSnapshot {
+        const rows = Array.from(this.rows.entries())
+            .map(([rowIndex, strip]) => ({ rowIndex, snapshot: strip.minimapSnapshot() }))
+            .sort((a, b) => a.rowIndex - b.rowIndex);
+        return combineStripStackSnapshot(rows, this.activeRowIndex, this.area.height);
     }
 
     private activeStrip(): Strip {

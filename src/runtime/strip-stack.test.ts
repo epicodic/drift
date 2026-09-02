@@ -75,7 +75,11 @@ function fakeStrip(): FakeStrip {
         cycleAlignRight: vi.fn(),
         shiftViewportLeft: vi.fn(),
         shiftViewportRight: vi.fn(),
-        minimapSnapshot: vi.fn(() => ({ columns: [] })),
+        minimapSnapshot: vi.fn(() => ({
+            columns: [],
+            viewport: { offset: 0, width: AREA.width, contentLeft: 0, contentWidth: 0 },
+            gridHeight: AREA.height,
+        })),
         detachFocusedColumn: vi.fn(() => null),
         isEmpty: vi.fn(() => true),
         setSkipTaskbar: vi.fn(),
@@ -182,7 +186,7 @@ describe('StripStack', () => {
         stack.cycleAlignRight();
         stack.shiftViewportLeft();
         stack.shiftViewportRight();
-        stack.minimapSnapshot();
+        const snapshot = stack.minimapSnapshot();
 
         expect(created[0].render).toHaveBeenCalled();
         expect(created[0].focusLeft).toHaveBeenCalled();
@@ -192,6 +196,15 @@ describe('StripStack', () => {
         expect(created[0].shiftViewportLeft).toHaveBeenCalled();
         expect(created[0].shiftViewportRight).toHaveBeenCalled();
         expect(created[0].minimapSnapshot).toHaveBeenCalled();
+        expect(snapshot.rows).toEqual([{ rowIndex: 0, columns: [] }]);
+        expect(snapshot.viewport).toEqual({
+            rowIndex: 0,
+            offset: 0,
+            width: AREA.width,
+            contentLeft: 0,
+            contentWidth: 0,
+        });
+        expect(snapshot.rowPitch).toBe(AREA.height);
     });
 });
 
@@ -316,6 +329,30 @@ describe('StripStack row paging', () => {
         } finally {
             vi.useRealTimers();
         }
+    });
+
+    it('aggregates every currently existing row, leaving a gap where a pruned row was', () => {
+        const { stack, created } = makeStack();
+        created[0].minimapSnapshot.mockReturnValue({
+            columns: [{ id: 1, x: 0, width: 400, focused: true, icon: null, thumbnail: null }],
+            viewport: { offset: 0, width: AREA.width, contentLeft: 0, contentWidth: 400 },
+            gridHeight: AREA.height,
+        });
+        created[0].isEmpty.mockReturnValue(false); // has a window, so leaving it won't prune it
+        stack.rowDown(); // row 1 active; row 1 stays empty (default isEmpty() === true)
+        stack.rowDown(); // row 2 active; leaving empty row 1 prunes it, leaving a gap at index 1
+        created[2].minimapSnapshot.mockReturnValue({
+            columns: [{ id: 2, x: 0, width: 300, focused: true, icon: null, thumbnail: null }],
+            viewport: { offset: 0, width: AREA.width, contentLeft: 0, contentWidth: 300 },
+            gridHeight: AREA.height,
+        });
+
+        const snapshot = stack.minimapSnapshot();
+
+        expect(snapshot.rows.map((row) => row.rowIndex)).toEqual([0, 2]); // row 1 pruned, gap preserved
+        expect(snapshot.rows[0].columns[0].focused).toBe(false); // row 0 no longer active
+        expect(snapshot.rows[1].columns[0].focused).toBe(true); // row 2 is active
+        expect(snapshot.viewport.rowIndex).toBe(2);
     });
 });
 

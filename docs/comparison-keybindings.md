@@ -28,44 +28,44 @@ Drift is the only one of the four that doesn't commit to a single key family —
 
 Empty cells mean the project has no equivalent (by design, or not yet built).
 
-| Action | Niri | PaperWM | Karousel | Drift |
-|---|---|---|---|---|
-| Focus column/window left | `Mod+H` / `Mod+←` | `Super+Left` | `Meta+A` | `Meta+Shift+Tab` |
-| Focus column/window right | `Mod+L` / `Mod+→` | `Super+Right` | `Meta+D` | `Meta+Tab` |
-| Focus window above (in-column) | `Mod+K` / `Mod+↑` | `Super+Up` | `Meta+W` | — (no vertical stacking yet) |
-| Focus window below (in-column) | `Mod+J` / `Mod+↓` | `Super+Down` | `Meta+S` | — (no vertical stacking yet) |
-| Focus first/last column | — | `Super+Home` / `Super+End` | `Meta+Home` / `Meta+End` | — |
-| Cycle recently-focused windows | — | `Super+Tab` / `Alt+Tab` (+`Shift` reverse) | — | — |
-| Move column left | `Mod+Ctrl+H` / `Mod+Ctrl+←` | `Super+Ctrl+Left` (or `Shift+Super+,`) | `Meta+Ctrl+Shift+A` | — (drag-to-reorder by mouse only) |
-| Move column right | `Mod+Ctrl+L` / `Mod+Ctrl+→` | `Super+Ctrl+Right` (or `Shift+Super+.`) | `Meta+Ctrl+Shift+D` | — (drag-to-reorder by mouse only) |
-| Move window up/down (in-column) | `Mod+Ctrl+K` / `Mod+Ctrl+J` | `Super+Ctrl+Up` / `Super+Ctrl+Down` | `Meta+Shift+W` / `Meta+Shift+S` | — (no vertical stacking yet) |
-| Move column/window to start/end | — | — | `Meta+Ctrl+Shift+Home` / `End` (column), `Meta+Shift+Home` / `End` (window) | — |
-| Cycle column width presets | `Mod+R` (+`Shift` reverse) | `Super+R` (+`Alt` reverse) | `Meta+R` (+`Shift` reverse) | — |
-| Increase/decrease column width | `Mod+=` / `Mod+-` | `Super++` / `Super+-` | `Meta+Ctrl++` / `Meta+Ctrl+-` | — |
-| Increase/decrease window height | `Mod+Shift+=` / `Mod+Shift+-` | `Shift+Super++` / `Shift+Super+-` | — | — |
-| Maximize column width | `Mod+M` | `Super+F` | — | — |
-| Center focused column | `Mod+C` | `Super+C` | `Meta+Alt+Return` | — |
-| Cycle column align (left/center/right) | — | — | — | `Meta+Left` / `Meta+Right` |
-| Equalize / squeeze column widths | — | — | `Meta+Ctrl+X` (equalize), `Meta+Ctrl+A` / `D` (squeeze) | — |
-| Scroll viewport without changing focus | — | — | `Meta+Alt+A` / `D` (one column), `Meta+Alt+PgUp` / `PgDown` (page) | `Meta+Shift+Left` / `Meta+Shift+Right` |
-| Scroll viewport to start/end | — | — | `Meta+Alt+Home` / `End` | — |
-| Absorb/expel window (vertical stacking) | `Mod+[` / `Mod+]` (consume/expel) | `Super+I` (absorb) / `Super+O` (expel) | — | — (no vertical stacking yet, see roadmap) |
-| Toggle stacked layout for column | — | — | `Meta+X` | — |
-| Toggle floating | `Mod+V` | `Shift+Super+Escape` (scratch layer) | `Meta+Space` | — (no float/undock yet, see roadmap) |
-| Toggle fullscreen | `Mod+Shift+F` | `Shift+Super+F` | — | — |
-| Close focused window | `Mod+Q` | `Super+Backspace` | — | — |
-| Switch workspace/row up | `Mod+I` / `Mod+PageUp` | `Super+PageUp` | — (no workspace concept) | `Meta+Page_Up` |
-| Switch workspace/row down | `Mod+U` / `Mod+PageDown` | `Super+PageDown` | — (no workspace concept) | `Meta+Page_Down` |
-| Move column to workspace/row above | `Mod+Ctrl+I` / `Mod+Ctrl+PageUp` | `Ctrl+Super+PageUp` | — | `Meta+Shift+Page_Up` |
-| Move column to workspace/row below | `Mod+Ctrl+U` / `Mod+Ctrl+PageDown` | `Ctrl+Super+PageDown` | — | `Meta+Shift+Page_Down` |
-| Move whole workspace up/down | `Mod+Shift+I` / `Mod+Shift+PageUp` etc. | — | — | — |
-| Focus monitor left/right/up/down | `Mod+Shift+H/J/K/L` | `Super+Shift+Left/Right/Up/Down` | — | — |
-| Move column to monitor left/right/up/down | `Mod+Ctrl+Shift+H/J/K/L` | `Shift+Ctrl+Super+Left/Right/Up/Down` | — | — |
-| Swap/move workspace to monitor | — | `Super+Alt+←/→/↑/↓` (swap), `Shift+Ctrl+Alt+←/→/↑/↓` (move) | — | — |
-| Take/drop window (grab, then navigate, then drop) | — | `Super+T` | — | — |
-| Toggle scratch/floating layer visibility | — | `Ctrl+Super+Escape` (attach/detach), `Super+Escape` (toggle recent) | — | — |
-| Show hotkey list | `Mod+Shift+/` | — | — | — |
-| Toggle debug console (Drift dev tool) | — | — | — | `Meta+Shift+D` |
+| Action | Niri | PaperWM | Karousel | Drift | Drift Target |
+|---|---|---|---|---|---|
+| Focus column/window left | `Mod+H` / `Mod+←` | `Super+Left` | `Meta+A` | `Meta+Shift+Tab` | Meta+Left |
+| Focus column/window right | `Mod+L` / `Mod+→` | `Super+Right` | `Meta+D` | `Meta+Tab` | Meta+Right |
+| Focus window above (in-column) | `Mod+K` / `Mod+↑` | `Super+Up` | `Meta+W` | — (no vertical stacking yet) | Meta+Up |
+| Focus window below (in-column) | `Mod+J` / `Mod+↓` | `Super+Down` | `Meta+S` | — (no vertical stacking yet) | Meta+Down |
+| Focus first/last column | — | `Super+Home` / `Super+End` | `Meta+Home` / `Meta+End` | — | Meta+Home / Meta+End |
+| Cycle recently-focused windows | — | `Super+Tab` / `Alt+Tab` (+`Shift` reverse) | — | — |  |
+| Move column left | `Mod+Ctrl+H` / `Mod+Ctrl+←` | `Super+Ctrl+Left` (or `Shift+Super+,`) | `Meta+Ctrl+Shift+A` | — (drag-to-reorder by mouse only) | Meta+Ctrl+Left |
+| Move column right | `Mod+Ctrl+L` / `Mod+Ctrl+→` | `Super+Ctrl+Right` (or `Shift+Super+.`) | `Meta+Ctrl+Shift+D` | — (drag-to-reorder by mouse only) | Meta+Ctrl+Right |
+| Move window up/down (in-column) | `Mod+Ctrl+K` / `Mod+Ctrl+J` | `Super+Ctrl+Up` / `Super+Ctrl+Down` | `Meta+Shift+W` / `Meta+Shift+S` | — (no vertical stacking yet) | Meta+Ctrl+Up / Meta+Ctrl+Down |
+| Move column/window to start/end | — | — | `Meta+Ctrl+Shift+Home` / `End` (column), `Meta+Shift+Home` / `End` (window) | — | Meta+Ctrl+Home / Meta+Ctrl+End |
+| Cycle column width presets | `Mod+R` (+`Shift` reverse) | `Super+R` (+`Alt` reverse) | `Meta+R` (+`Shift` reverse) | — | `Meta+R` (+`Shift` reverse) |
+| Increase/decrease column width | `Mod+=` / `Mod+-` | `Super++` / `Super+-` | `Meta+Ctrl++` / `Meta+Ctrl+-` | — | Meta++` / `Meta+- |
+| Increase/decrease window height | `Mod+Shift+=` / `Mod+Shift+-` | `Shift+Super++` / `Shift+Super+-` | — | — | Meta+Shift++ / Meta+Shift-- |
+| Maximize column width | `Mod+M` | `Super+F` | — | — |  |
+| Center focused column | `Mod+C` | `Super+C` | `Meta+Alt+Return` | — |  |
+| Cycle column align (left/center/right) | — | — | — | `Meta+Left` / `Meta+Right` |  |
+| Equalize / squeeze column widths | — | — | `Meta+Ctrl+X` (equalize), `Meta+Ctrl+A` / `D` (squeeze) | — |  |
+| Scroll viewport without changing focus | — | — | `Meta+Alt+A` / `D` (one column), `Meta+Alt+PgUp` / `PgDown` (page) | `Meta+Shift+Left` / `Meta+Shift+Right` | `Meta+Alt+Left` / `Meta+Alt+Right` |
+| Scroll viewport to start/end | — | — | `Meta+Alt+Home` / `End` | — | `Meta+Alt+Home` / `End` |
+| Absorb/expel window (vertical stacking) | `Mod+[` / `Mod+]` (consume/expel) | `Super+I` (absorb) / `Super+O` (expel) | — | — (no vertical stacking yet, see roadmap) | Meta+I  (absorb)/ Meta+O (expel) |
+| Toggle stacked layout for column | — | — | `Meta+X` | — |  |
+| Toggle floating | `Mod+V` | `Shift+Super+Escape` (scratch layer) | `Meta+Space` | — (no float/undock yet, see roadmap) | Meta+Space |
+| Toggle fullscreen | `Mod+Shift+F` | `Shift+Super+F` | — | — |  |
+| Close focused window | `Mod+Q` | `Super+Backspace` | — | — |  |
+| Switch workspace/row up | `Mod+I` / `Mod+PageUp` | `Super+PageUp` | — (no workspace concept) | `Meta+Page_Up` |  |
+| Switch workspace/row down | `Mod+U` / `Mod+PageDown` | `Super+PageDown` | — (no workspace concept) | `Meta+Page_Down` |  |
+| Move column to workspace/row above | `Mod+Ctrl+I` / `Mod+Ctrl+PageUp` | `Ctrl+Super+PageUp` | — | `Meta+Shift+Page_Up` |  |
+| Move column to workspace/row below | `Mod+Ctrl+U` / `Mod+Ctrl+PageDown` | `Ctrl+Super+PageDown` | — | `Meta+Shift+Page_Down` |  |
+| Move whole workspace up/down | `Mod+Shift+I` / `Mod+Shift+PageUp` etc. | — | — | — |  |
+| Focus monitor left/right/up/down | `Mod+Shift+H/J/K/L` | `Super+Shift+Left/Right/Up/Down` | — | — |  |
+| Move column to monitor left/right/up/down | `Mod+Ctrl+Shift+H/J/K/L` | `Shift+Ctrl+Super+Left/Right/Up/Down` | — | — |  |
+| Swap/move workspace to monitor | — | `Super+Alt+←/→/↑/↓` (swap), `Shift+Ctrl+Alt+←/→/↑/↓` (move) | — | — |  |
+| Take/drop window (grab, then navigate, then drop) | — | `Super+T` | — | — |  |
+| Toggle scratch/floating layer visibility | — | `Ctrl+Super+Escape` (attach/detach), `Super+Escape` (toggle recent) | — | — |  |
+| Show hotkey list | `Mod+Shift+/` | — | — | — |  |
+| Toggle debug console (Drift dev tool) | — | — | — | `Meta+Shift+D` |  |
 
 ## Observations for a future keybinding decision
 
