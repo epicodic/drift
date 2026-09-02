@@ -307,6 +307,34 @@ describe('Strip', () => {
         expect(win.setFrameGeometry).not.toHaveBeenCalled();
     });
 
+    it("still positions a stacked column's other tile when one tile in the stack is fullscreen", () => {
+        // Regression guard for the allTilesExcluded check in render(): a fullscreen tile must
+        // only exclude ITSELF from geometry sync, not silently freeze/skip its still-visible
+        // sibling in the same stack (docs: 2026-09-03-vertical-tiling-design).
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const top = fakeWindow('top');
+        const bottom = fakeWindow('bottom');
+        strip.addWindow(top.adapter);
+        strip.addWindow(bottom.adapter);
+        strip.focusLeft(); // refocus top's column
+        strip.absorbRight(); // top column: [top, bottom]
+
+        top.setIsFullScreen(true);
+        top.triggerFullScreenChanged();
+        top.setFrameGeometry.mockClear();
+        bottom.setFrameGeometry.mockClear();
+
+        strip.render();
+
+        expect(top.setFrameGeometry).not.toHaveBeenCalled(); // fullscreen tile's geometry left alone
+        expect(bottom.setFrameGeometry).toHaveBeenCalled(); // sibling tile still positioned
+        const bottomCalls = bottom.setFrameGeometry.mock.calls;
+        const bottomRect = bottomCalls[bottomCalls.length - 1][0];
+        expect(bottomRect.height).toBeGreaterThan(0);
+        expect(bottomRect.height).toBeLessThan(AREA.height); // stacked, not full column height
+        expect(bottomRect.y).toBeGreaterThan(0); // sits below top's (still-allocated) space
+    });
+
     it('renders a window shifted by the vertical offset passed to render()', () => {
         const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1');
