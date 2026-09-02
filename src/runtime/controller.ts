@@ -6,7 +6,6 @@ import type { Settings } from '../config/settings';
 import { createDebugConsole, type DebugConsole } from '../kwin/debug-console';
 import { createMinimapOverlay, type MinimapOverlay } from '../kwin/minimap-overlay';
 import { createQmlTimer } from '../kwin/qml-timer';
-// import { checkForShortcutConflicts } from '../kwin/shortcut-conflicts'; // disabled, see start()
 import { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import { registerShortcuts } from '../input/shortcuts';
 import type { StripStack } from './strip-stack';
@@ -54,12 +53,6 @@ export class Controller {
             moveWindowToRowAbove: () => this.focusAndShowMinimap((stack) => stack.moveWindowToRowAbove()),
             moveWindowToRowBelow: () => this.focusAndShowMinimap((stack) => stack.moveWindowToRowBelow()),
         });
-        // Disabled: the OSD conflict notice kept firing incorrectly. Left in place, not deleted, per user request.
-        // const conflictCheckTimer = createQmlTimer(this.root);
-        // conflictCheckTimer.start(SHORTCUT_CONFLICT_CHECK_DELAY_MS, () => {
-        //     conflictCheckTimer.stop();
-        //     checkForShortcutConflicts(this.root, this.scriptUiDirUrl);
-        // });
         void this.scriptUiDirUrl; // only used by the disabled conflict check above
         console.log('Drift: initialized');
     }
