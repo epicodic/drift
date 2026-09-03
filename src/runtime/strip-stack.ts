@@ -102,6 +102,22 @@ export class StripStack {
         this.activeStrip().focusRight();
     }
 
+    focusUp(): void {
+        this.activeStrip().focusUp();
+    }
+
+    focusDown(): void {
+        this.activeStrip().focusDown();
+    }
+
+    absorbRight(): void {
+        this.activeStrip().absorbRight();
+    }
+
+    expel(): void {
+        this.activeStrip().expel();
+    }
+
     cycleAlignLeft(): void {
         this.activeStrip().cycleAlignLeft();
     }
@@ -217,18 +233,25 @@ export class StripStack {
         options: { excludeWindowId?: string; initiallyDragging?: boolean } = {},
     ): void {
         const sourceIndex = this.activeRowIndex;
-        const win = this.requireRow(sourceIndex).detachFocusedColumn();
-        if (win === null) {
+        const windows = this.requireRow(sourceIndex).detachFocusedColumn();
+        if (windows.length === 0) {
             return;
         }
-        this.rowByWindow.delete(win.id);
+        for (const win of windows) {
+            this.rowByWindow.delete(win.id);
+        }
         // If this emptied the source row, switchToRow's trailing pruneIfEmpty(oldIndex) removes it —
         // no separate cleanup needed here. Must run before addWindow so the target row's remembered
         // offset is primed to its correct resting position before anything renders into it.
         this.switchToRow(targetIndex, options.excludeWindowId);
         const targetStrip = this.row(targetIndex);
-        targetStrip.addWindow(win, options.initiallyDragging ?? false, this.rowDragHooks());
-        this.rowByWindow.set(win.id, targetIndex);
+        // A stacked column's tiles are NOT kept stacked across rows this pass — each window
+        // becomes its own column in the target row (docs: 2026-09-03-vertical-tiling-design,
+        // Out of Scope). The overwhelmingly common case is a single window here, unaffected.
+        for (const win of windows) {
+            targetStrip.addWindow(win, options.initiallyDragging ?? false, this.rowDragHooks());
+            this.rowByWindow.set(win.id, targetIndex);
+        }
     }
 
     /** Hooks passed to every `Strip.addWindow` call so a live drag's vertical position keeps
