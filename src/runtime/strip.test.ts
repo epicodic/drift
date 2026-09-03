@@ -514,6 +514,19 @@ describe('Strip', () => {
         expect(onDragFinished).toHaveBeenCalled();
     });
 
+    it('reveals the dragged column when the drag finishes, in case reordering pushed it out of the viewport (regression)', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1', { width: 400 });
+        strip.addWindow(win.adapter);
+        const revealFocusedSpy = vi.spyOn(strip, 'revealFocused');
+        revealFocusedSpy.mockClear(); // drop addWindow's own initial reveal call
+
+        win.startDrag();
+        win.finishDrag();
+
+        expect(revealFocusedSpy).toHaveBeenCalledTimes(1);
+    });
+
     it('does not invoke onDragTick when the window is not currently dragging (regression)', () => {
         const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1', { width: 400 });

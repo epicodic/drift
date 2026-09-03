@@ -236,6 +236,7 @@ export class Strip {
                         area: this.area,
                         render: (excludeWindowId?: string, instant?: boolean) => this.render(excludeWindowId, instant),
                         snapColumn: (id: number) => this.snapColumn(id),
+                        revealFocused: () => this.revealFocused(),
                     },
                     rowDragHooks,
                 ),
@@ -246,9 +247,9 @@ export class Strip {
         // A mid-drag add skips revealFocused(): Grid.addColumn always focuses the new column,
         // and if this row's content already overflows the viewport, revealFocused() would kick
         // off a real Animator pan whose tick callback calls render() with NO excludeWindowId —
-        // fighting the live KWin interactive move on the x-axis. Same rationale as
-        // registerDragReorder's interactiveMoveResizeFinished handler (src/input/drag.ts), which
-        // also skips any reveal on release: "the cursor is by definition already on-screen."
+        // fighting the live KWin interactive move on the x-axis. registerDragReorder's own
+        // interactiveMoveResizeFinished handler (src/input/drag.ts) calls revealFocused() too,
+        // but only there, after dragging is fully done — never mid-drag, for the same reason.
         if (!initiallyDragging) {
             this.revealFocused();
         }

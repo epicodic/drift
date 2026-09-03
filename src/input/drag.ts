@@ -23,6 +23,12 @@ export interface DragReorderDeps {
     onDragStarted?(win: WindowAdapter): void;
     onDragTick?(win: WindowAdapter): void;
     onDragFinished?(): void;
+    /** Called once, after the dragged column has settled into its final grid slot on
+     * release — scrolls it back into view if a reorder near the strip's edge pushed that
+     * slot (partially) outside the viewport. Never called mid-drag: doing so would fight
+     * the live KWin interactive move (same rationale as skipping reveal on a mid-drag add,
+     * see `Strip.addWindow`). */
+    revealFocused(): void;
 }
 
 /** Virtual x of `win`'s own left and right edges — the anchors used to decide
@@ -89,6 +95,7 @@ export function registerDragReorder(
         reorderToCurrentPosition();
         deps.snapColumn(columnId);
         deps.render();
+        deps.revealFocused();
         deps.onDragFinished?.();
     });
 
