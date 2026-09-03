@@ -13,11 +13,6 @@ import { StripManager } from './strip-manager';
 import { WindowManager } from './window-manager';
 import { initWorkspaceSignals } from './workspace-signals';
 
-// How long to wait after registering shortcuts before checking whether kglobalaccel
-// actually granted them — the grant may not be settled the instant the ShortcutHandler
-// QML objects are constructed.
-// const SHORTCUT_CONFLICT_CHECK_DELAY_MS = 1000; // disabled, see start()
-
 export class Controller {
     private readonly workspaceAdapter = new WorkspaceAdapter();
     private readonly stripManager: StripManager;
@@ -28,7 +23,6 @@ export class Controller {
     constructor(
         private readonly root: QmlObject,
         private readonly settings: Settings,
-        private readonly scriptUiDirUrl: string,
     ) {
         const area = this.workspaceAdapter.combinedGeometry();
         // Create the debug console before the animation timer, matching the original init() order.
@@ -59,7 +53,6 @@ export class Controller {
             moveWindowLeft: () => this.focusAndShowMinimap((stack) => stack.moveWindowLeft()),
             moveWindowRight: () => this.focusAndShowMinimap((stack) => stack.moveWindowRight()),
         });
-        void this.scriptUiDirUrl; // only used by the disabled conflict check above
         console.log('Drift: initialized');
     }
 

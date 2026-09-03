@@ -34,20 +34,24 @@ export class WorkspaceAdapter {
         return Workspace.desktops.map((desktop) => desktop.id);
     }
 
-    onCurrentActivityChanged(handler: () => void): void {
+    onCurrentActivityChanged(handler: () => void): () => void {
         Workspace.currentActivityChanged.connect(handler);
+        return () => Workspace.currentActivityChanged.disconnect(handler);
     }
 
-    onCurrentDesktopChanged(handler: () => void): void {
+    onCurrentDesktopChanged(handler: () => void): () => void {
         Workspace.currentDesktopChanged.connect(handler);
+        return () => Workspace.currentDesktopChanged.disconnect(handler);
     }
 
-    onActivitiesChanged(handler: () => void): void {
+    onActivitiesChanged(handler: () => void): () => void {
         Workspace.activitiesChanged.connect(handler);
+        return () => Workspace.activitiesChanged.disconnect(handler);
     }
 
-    onDesktopsChanged(handler: () => void): void {
+    onDesktopsChanged(handler: () => void): () => void {
         Workspace.desktopsChanged.connect(handler);
+        return () => Workspace.desktopsChanged.disconnect(handler);
     }
 
     /** The mouse pointer's current position in global screen coordinates. */

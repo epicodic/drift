@@ -47,7 +47,7 @@ flowchart LR
 - **Live debug console** — an on-screen overlay showing exactly what Drift thinks the layout is, for when you want to see the gears turning.
 
 Not there yet?
-Check the [roadmap](docs/roadmap.md) — window rules, a minimap, layout persistence, and vertical (in-column) tiling are all on the list.
+Check the [roadmap](docs/roadmap.md) — window rules and layout persistence are still on the list.
 
 ## Install
 
@@ -70,10 +70,13 @@ KWin only (re)loads a script's QML/JS on a full restart or a fresh login — see
 | Shortcut | Action |
 |---|---|
 | `Meta+Right` / `Meta+Left` | Focus the column to the right / left |
+| `Meta+Alt+Up` / `Meta+Alt+Down` | Focus the tile above / below within the focused column's stack |
 | `Meta+Shift+Left` / `Meta+Shift+Right` | Cycle the focused column's align (left edge → center → right edge) |
 | `Meta+Alt+Left` / `Meta+Alt+Right` | Pan the viewport without changing focus |
-| `Meta+Page_Up` / `Meta+Page_Down` | Page to the row above / below |
-| `Meta+Shift+Page_Up` / `Meta+Shift+Page_Down` | Move the focused window to the row above / below, and follow it there |
+| `Meta+Up` / `Meta+Down` | Page to the row above / below |
+| `Meta+Ctrl+Up` / `Meta+Ctrl+Down` | Move the focused window to the row above / below, and follow it there |
+| `Meta+Ctrl+Left` / `Meta+Ctrl+Right` | Move the focused window's column left / right within the strip |
+| `Meta+I` / `Meta+O` | Absorb the column to the right into the focused column's stack / expel the focused tile back out |
 | `Meta+Shift+D` | Toggle the live debug console |
 
 Every shortcut, plus the column gap, default width, and animation timing, is configurable from the script's **Configure...** dialog in System Settings.
@@ -114,7 +117,7 @@ Drift exists because a few gaps in Karousel mattered enough to us to start over:
 | Plasma Activities & all-desktop windows | Each activity+desktop pair gets its own independent strip | Not supported ([documented limitation](https://github.com/peterfajdiga/karousel#limitations)) |
 | Animation | Built in | Needs a companion effect, [kwin4_effect_geometry_change](https://github.com/peterfajdiga/kwin4_effect_geometry_change) |
 | Mouse drag-to-reorder | Yes — drag a window past a neighbor to swap places | Keyboard-only column/window moves |
-| Vertical (in-column) stacking | Not yet, see the [roadmap](docs/roadmap.md) | Yes (`Meta+X`) |
+| Vertical (in-column) stacking | Yes (`Meta+I`/`Meta+O`) | Yes (`Meta+X`) |
 | Keybinding surface | Small and focused (see [Default shortcuts](#default-shortcuts)) | Large and granular |
 
 If Karousel's keybindings already cover how you work, it's a solid, proven choice.
