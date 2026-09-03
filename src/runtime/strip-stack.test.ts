@@ -342,7 +342,14 @@ describe('StripStack row paging', () => {
     it('aggregates every currently existing row, leaving a gap where a pruned row was', () => {
         const { stack, created } = makeStack();
         created[0].minimapSnapshot.mockReturnValue({
-            columns: [{ id: 1, x: 0, width: 400, focused: true, icon: null, thumbnail: null }],
+            columns: [
+                {
+                    id: 1,
+                    x: 0,
+                    width: 400,
+                    tiles: [{ y: 0, height: AREA.height, focused: true, icon: null, thumbnail: null }],
+                },
+            ],
             viewport: { offset: 0, width: AREA.width, contentLeft: 0, contentWidth: 400 },
             gridHeight: AREA.height,
         });
@@ -350,7 +357,14 @@ describe('StripStack row paging', () => {
         stack.rowDown(); // row 1 active; row 1 stays empty (default isEmpty() === true)
         stack.rowDown(); // row 2 active; leaving empty row 1 prunes it, leaving a gap at index 1
         created[2].minimapSnapshot.mockReturnValue({
-            columns: [{ id: 2, x: 0, width: 300, focused: true, icon: null, thumbnail: null }],
+            columns: [
+                {
+                    id: 2,
+                    x: 0,
+                    width: 300,
+                    tiles: [{ y: 0, height: AREA.height, focused: true, icon: null, thumbnail: null }],
+                },
+            ],
             viewport: { offset: 0, width: AREA.width, contentLeft: 0, contentWidth: 300 },
             gridHeight: AREA.height,
         });
@@ -358,8 +372,8 @@ describe('StripStack row paging', () => {
         const snapshot = stack.minimapSnapshot();
 
         expect(snapshot.rows.map((row) => row.rowIndex)).toEqual([0, 2]); // row 1 pruned, gap preserved
-        expect(snapshot.rows[0].columns[0].focused).toBe(false); // row 0 no longer active
-        expect(snapshot.rows[1].columns[0].focused).toBe(true); // row 2 is active
+        expect(snapshot.rows[0].columns[0].tiles[0].focused).toBe(false); // row 0 no longer active
+        expect(snapshot.rows[1].columns[0].tiles[0].focused).toBe(true); // row 2 is active
         expect(snapshot.viewport.rowIndex).toBe(2);
     });
 });

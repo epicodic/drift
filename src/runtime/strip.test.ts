@@ -220,7 +220,7 @@ describe('Strip', () => {
         const snapshot = strip.minimapSnapshot();
 
         expect(snapshot.columns).toHaveLength(1);
-        expect(snapshot.columns[0].focused).toBe(true);
+        expect(snapshot.columns[0].tiles[0].focused).toBe(true);
     });
 
     it('reports the reveal animation target offset immediately, not the stale pre-move offset', () => {
