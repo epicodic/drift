@@ -18,7 +18,7 @@ Columns can hold more than one window, stacked vertically (`Super+I` absorbs the
 |---|---|---|
 | Host environment | KDE Plasma / KWin script | GNOME Shell extension |
 | Multi-monitor model | One strip spans every screen | One workspace (one strip) per monitor, drawn from a shared workspace stack |
-| Vertical (in-column) stacking | Not yet, see [roadmap](roadmap.md) | Yes — absorb/expel windows into a column, resize stacked heights |
+| Vertical (in-column) stacking | Yes — `Meta+I`/`Meta+O` absorb/expel, resizable tile heights | Yes — absorb/expel windows into a column, resize stacked heights |
 | Row / stacked navigation | Yes — `StripStack` rows nested inside each activity/desktop strip, paged with `Meta+Page_Up`/`Meta+Page_Down` (`Meta+Shift+Page_Up`/`Down` moves a window along) | Yes — a "workspace stack" you page through (`Super+PageUp/PageDown`, `Super+`` `) |
 | Window rules | Not yet, see [roadmap](roadmap.md) | Yes — "winprops": per `wm_class`/`title` rules (`preferredWidth`, force-floating via `scratch_layer`) |
 | Minimap / position indicator | Not yet, see [roadmap](roadmap.md) | Yes — both a `minimap.js` overlay and a persistent "window position bar" in the top bar |
@@ -38,7 +38,6 @@ A few PaperWM features suggest additional roadmap items or refinements of the ex
 - **Minimap** (already on the roadmap) has two independent precedents in PaperWM worth choosing between: a full spatial overlay (`minimap.js`) versus a lightweight always-visible position bar. The latter is far cheaper to build and may cover most of the value.
 - **Undock/redock** (already on the roadmap) maps closely to PaperWM's scratch layer — a dedicated toggle between tiled and floating-always-on-top, rather than a one-off drag-out gesture.
 - **Focus modes** — not currently on Drift's roadmap at all. PaperWM's switchable `CENTER`/`EDGE`/free-scroll focus behavior is a different axis from Drift's one-shot `cycleAlign` shortcut (a persistent mode vs. a manual step) and might be worth a dedicated roadmap entry rather than folding into "configurable navigation feel."
-- **Vertical stacking** (already on the roadmap) — PaperWM's absorb/expel keybinding pair (`Super+I`/`Super+O`) is a simple, well-tested interaction model to borrow from once Drift's `Column` supports more than one window.
 
 ## Where Drift already differs by design, not by gap
 

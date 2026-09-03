@@ -26,7 +26,11 @@ Real screen geometry is derived from virtual coordinates only at the point a win
 
 A column is one tiled window's slot in the strip.
 Columns are ordered left to right; a column's virtual `x` is the sum of the widths (plus gaps) of all columns to its left.
-Column height always equals the available screen height (minus any reserved margin); there is no vertical tiling within a column yet.
+Column height always equals the available screen height (minus any reserved margin).
+A column can hold more than one window stacked vertically — an ordered list of *tiles*, each with its own height, summing to the column's fixed total.
+Absorb (`Meta+I`) pulls the column to the right into the focused column's stack as a new tile; expel (`Meta+O`) pops the focused tile back out into its own column to the right, matching PaperWM's model.
+`focusUp`/`focusDown` (`Meta+Alt+Up`/`Down`) move focus within a stack; `focusLeft`/`focusRight` keep moving between columns and land on whichever tile was last focused there.
+See [`docs/agents/specs/2026-09-03-vertical-tiling-design.md`](agents/specs/2026-09-03-vertical-tiling-design.md).
 Resizing a column's width shifts every column to its right — never resizes them — and grows or shrinks the strip's total virtual width.
 
 ### Viewport vs. Layout
