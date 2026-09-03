@@ -12,7 +12,7 @@ function fakeWindow(icon: QIcon | null, handle: Window | null = null): WindowAda
 }
 
 describe('buildMinimapSnapshot', () => {
-    it('reports each visible column position, width, focus, icon, and thumbnail handle', () => {
+    it('reports each visible column position, width, and a single full-height tile carrying focus/icon/thumbnail', () => {
         const grid = new Grid(1000, 8);
         const first = grid.addColumn(400);
         const second = grid.addColumn(600);
@@ -28,8 +28,18 @@ describe('buildMinimapSnapshot', () => {
         const snapshot = buildMinimapSnapshot(grid, viewport, registry);
 
         expect(snapshot.columns).toEqual([
-            { id: first.id, x: 0, width: 400, focused: false, icon: null, thumbnail: null },
-            { id: second.id, x: 408, width: 600, focused: true, icon, thumbnail: handle },
+            {
+                id: first.id,
+                x: 0,
+                width: 400,
+                tiles: [{ y: 0, height: 1000, focused: false, icon: null, thumbnail: null }],
+            },
+            {
+                id: second.id,
+                x: 408,
+                width: 600,
+                tiles: [{ y: 0, height: 1000, focused: true, icon, thumbnail: handle }],
+            },
         ]);
     });
 
@@ -43,7 +53,12 @@ describe('buildMinimapSnapshot', () => {
         const snapshot = buildMinimapSnapshot(grid, viewport, new ColumnRegistry());
 
         expect(snapshot.columns).toEqual([
-            { id: visible.id, x: 0, width: 400, focused: false, icon: null, thumbnail: null },
+            {
+                id: visible.id,
+                x: 0,
+                width: 400,
+                tiles: [{ y: 0, height: 1000, focused: false, icon: null, thumbnail: null }],
+            },
         ]);
     });
 
@@ -58,7 +73,7 @@ describe('buildMinimapSnapshot', () => {
         expect(snapshot.gridHeight).toBe(1000);
     });
 
-    it("shows the focused tile's icon and thumbnail for a stacked column", () => {
+    it('reports one tile per stacked window, each with its own position, icon, and thumbnail, focus only on the truly focused tile', () => {
         const grid = new Grid(1000, 8);
         const column = grid.addColumn(400);
         const topId = column.tiles()[0].id;
@@ -76,13 +91,19 @@ describe('buildMinimapSnapshot', () => {
         const snapshot = buildMinimapSnapshot(grid, viewport, registry);
 
         expect(snapshot.columns).toHaveLength(1);
-        expect(snapshot.columns[0].icon).toBe(bottomIcon);
-        expect(snapshot.columns[0].thumbnail).toBe(handle);
+        expect(snapshot.columns[0].tiles).toEqual([
+            { y: 0, height: 500, focused: false, icon: topIcon, thumbnail: null },
+            { y: 500, height: 500, focused: true, icon: bottomIcon, thumbnail: handle },
+        ]);
     });
 });
 
 describe('combineStripStackSnapshot', () => {
     const viewportA = { offset: 0, width: 1280, contentLeft: 0, contentWidth: 2000 };
+
+    function tile(focused: boolean): MinimapColumn['tiles'][number] {
+        return { y: 0, height: 1000, focused, icon: null, thumbnail: null };
+    }
 
     function row(
         rowIndex: number,
@@ -94,8 +115,8 @@ describe('combineStripStackSnapshot', () => {
     }
 
     it('merges every row, tagging each with its own rowIndex', () => {
-        const rowMinus1 = row(-1, [{ id: 1, x: 0, width: 400, focused: false, icon: null, thumbnail: null }]);
-        const row0 = row(0, [{ id: 2, x: 0, width: 600, focused: true, icon: null, thumbnail: null }]);
+        const rowMinus1 = row(-1, [{ id: 1, x: 0, width: 400, tiles: [tile(false)] }]);
+        const row0 = row(0, [{ id: 2, x: 0, width: 600, tiles: [tile(true)] }]);
 
         const combined = combineStripStackSnapshot([rowMinus1, row0], 0, 1000);
 
@@ -106,13 +127,22 @@ describe('combineStripStackSnapshot', () => {
     });
 
     it('suppresses focused on every row except the active one', () => {
-        const inactive = row(-1, [{ id: 1, x: 0, width: 400, focused: true, icon: null, thumbnail: null }]);
-        const active = row(0, [{ id: 2, x: 0, width: 600, focused: true, icon: null, thumbnail: null }]);
+        const inactive = row(-1, [{ id: 1, x: 0, width: 400, tiles: [tile(true)] }]);
+        const active = row(0, [{ id: 2, x: 0, width: 600, tiles: [tile(true)] }]);
 
         const combined = combineStripStackSnapshot([inactive, active], 0, 1000);
 
-        expect(combined.rows[0].columns[0].focused).toBe(false);
-        expect(combined.rows[1].columns[0].focused).toBe(true);
+        expect(combined.rows[0].columns[0].tiles[0].focused).toBe(false);
+        expect(combined.rows[1].columns[0].tiles[0].focused).toBe(true);
+    });
+
+    it('suppresses focused on every tile in a stacked column on an inactive row', () => {
+        const inactive = row(-1, [{ id: 1, x: 0, width: 400, tiles: [tile(false), tile(true)] }]);
+        const active = row(0, []);
+
+        const combined = combineStripStackSnapshot([inactive, active], 0, 1000);
+
+        expect(combined.rows[0].columns[0].tiles.map((t) => t.focused)).toEqual([false, false]);
     });
 
     it('takes viewport and gridHeight from the active row, tagged with its rowIndex', () => {

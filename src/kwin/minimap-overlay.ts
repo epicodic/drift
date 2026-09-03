@@ -51,66 +51,94 @@ PlasmaCore.Dialog {
                     height: dialog.rowHeight
                     Repeater {
                         model: modelData.columns
-                        delegate: Rectangle {
+                        delegate: Item {
+                            id: columnItem
                             x: modelData.x
                             width: Math.max(modelData.width, 2)
                             height: dialog.rowHeight
-                            radius: 4
-                            color: modelData.focused ? "#3daee9" : "#5c5c5c"
-                            clip: true
-                            KWinComponents.WindowThumbnail {
-                                client: modelData.thumbnail
-                                visible: dialog.showThumbnails && modelData.thumbnail !== null
-                                anchors.fill: parent
-                            }
-                            Kirigami.Icon {
-                                anchors.centerIn: parent
-                                width: Math.min(parent.width - 8, 32)
-                                height: width
-                                source: modelData.icon
-                                visible: !dialog.showThumbnails && modelData.icon !== null && parent.width > 12
-                            }
-                            Kirigami.Icon {
-                                anchors {
-                                    right: parent.right
-                                    bottom: parent.bottom
-                                    margins: 2
-                                }
-                                width: Math.min(parent.width - 4, 20)
-                                height: width
-                                source: modelData.icon
-                                visible: dialog.showThumbnails && modelData.icon !== null && parent.width > 12
-                            }
-                            // Painted last so the focus indicator stays on top of the window
-                            // thumbnail, regardless of when its async live content arrives.
-                            Item {
-                                id: focusRingSource
-                                anchors.fill: parent
-                                visible: false
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: 4
-                                    color: "transparent"
-                                    border.color: "#3daee9"
-                                    border.width: 4
-                                }
-                            }
-                            MultiEffect {
-                                anchors.fill: focusRingSource
-                                source: focusRingSource
-                                visible: modelData.focused
-                                blurEnabled: true
-                                blur: 1.0
-                                blurMax: 24
-                                brightness: 0.15
-                            }
                             Rectangle {
+                                // Clips every stacked tile to one rounded outer shape, mirroring
+                                // a single-tile column's look (docs: 2026-09-03-vertical-tiling-design).
                                 anchors.fill: parent
                                 radius: 4
                                 color: "transparent"
-                                border.color: "#3daee9"
-                                border.width: 2
-                                visible: modelData.focused
+                                clip: true
+                                Repeater {
+                                    id: tileRepeater
+                                    model: modelData.tiles
+                                    delegate: Rectangle {
+                                        y: modelData.y
+                                        width: columnItem.width
+                                        height: modelData.height
+                                        color: modelData.focused ? "#3daee9" : "#5c5c5c"
+                                        clip: true
+                                        // Separates stacked tiles from each other; the last tile has
+                                        // no neighbor below it to separate from.
+                                        Rectangle {
+                                            anchors {
+                                                left: parent.left
+                                                right: parent.right
+                                                bottom: parent.bottom
+                                            }
+                                            height: 1
+                                            color: Qt.rgba(0, 0, 0, 0.5)
+                                            visible: index < tileRepeater.count - 1
+                                        }
+                                        KWinComponents.WindowThumbnail {
+                                            client: modelData.thumbnail
+                                            visible: dialog.showThumbnails && modelData.thumbnail !== null
+                                            anchors.fill: parent
+                                        }
+                                        Kirigami.Icon {
+                                            anchors.centerIn: parent
+                                            width: Math.min(parent.width - 8, Math.min(parent.height - 8, 32))
+                                            height: width
+                                            source: modelData.icon
+                                            visible: !dialog.showThumbnails && modelData.icon !== null && parent.width > 12
+                                        }
+                                        Kirigami.Icon {
+                                            anchors {
+                                                right: parent.right
+                                                bottom: parent.bottom
+                                                margins: 2
+                                            }
+                                            width: Math.min(parent.width - 4, 20)
+                                            height: width
+                                            source: modelData.icon
+                                            visible: dialog.showThumbnails && modelData.icon !== null && parent.width > 12
+                                        }
+                                        // Painted last so the focus indicator stays on top of the
+                                        // window thumbnail, regardless of when its async live content
+                                        // arrives.
+                                        Item {
+                                            id: focusRingSource
+                                            anchors.fill: parent
+                                            visible: false
+                                            Rectangle {
+                                                anchors.fill: parent
+                                                color: "transparent"
+                                                border.color: "#3daee9"
+                                                border.width: 4
+                                            }
+                                        }
+                                        MultiEffect {
+                                            anchors.fill: focusRingSource
+                                            source: focusRingSource
+                                            visible: modelData.focused
+                                            blurEnabled: true
+                                            blur: 1.0
+                                            blurMax: 24
+                                            brightness: 0.15
+                                        }
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            color: "transparent"
+                                            border.color: "#3daee9"
+                                            border.width: 2
+                                            visible: modelData.focused
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -130,12 +158,18 @@ PlasmaCore.Dialog {
     }
 }`;
 
-interface PanelColumn {
-    x: number;
-    width: number;
+interface PanelTile {
+    y: number;
+    height: number;
     focused: boolean;
     icon: QIcon | null;
     thumbnail: Window | null;
+}
+
+interface PanelColumn {
+    x: number;
+    width: number;
+    tiles: PanelTile[];
 }
 
 interface PanelRow {
@@ -249,9 +283,13 @@ function toPanelRows(snapshot: StripStackMinimapSnapshot): PanelRow[] {
             columns: row.columns.map((column) => ({
                 x: (column.x - left) * scale,
                 width: column.width * scale,
-                focused: column.focused,
-                icon: column.icon,
-                thumbnail: column.thumbnail,
+                tiles: column.tiles.map((tile) => ({
+                    y: tile.y * scale,
+                    height: tile.height * scale,
+                    focused: tile.focused,
+                    icon: tile.icon,
+                    thumbnail: tile.thumbnail,
+                })),
             })),
         };
     });
