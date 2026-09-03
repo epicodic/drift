@@ -25,6 +25,7 @@ import {
 } from '../viewport/align-cycle';
 import { Animator, type Timer } from '../viewport/animator';
 import { ColumnMotion } from '../viewport/column-motion';
+import { EdgeDwell } from '../viewport/edge-dwell';
 import { SharedTicker } from '../viewport/shared-ticker';
 import { Viewport } from '../viewport/viewport';
 import { ColumnRegistry, type TileLocation } from './column-registry';
@@ -57,25 +58,13 @@ export interface StackPreview {
     leavingTileId?: number;
 }
 
-/** Optional live-drag reorder preview: as if `columnId` were already at
- * `targetIndex` in column order — render()'s columns are positioned from
- * `Grid.previewOffsetsWithColumnAt(columnId, targetIndex)` instead of their real,
- * committed offsets, without mutating `Grid.ordered`. The one real `Grid.moveColumn`
- * commit happens once, on drag release (docs: 2026-09-03-drag-to-stack-design) —
- * mirroring `StackPreview`'s render-only-until-release model, needed so a live
- * reorder swap can no longer "capture" a neighbor's spatial territory mid-drag and
- * foreclose ever reaching that neighbor's stack zone. */
-export interface ReorderPreview {
-    columnId: number;
-    targetIndex: number;
-}
-
 export class Strip {
     private readonly grid: Grid;
     private readonly viewport: Viewport;
     private readonly geometrySync: GeometrySync;
     private readonly animator: Animator;
     private readonly columnMotion = new ColumnMotion();
+    private readonly ticker: SharedTicker;
     private readonly columnMotionTimer: Timer;
     private readonly registry = new ColumnRegistry();
     // Tracks fullscreen/minimized state per TILE (not per column, since a stacked column
@@ -101,9 +90,9 @@ export class Strip {
         this.grid = new Grid(Math.max(1, area.height - settings.bottomMargin), settings.columnGap);
         this.viewport = new Viewport(area.width);
         this.geometrySync = new GeometrySync(area);
-        const ticker = new SharedTicker(timer, settings.animationTickMs);
+        this.ticker = new SharedTicker(timer, settings.animationTickMs);
         this.animator = new Animator(
-            ticker.subscribe(),
+            this.ticker.subscribe(),
             () => Date.now(),
             settings.animationTickMs,
             (offset) => {
@@ -111,7 +100,7 @@ export class Strip {
                 this.render();
             },
         );
-        this.columnMotionTimer = ticker.subscribe();
+        this.columnMotionTimer = this.ticker.subscribe();
     }
 
     /** `verticalOffsetY` is sticky, not defaulted: passing a value both applies it immediately
@@ -127,20 +116,11 @@ export class Strip {
      * `stackPreview` (see `StackPreview`): optional live-drag stack preview. The dragged
      * tile's own window keeps being excluded from geometry sync via `excludeWindowId`,
      * unchanged (docs: 2026-09-03-drag-to-stack-design). */
-    render(
-        excludeWindowId?: string,
-        instant = false,
-        verticalOffsetY?: number,
-        stackPreview?: StackPreview,
-        reorderPreview?: ReorderPreview,
-    ): void {
+    render(excludeWindowId?: string, instant = false, verticalOffsetY?: number, stackPreview?: StackPreview): void {
         if (verticalOffsetY !== undefined) {
             this.verticalOffsetY = verticalOffsetY;
         }
         this.viewport.setContentGeometry(this.grid.contentLeft(), this.grid.virtualWidth());
-        const previewOffsets = reorderPreview
-            ? this.grid.previewOffsetsWithColumnAt(reorderPreview.columnId, reorderPreview.targetIndex)
-            : null;
         for (const column of this.grid.columns()) {
             const columnRect = this.grid.columnRect(column.id);
             if (column.hidden) {
@@ -179,7 +159,7 @@ export class Strip {
             if (allTilesExcluded) {
                 continue;
             }
-            const targetX = previewOffsets?.get(column.id) ?? columnRect.x;
+            const targetX = columnRect.x;
             let x: number;
             if (instant) {
                 this.columnMotion.snapTo(column.id, targetX);
@@ -217,15 +197,14 @@ export class Strip {
             }
         }
         if (this.columnMotion.isAnimating()) {
-            // Preserve excludeWindowId, stackPreview, AND reorderPreview: a live drag-reorder
-            // must keep skipping the dragged window's own geometry across continuation ticks,
-            // not just the first, and a live stack-hover or reorder-swap preview must not
-            // flicker back to committed rects/offsets for one frame while a column-position
-            // animation is still in flight. verticalOffsetY is intentionally still omitted
-            // here — it's sticky via `this.verticalOffsetY` (see render()'s own doc comment),
-            // so omitting it is safe.
+            // Preserve excludeWindowId and stackPreview: a live drag-reorder must keep skipping
+            // the dragged window's own geometry across continuation ticks, not just the first,
+            // and a live stack-hover preview must not flicker back to committed rects for one
+            // frame while a column-position animation is still in flight. verticalOffsetY is
+            // intentionally still omitted here — it's sticky via `this.verticalOffsetY` (see
+            // render()'s own doc comment), so omitting it is safe.
             this.columnMotionTimer.start(this.settings.animationTickMs, () =>
-                this.render(excludeWindowId, false, undefined, stackPreview, reorderPreview),
+                this.render(excludeWindowId, false, undefined, stackPreview),
             );
         } else {
             this.columnMotionTimer.stop();
@@ -308,6 +287,15 @@ export class Strip {
                             verticalOffsetY?: undefined,
                             stackPreview?: StackPreview,
                         ) => this.render(excludeWindowId, instant, verticalOffsetY, stackPreview),
+                        cursorPos: () => this.workspaceAdapter.cursorPos(),
+                        createStackDwell: (onFire: (columnId: number) => void) =>
+                            new EdgeDwell<number>(
+                                this.ticker.subscribe(),
+                                () => Date.now(),
+                                this.settings.animationTickMs,
+                                this.settings.columnDragDwellMs,
+                                onFire,
+                            ),
                         snapColumn: (id: number) => this.snapColumn(id),
                         commitTileIntoStack: (
                             fromColumnId: number,

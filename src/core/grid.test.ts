@@ -503,47 +503,6 @@ describe('Grid — expelFocusedTile', () => {
     });
 });
 
-describe('Grid — previewOffsetsWithColumnAt', () => {
-    it('computes offsets as if the moving column were already at targetIndex, without mutating real order', () => {
-        const grid = new Grid(1000, 0);
-        const a = grid.addColumn(300); // real order: [a, b, c] at 0, 300, 600
-        const b = grid.addColumn(300);
-        const c = grid.addColumn(300);
-
-        const preview = grid.previewOffsetsWithColumnAt(a.id, 2); // as if a were moved past c
-
-        expect(preview.get(b.id)).toBe(0); // b and c shift left to fill a's old slot
-        expect(preview.get(c.id)).toBe(300);
-        expect(preview.get(a.id)).toBe(600); // a lands where c used to be
-
-        // Real order is untouched.
-        expect(grid.columns().map((col) => col.id)).toEqual([a.id, b.id, c.id]);
-        expect(grid.columnRect(a.id).x).toBe(0);
-    });
-
-    it('accounts for the gap between columns', () => {
-        const grid = new Grid(1000, 20);
-        const a = grid.addColumn(300); // real order: a 0..300, gap, b 320..620
-        const b = grid.addColumn(300);
-
-        const preview = grid.previewOffsetsWithColumnAt(b.id, 0); // as if b moved before a
-
-        expect(preview.get(b.id)).toBe(0);
-        expect(preview.get(a.id)).toBe(320); // b's width (300) + gap (20)
-    });
-
-    it('moving to the same index reproduces the real offsets unchanged', () => {
-        const grid = new Grid(1000, 0);
-        const a = grid.addColumn(300);
-        const b = grid.addColumn(300);
-
-        const preview = grid.previewOffsetsWithColumnAt(a.id, 0);
-
-        expect(preview.get(a.id)).toBe(0);
-        expect(preview.get(b.id)).toBe(300);
-    });
-});
-
 describe('Grid — moveTileIntoColumn', () => {
     it("moves a standalone column's tile into another column, removing the now-empty source column", () => {
         const grid = new Grid(1000, 0);

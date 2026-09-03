@@ -31,7 +31,7 @@ export class StripStack {
     private transitionRows: [number, number] = [0, 0];
     private transitionExcludeWindowId: string | undefined;
     private cameraY = 0;
-    private edgeDwell: EdgeDwell | null = null;
+    private edgeDwell: EdgeDwell<EdgeDirection> | null = null;
     private draggedWindowId: string | null = null;
 
     constructor(
@@ -287,7 +287,7 @@ export class StripStack {
     private beginEdgeWatch(win: WindowAdapter): void {
         this.edgeDwell?.stop();
         this.draggedWindowId = win.id;
-        this.edgeDwell = new EdgeDwell(
+        this.edgeDwell = new EdgeDwell<EdgeDirection>(
             this.ticker.subscribe(),
             () => Date.now(),
             this.settings.animationTickMs,

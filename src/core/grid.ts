@@ -101,25 +101,6 @@ export class Grid {
         this.ordered.splice(toIndex, 0, column);
     }
 
-    /** Offsets every column WOULD have if `movingColumnId` were already at
-     * `targetIndex`, without mutating the real order — the pure counterpart to
-     * `moveColumn`, used to render a live reorder-swap preview while the real model
-     * stays untouched until release. Reuses `layoutOffsets`' own width/gap math
-     * against a spliced copy of `ordered`, so preview and committed offsets can never
-     * drift apart (docs: 2026-09-03-drag-to-stack-design). */
-    previewOffsetsWithColumnAt(movingColumnId: number, targetIndex: number): Map<number, number> {
-        const index = this.requireIndex(movingColumnId);
-        const preview = this.ordered.slice();
-        const [column] = preview.splice(index, 1);
-        preview.splice(targetIndex, 0, column);
-        const offsets = this.layoutOffsets(preview);
-        const result = new Map<number, number>();
-        preview.forEach((col, i) => {
-            result.set(col.id, offsets[i]);
-        });
-        return result;
-    }
-
     focusLeft(): Column | null {
         return this.moveFocus(-1);
     }
@@ -281,13 +262,13 @@ export class Grid {
     /** Offset of every column (visible or hidden). The gap only follows a VISIBLE column,
      * so a run of hidden columns fits inside the single surrounding gap instead of
      * bracketing itself with a gap on both sides. */
-    private layoutOffsets(order: Column[] = this.ordered): number[] {
+    private layoutOffsets(): number[] {
         const offsets: number[] = [];
         let cursor = this.originX;
-        order.forEach((column, index) => {
+        this.ordered.forEach((column, index) => {
             offsets.push(cursor);
             cursor += column.hidden ? HIDDEN_COLUMN_WIDTH : column.width;
-            if (!column.hidden && index < order.length - 1) {
+            if (!column.hidden && index < this.ordered.length - 1) {
                 cursor += this.gap;
             }
         });
