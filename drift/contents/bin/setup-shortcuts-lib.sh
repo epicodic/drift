@@ -16,7 +16,11 @@ key_code() {
 		Down) echo 16777237 ;;
 		Page_Up) echo 16777238 ;;
 		Page_Down) echo 16777239 ;;
-		D) echo 68 ;;
+		[A-Z])
+			# Qt::Key_A..Key_Z (qnamespace.h) equal the ASCII codes of the
+			# uppercase letters themselves, so no per-letter case is needed.
+			printf '%d\n' "'$1"
+			;;
 		*)
 			echo "setup-shortcuts-lib.sh: unknown key \"$1\" — add it to key_code()" >&2
 			exit 1

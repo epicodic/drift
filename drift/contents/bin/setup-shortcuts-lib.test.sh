@@ -40,6 +40,14 @@ FIXTURE_ALL_SHORTCUT_INFOS='a(ssssssaiai) 5 "Window Quick Tile Right" "Quick Til
 # is 285212692, which is exactly Meta (268435456) + Right (16777236).
 assert_eq "keyseq_to_int computes Meta+Right" "285212692" "$(keyseq_to_int "Meta+Right")"
 
+# key_code falls back to the ASCII code for any single uppercase letter, since
+# Qt::Key_A..Key_Z equal ASCII 'A'..'Z' — cross-checked against qnamespace.h.
+assert_eq "key_code falls back to ASCII for D" "68" "$(key_code "D")"
+assert_eq "key_code falls back to ASCII for I" "73" "$(key_code "I")"
+assert_eq "key_code falls back to ASCII for O" "79" "$(key_code "O")"
+assert_eq "key_code falls back to ASCII for A" "65" "$(key_code "A")"
+assert_eq "key_code falls back to ASCII for Z" "90" "$(key_code "Z")"
+
 # DriftFocusRight already holds the target key, but it's in the exclude list (it's one
 # of Drift's own actions) — must not be reported as a conflict to release.
 assert_eq "own action holding the key is not reported as a conflict" "" \
