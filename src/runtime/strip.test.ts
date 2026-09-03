@@ -999,6 +999,138 @@ describe('Strip — absorb/expel', () => {
     });
 });
 
+describe('Strip — commitTileIntoStack', () => {
+    it("moves a standalone column's window into another column as a new tile, removing the source column", () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const left = fakeWindow('left');
+        const right = fakeWindow('right');
+        strip.addWindow(left.adapter);
+        strip.addWindow(right.adapter);
+        const leftLocation = strip.locationOf('left')!;
+        const rightLocation = strip.locationOf('right')!;
+
+        strip.commitTileIntoStack(leftLocation.columnId, leftLocation.tileId, rightLocation.columnId, 0);
+        strip.render();
+
+        expect(strip.locationOf('left')!.columnId).toBe(rightLocation.columnId); // left now shares right's column
+        const rightCalls = right.setFrameGeometry.mock.calls;
+        const rightRect = rightCalls[rightCalls.length - 1][0];
+        expect(rightRect.height).toBeLessThan(AREA.height); // now sharing the column
+    });
+
+    it("does not disturb the target column's other tiles beyond the requested slot", () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const a = fakeWindow('a');
+        const b = fakeWindow('b');
+        const c = fakeWindow('c');
+        strip.addWindow(a.adapter);
+        strip.addWindow(b.adapter);
+        strip.focusLeft();
+        strip.absorbRight(); // left column: [a, b]
+        strip.addWindow(c.adapter);
+        const stackColumnId = strip.locationOf('a')!.columnId;
+        const cLocation = strip.locationOf('c')!;
+
+        strip.commitTileIntoStack(cLocation.columnId, cLocation.tileId, stackColumnId, 0);
+        strip.render();
+
+        expect(strip.locationOf('a')!.columnId).toBe(stackColumnId);
+        expect(strip.locationOf('b')!.columnId).toBe(stackColumnId);
+        expect(strip.locationOf('c')!.columnId).toBe(stackColumnId);
+    });
+});
+
+describe('Strip — render reorderPreview', () => {
+    it('previews a column reorder swap (via columnMotion) without mutating the real grid order', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const left = fakeWindow('left', { width: 640 });
+        const right = fakeWindow('right', { width: 640 });
+        strip.addWindow(left.adapter);
+        strip.addWindow(right.adapter);
+        const leftLocation = strip.locationOf('left')!;
+
+        strip.render(); // establish real, committed positions
+        const leftCalls = left.setFrameGeometry.mock.calls;
+        const leftRealX = leftCalls[leftCalls.length - 1][0].x;
+        const rightCalls = right.setFrameGeometry.mock.calls;
+        const rightRealX = rightCalls[rightCalls.length - 1][0].x;
+
+        // Preview: as if `left` (currently index 0) were moved to index 1 (right's slot).
+        strip.render('left', false, undefined, undefined, { columnId: leftLocation.columnId, targetIndex: 1 });
+        const previewCalls = right.setFrameGeometry.mock.calls;
+        const previewRect = previewCalls[previewCalls.length - 1][0];
+        expect(previewRect.x).toBe(leftRealX); // right visually slides into left's old (real) slot
+
+        // A subsequent render with no reorder preview reflects the real, untouched order:
+        // right snaps back to its own actual, uncommitted position.
+        strip.render();
+        const afterCalls = right.setFrameGeometry.mock.calls;
+        const realRectAgain = afterCalls[afterCalls.length - 1][0];
+        expect(realRectAgain.x).toBe(rightRealX);
+    });
+
+    it('applies the preview instantly (via columnMotion.snapTo) when instant is true', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const left = fakeWindow('left', { width: 640 });
+        const right = fakeWindow('right', { width: 640 });
+        strip.addWindow(left.adapter);
+        strip.addWindow(right.adapter);
+        const leftLocation = strip.locationOf('left')!;
+
+        strip.render();
+        const leftCalls = left.setFrameGeometry.mock.calls;
+        const leftRealX = leftCalls[leftCalls.length - 1][0].x;
+
+        strip.render('left', true, undefined, undefined, { columnId: leftLocation.columnId, targetIndex: 1 });
+
+        const previewCalls = right.setFrameGeometry.mock.calls;
+        const previewRect = previewCalls[previewCalls.length - 1][0];
+        expect(previewRect.x).toBe(leftRealX);
+    });
+});
+
+describe('Strip — drag handler after column membership changes (regression)', () => {
+    it("keeps resolving a tile's live column after absorbRight changed which column it belongs to", () => {
+        // Before Task 8, registerDragReorder closed over a fixed columnId captured once when
+        // its drag handler was first connected (in Strip.addWindow). If a window later became a
+        // stacked tile (e.g. via absorbRight), its drag handler kept pointing at the original,
+        // since-removed column id — so dragging an already-stacked tile's title bar never worked
+        // correctly. The fix: registerDragReorder no longer takes a columnId at all; it resolves
+        // the window's CURRENT {columnId, tileId} fresh via registry.tileOf() on every tick and
+        // on release (docs: 2026-09-03-drag-to-stack-design).
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const left = fakeWindow('left', { width: 800 });
+        const right = fakeWindow('right', { width: 800 });
+        strip.addWindow(left.adapter); // column A, focused
+        strip.addWindow(right.adapter); // column B, focused — right's drag handler connects HERE, against column B
+        strip.focusLeft(); // refocus column A
+        strip.absorbRight(); // right becomes column A's second tile; column B is removed from the grid entirely
+
+        const stackedLocation = strip.locationOf('right');
+        expect(stackedLocation).not.toBeNull();
+        expect(stackedLocation!.columnId).toBe(strip.locationOf('left')!.columnId); // right now lives in left's column
+        const stackColumnId = stackedLocation!.columnId;
+
+        // Simulate a drag on "right": its onInteractiveMoveResizeStarted/onFrameGeometryChanged/
+        // onInteractiveMoveResizeFinished handlers were registered back when it was column B's own
+        // standalone tile. Column B no longer exists in the grid at all — if drag.ts still resolved
+        // against a stale captured columnId, this would throw ("Unknown column id") instead of
+        // resolving cleanly against right's real, current column.
+        right.startDrag();
+        expect(() => {
+            right.triggerFrameGeometryChanged({ x: 0, y: 0, width: 800, height: 1000 });
+        }).not.toThrow();
+        expect(() => right.finishDrag()).not.toThrow();
+
+        // The drag operated on right's CURRENT column throughout: the registry stayed consistent,
+        // and both tiles are still findable in the real (non-stale) column.
+        const afterLocation = strip.locationOf('right');
+        expect(afterLocation).not.toBeNull();
+        expect(afterLocation!.columnId).toBe(stackColumnId);
+        expect(strip.locationOf('left')!.columnId).toBe(stackColumnId);
+    });
+});
+
 describe('Strip — focusUp/focusDown', () => {
     it("move activation between tiles in the focused column's stack", () => {
         const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());

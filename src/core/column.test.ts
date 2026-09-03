@@ -150,6 +150,58 @@ describe('Column — tile stack', () => {
         expect(() => column.resizeTile(bottomId, 950, 'top')).toThrow();
     });
 
+    it('insertTileAt inserts at an arbitrary index, splitting height evenly across the whole stack', () => {
+        const column = new Column(1, 300, 900);
+        const firstId = column.tiles()[0].id;
+        const newId = column.insertTileAt(0); // insert before the only existing tile
+        expect(column.tileCount()).toBe(2);
+        expect(column.tiles().map((t) => t.id)).toEqual([newId, firstId]);
+        expect(column.tiles().map((t) => t.height)).toEqual([450, 450]);
+    });
+
+    it('insertTileAt in the middle preserves the order of the tiles on either side', () => {
+        const column = new Column(1, 300, 900);
+        const topId = column.tiles()[0].id;
+        const bottomId = column.addTile();
+        const middleId = column.insertTileAt(1);
+        expect(column.tiles().map((t) => t.id)).toEqual([topId, middleId, bottomId]);
+        expect(column.tiles().map((t) => t.height)).toEqual([300, 300, 300]);
+    });
+
+    it('addTile is equivalent to insertTileAt at the end of the stack', () => {
+        const column = new Column(1, 300, 900);
+        const firstId = column.tiles()[0].id;
+        const secondId = column.addTile();
+        expect(column.tiles().map((t) => t.id)).toEqual([firstId, secondId]);
+    });
+
+    it('moveTile reorders within the stack without touching any height', () => {
+        const column = new Column(1, 300, 900);
+        const topId = column.tiles()[0].id;
+        const bottomId = column.addTile();
+        column.resizeTile(topId, 200, 'bottom'); // uneven heights: top=200, bottom=700
+
+        column.moveTile(bottomId, 0); // move bottom to the top
+
+        expect(column.tiles().map((t) => t.id)).toEqual([bottomId, topId]);
+        expect(column.tiles().map((t) => t.height)).toEqual([700, 200]);
+    });
+
+    it('moveTile to the same index is a no-op', () => {
+        const column = new Column(1, 300, 900);
+        const firstId = column.tiles()[0].id;
+        column.addTile();
+
+        column.moveTile(firstId, 0);
+
+        expect(column.tiles()[0].id).toBe(firstId);
+    });
+
+    it('moveTile throws on an unknown tile id', () => {
+        const column = new Column(1, 300, 900);
+        expect(() => column.moveTile(999, 0)).toThrow();
+    });
+
     it("tileRect derives each tile's y/height from the column rect, stacked with no gap", () => {
         const column = new Column(1, 300, 900);
         column.addTile();
@@ -159,5 +211,55 @@ describe('Column — tile stack', () => {
         expect(column.tileRect(first.id, columnRect)).toEqual({ x: 50, y: 0, width: 300, height: 300 });
         expect(column.tileRect(second.id, columnRect)).toEqual({ x: 50, y: 300, width: 300, height: 300 });
         expect(column.tileRect(third.id, columnRect)).toEqual({ x: 50, y: 600, width: 300, height: 300 });
+    });
+
+    it('previewRectsWithGapAt reserves gapHeight at index without mutating the column or resizing tiles', () => {
+        const column = new Column(1, 300, 900);
+        const topId = column.tiles()[0].id;
+        const bottomId = column.addTile(); // top=450, bottom=450
+        const columnRect = { x: 100, y: 0, width: 300, height: 900 };
+
+        const preview = column.previewRectsWithGapAt(1, 200, columnRect); // gap between top and bottom
+
+        expect(preview.get(topId)).toEqual({ x: 100, y: 0, width: 300, height: 450 });
+        expect(preview.get(bottomId)).toEqual({ x: 100, y: 650, width: 300, height: 450 }); // shifted down by gapHeight
+        expect(column.tiles().map((t) => t.height)).toEqual([450, 450]); // unmutated
+    });
+
+    it('previewRectsWithGapAt at index 0 shifts every existing tile down', () => {
+        const column = new Column(1, 300, 900);
+        const onlyId = column.tiles()[0].id;
+        const columnRect = { x: 0, y: 0, width: 300, height: 900 };
+
+        const preview = column.previewRectsWithGapAt(0, 300, columnRect);
+
+        expect(preview.get(onlyId)).toEqual({ x: 0, y: 300, width: 300, height: 900 });
+    });
+
+    it('previewRectsWithGapAt excludes excludeTileId from consideration entirely', () => {
+        const column = new Column(1, 300, 900);
+        const topId = column.tiles()[0].id;
+        const bottomId = column.addTile();
+        const columnRect = { x: 0, y: 0, width: 300, height: 900 };
+
+        // Same-stack reorder preview: move "top" to slot 1 (after bottom), excluding it from the base list.
+        const preview = column.previewRectsWithGapAt(1, 450, columnRect, topId);
+
+        expect(preview.has(topId)).toBe(false);
+        expect(preview.get(bottomId)).toEqual({ x: 0, y: 0, width: 300, height: 450 });
+    });
+
+    it('previewRectsWithoutTile closes the gap by shifting later tiles up, without redistributing height', () => {
+        const column = new Column(1, 300, 900);
+        const topId = column.tiles()[0].id;
+        const middleId = column.addTile();
+        const bottomId = column.addTile(); // three tiles, 300 each
+        const columnRect = { x: 0, y: 0, width: 300, height: 900 };
+
+        const preview = column.previewRectsWithoutTile(middleId, columnRect);
+
+        expect(preview.has(middleId)).toBe(false);
+        expect(preview.get(topId)).toEqual({ x: 0, y: 0, width: 300, height: 300 });
+        expect(preview.get(bottomId)).toEqual({ x: 0, y: 300, width: 300, height: 300 }); // shifted up
     });
 });

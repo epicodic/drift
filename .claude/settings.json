@@ -1,0 +1,5 @@
+{
+    "permissions": {
+        "allow": ["mcp__plugin_serena_serena__find_symbol"]
+    }
+}

@@ -184,6 +184,52 @@ describe('Grid — insertion index for drag edges', () => {
     });
 });
 
+describe('Grid — columnAtVirtualX', () => {
+    it('returns the column whose span contains virtualX', () => {
+        const grid = new Grid(1000, 0);
+        const a = grid.addColumn(300); // 0..300
+        const b = grid.addColumn(300); // 300..600
+
+        expect(grid.columnAtVirtualX(150)).toBe(a.id);
+        expect(grid.columnAtVirtualX(450)).toBe(b.id);
+    });
+
+    it('clamps to the first column for virtualX before the strip', () => {
+        const grid = new Grid(1000, 0);
+        const a = grid.addColumn(300);
+        grid.addColumn(300);
+
+        expect(grid.columnAtVirtualX(-500)).toBe(a.id);
+    });
+
+    it('clamps to the last visible column for virtualX past the strip', () => {
+        const grid = new Grid(1000, 0);
+        grid.addColumn(300);
+        const b = grid.addColumn(300);
+
+        expect(grid.columnAtVirtualX(9999)).toBe(b.id);
+    });
+
+    it('skips hidden columns', () => {
+        const grid = new Grid(1000, 0);
+        const a = grid.addColumn(300); // 0..300
+        const hidden = grid.addColumn(300); // 300..600
+        const c = grid.addColumn(300); // 600..900
+        grid.hideColumn(hidden.id);
+
+        expect(grid.columnAtVirtualX(150)).toBe(a.id);
+        // 300 falls inside hidden's own span [300,600), not a's [0,300) or c's [600,900).
+        // Only the skip logic prevents this from matching hidden itself; without it, this
+        // would wrongly return hidden.id instead of falling through to c.
+        expect(grid.columnAtVirtualX(300)).toBe(c.id);
+    });
+
+    it('returns null for an empty grid', () => {
+        const grid = new Grid(1000, 0);
+        expect(grid.columnAtVirtualX(0)).toBeNull();
+    });
+});
+
 describe('Grid — insertion index skips hidden columns', () => {
     it('skips a hidden neighbor and swaps with the next visible one instead', () => {
         const grid = new Grid(HEIGHT, GAP);
@@ -454,5 +500,98 @@ describe('Grid — expelFocusedTile', () => {
         const column = grid.addColumn(300);
         expect(grid.expelFocusedTile(column.id, 250)).toBeNull();
         expect(grid.columns().map((c) => c.id)).toEqual([column.id]);
+    });
+});
+
+describe('Grid — previewOffsetsWithColumnAt', () => {
+    it('computes offsets as if the moving column were already at targetIndex, without mutating real order', () => {
+        const grid = new Grid(1000, 0);
+        const a = grid.addColumn(300); // real order: [a, b, c] at 0, 300, 600
+        const b = grid.addColumn(300);
+        const c = grid.addColumn(300);
+
+        const preview = grid.previewOffsetsWithColumnAt(a.id, 2); // as if a were moved past c
+
+        expect(preview.get(b.id)).toBe(0); // b and c shift left to fill a's old slot
+        expect(preview.get(c.id)).toBe(300);
+        expect(preview.get(a.id)).toBe(600); // a lands where c used to be
+
+        // Real order is untouched.
+        expect(grid.columns().map((col) => col.id)).toEqual([a.id, b.id, c.id]);
+        expect(grid.columnRect(a.id).x).toBe(0);
+    });
+
+    it('accounts for the gap between columns', () => {
+        const grid = new Grid(1000, 20);
+        const a = grid.addColumn(300); // real order: a 0..300, gap, b 320..620
+        const b = grid.addColumn(300);
+
+        const preview = grid.previewOffsetsWithColumnAt(b.id, 0); // as if b moved before a
+
+        expect(preview.get(b.id)).toBe(0);
+        expect(preview.get(a.id)).toBe(320); // b's width (300) + gap (20)
+    });
+
+    it('moving to the same index reproduces the real offsets unchanged', () => {
+        const grid = new Grid(1000, 0);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(300);
+
+        const preview = grid.previewOffsetsWithColumnAt(a.id, 0);
+
+        expect(preview.get(a.id)).toBe(0);
+        expect(preview.get(b.id)).toBe(300);
+    });
+});
+
+describe('Grid — moveTileIntoColumn', () => {
+    it("moves a standalone column's tile into another column, removing the now-empty source column", () => {
+        const grid = new Grid(1000, 0);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(300);
+        const aTileId = a.tiles()[0].id;
+        const bTileId = b.tiles()[0].id;
+
+        const newTileId = grid.moveTileIntoColumn(a.id, aTileId, b.id, 0);
+
+        expect(grid.columns().map((c) => c.id)).toEqual([b.id]); // a was removed entirely
+        expect(b.tiles().map((t) => t.id)).toEqual([newTileId, bTileId]);
+        expect(b.tileCount()).toBe(2);
+    });
+
+    it('moves one tile out of a multi-tile source column, leaving the rest', () => {
+        const grid = new Grid(1000, 0);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(300);
+        const aTopId = a.tiles()[0].id;
+        const aBottomId = a.addTile(); // a now has 2 tiles
+
+        grid.moveTileIntoColumn(a.id, aBottomId, b.id, 1);
+
+        expect(grid.columns().map((c) => c.id)).toEqual([a.id, b.id]); // a still exists
+        expect(a.tiles().map((t) => t.id)).toEqual([aTopId]);
+        expect(a.tiles()[0].height).toBe(1000); // redistributed to full height
+        expect(b.tileCount()).toBe(2);
+    });
+
+    it('inserts at the requested slot within the target column', () => {
+        const grid = new Grid(1000, 0);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(300);
+        const bTopId = b.tiles()[0].id;
+        const aTileId = a.tiles()[0].id;
+
+        const newTileId = grid.moveTileIntoColumn(a.id, aTileId, b.id, 0); // insert above b's existing tile
+
+        expect(b.tiles().map((t) => t.id)).toEqual([newTileId, bTopId]);
+    });
+
+    it('throws when fromColumnId and toColumnId are the same', () => {
+        const grid = new Grid(1000, 0);
+        const a = grid.addColumn(300);
+        a.addTile(); // a now has 2 tiles, so the single-tile removeColumn path can't hide the missing guard
+        const tileId = a.tiles()[0].id;
+
+        expect(() => grid.moveTileIntoColumn(a.id, tileId, a.id, 1)).toThrow();
     });
 });
