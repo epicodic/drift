@@ -53,6 +53,10 @@ interface FakeStrip {
     render: ReturnType<typeof vi.fn>;
     focusLeft: ReturnType<typeof vi.fn>;
     focusRight: ReturnType<typeof vi.fn>;
+    focusUp: ReturnType<typeof vi.fn>;
+    focusDown: ReturnType<typeof vi.fn>;
+    absorbRight: ReturnType<typeof vi.fn>;
+    expel: ReturnType<typeof vi.fn>;
     cycleAlignLeft: ReturnType<typeof vi.fn>;
     cycleAlignRight: ReturnType<typeof vi.fn>;
     shiftViewportLeft: ReturnType<typeof vi.fn>;
@@ -71,6 +75,10 @@ function fakeStrip(): FakeStrip {
         render: vi.fn(),
         focusLeft: vi.fn(),
         focusRight: vi.fn(),
+        focusUp: vi.fn(),
+        focusDown: vi.fn(),
+        absorbRight: vi.fn(),
+        expel: vi.fn(),
         cycleAlignLeft: vi.fn(),
         cycleAlignRight: vi.fn(),
         shiftViewportLeft: vi.fn(),
@@ -80,7 +88,7 @@ function fakeStrip(): FakeStrip {
             viewport: { offset: 0, width: AREA.width, contentLeft: 0, contentWidth: 0 },
             gridHeight: AREA.height,
         })),
-        detachFocusedColumn: vi.fn(() => null),
+        detachFocusedColumn: vi.fn(() => []),
         isEmpty: vi.fn(() => true),
         setSkipTaskbar: vi.fn(),
     };
@@ -360,7 +368,7 @@ describe('StripStack.moveWindowToRowAbove/Below', () => {
     it('moveWindowToRowAbove moves the focused window into row -1 when at row 0', () => {
         const { stack, created } = makeStack();
         const win = fakeWin('w1');
-        created[0].detachFocusedColumn.mockReturnValue(win);
+        created[0].detachFocusedColumn.mockReturnValue([win]);
 
         stack.moveWindowToRowAbove();
         stack.render();
@@ -373,7 +381,7 @@ describe('StripStack.moveWindowToRowAbove/Below', () => {
     it('moveWindowToRowAbove is a no-op when the active row has no focused window', () => {
         const { stack, created } = makeStack();
         stack.rowDown(); // row 1 active, empty
-        created[1].detachFocusedColumn.mockReturnValue(null);
+        created[1].detachFocusedColumn.mockReturnValue([]);
 
         stack.moveWindowToRowAbove();
 
@@ -384,7 +392,7 @@ describe('StripStack.moveWindowToRowAbove/Below', () => {
     it('moveWindowToRowBelow detaches the focused window, adds it to the row below, and follows it', () => {
         const { stack, created } = makeStack();
         const win = fakeWin('w1');
-        created[0].detachFocusedColumn.mockReturnValue(win);
+        created[0].detachFocusedColumn.mockReturnValue([win]);
 
         stack.moveWindowToRowBelow();
         stack.render();
@@ -400,7 +408,7 @@ describe('StripStack.moveWindowToRowAbove/Below', () => {
         // internal render() call (which relies on that already-primed offset) ever runs.
         const { stack, created } = makeStack();
         const win = fakeWin('w1');
-        created[0].detachFocusedColumn.mockReturnValue(win);
+        created[0].detachFocusedColumn.mockReturnValue([win]);
 
         stack.moveWindowToRowBelow(); // row 0 -> row 1; switchToRow must prime row 1 before addWindow runs
 
@@ -417,7 +425,7 @@ describe('StripStack.moveWindowToRowAbove/Below', () => {
         created[0].isEmpty.mockReturnValue(false); // has a window, so leaving it won't prune it
         stack.rowDown(); // row 1 active
         const win = fakeWin('w1');
-        created[1].detachFocusedColumn.mockReturnValue(win);
+        created[1].detachFocusedColumn.mockReturnValue([win]);
         created[1].isEmpty.mockReturnValue(true);
 
         stack.moveWindowToRowAbove(); // moves win from row 1 back to row 0, row 1 empties
@@ -429,11 +437,11 @@ describe('StripStack.moveWindowToRowAbove/Below', () => {
     it('moveWindowToRowAbove twice moves a window from row 0 through row -1 into row -2', () => {
         const { stack, created } = makeStack();
         const win = fakeWin('w1');
-        created[0].detachFocusedColumn.mockReturnValue(win);
+        created[0].detachFocusedColumn.mockReturnValue([win]);
 
         stack.moveWindowToRowAbove(); // win: row 0 -> row -1
         created[1].isEmpty.mockReturnValue(false); // row -1 now owns a window; don't prune it on the next move
-        created[1].detachFocusedColumn.mockReturnValue(win);
+        created[1].detachFocusedColumn.mockReturnValue([win]);
 
         stack.moveWindowToRowAbove(); // win: row -1 -> row -2
 
@@ -492,7 +500,7 @@ describe('StripStack cross-row drag', () => {
     it('keyboard-driven moveWindowToRowBelow still passes initiallyDragging=false and no exclusion (regression)', () => {
         const { stack, created } = makeStack();
         const win = fakeWin('w1');
-        created[0].detachFocusedColumn.mockReturnValue(win);
+        created[0].detachFocusedColumn.mockReturnValue([win]);
 
         stack.moveWindowToRowBelow();
 
@@ -512,7 +520,7 @@ describe('StripStack cross-row drag', () => {
             const win = fakeWin('w1');
             stack.addWindow(win); // lands in row 1, wires the row-drag hooks
             created[1].isEmpty.mockReturnValue(false);
-            created[1].detachFocusedColumn.mockReturnValue(win);
+            created[1].detachFocusedColumn.mockReturnValue([win]);
             const hooks = capturedRowDragHooks(created[1]);
 
             hooks.onDragStarted?.(win);
@@ -538,7 +546,7 @@ describe('StripStack cross-row drag', () => {
             });
             const win = fakeWin('w1');
             stack.addWindow(win); // lands in row 0, wires the row-drag hooks
-            created[0].detachFocusedColumn.mockReturnValue(win);
+            created[0].detachFocusedColumn.mockReturnValue([win]);
             const hooks = capturedRowDragHooks(created[0]);
 
             hooks.onDragStarted?.(win);
@@ -567,7 +575,7 @@ describe('StripStack cross-row drag', () => {
             const win = fakeWin('w1');
             stack.addWindow(win);
             created[1].isEmpty.mockReturnValue(false);
-            created[1].detachFocusedColumn.mockReturnValue(win);
+            created[1].detachFocusedColumn.mockReturnValue([win]);
             const hooks = capturedRowDragHooks(created[1]);
             hooks.onDragStarted?.(win);
             workspaceAdapter.cursor = { x: 0, y: -50 };
@@ -674,7 +682,7 @@ describe('StripStack cross-row drag', () => {
             });
             const win = fakeWin('w1');
             stack.addWindow(win); // lands in row 0
-            created[0].detachFocusedColumn.mockReturnValue(win);
+            created[0].detachFocusedColumn.mockReturnValue([win]);
             const hooks = capturedRowDragHooks(created[0]);
 
             hooks.onDragStarted?.(win);
@@ -683,7 +691,7 @@ describe('StripStack cross-row drag', () => {
             vi.setSystemTime(100);
             timer.fire(); // first flip: row 0 -> row 1
             created[1].isEmpty.mockReturnValue(false);
-            created[1].detachFocusedColumn.mockReturnValue(win);
+            created[1].detachFocusedColumn.mockReturnValue([win]);
 
             const newHooks = capturedRowDragHooks(created[1]);
             newHooks.onDragTick?.(win); // pointer still held past the bottom edge, unmoved
@@ -694,5 +702,45 @@ describe('StripStack cross-row drag', () => {
         } finally {
             vi.useRealTimers();
         }
+    });
+});
+
+describe('StripStack — focusUp/focusDown/absorbRight/expel', () => {
+    it("delegate to the active row's Strip", () => {
+        const { stack, created } = makeStack();
+
+        stack.focusUp();
+        stack.focusDown();
+        stack.absorbRight();
+        stack.expel();
+
+        expect(created[0].focusUp).toHaveBeenCalledTimes(1);
+        expect(created[0].focusDown).toHaveBeenCalledTimes(1);
+        expect(created[0].absorbRight).toHaveBeenCalledTimes(1);
+        expect(created[0].expel).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('StripStack — moveFocusedWindowToRow with a stacked column', () => {
+    it('re-adds every window detachFocusedColumn returns, each to its own column in the target row', () => {
+        const { stack, created } = makeStack();
+        const win1 = fakeWin('w1');
+        const win2 = fakeWin('w2');
+        created[0].detachFocusedColumn.mockReturnValue([win1, win2]);
+
+        stack.moveWindowToRowBelow();
+
+        expect(created[1].addWindow).toHaveBeenCalledWith(win1, false, expect.anything());
+        expect(created[1].addWindow).toHaveBeenCalledWith(win2, false, expect.anything());
+    });
+
+    it('is a no-op when detachFocusedColumn returns an empty array', () => {
+        const { stack, created } = makeStack();
+        created[0].detachFocusedColumn.mockReturnValue([]);
+
+        stack.moveWindowToRowBelow();
+
+        expect(created).toHaveLength(1); // no new row created; detach found nothing to move
+        expect(created[0].addWindow).not.toHaveBeenCalled();
     });
 });
