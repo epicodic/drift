@@ -1,36 +1,27 @@
 // Turns a window's interactive-move lifecycle into a live column reorder or a live
-// drag-to-stack, deciding per tick between the two via `resolveStackHover` and
-// `resolveReorderTarget` (docs: 2026-09-03-drag-to-stack-design). Both are derived
-// from the SAME measurement — the dragged tile's own center's local fraction within
-// whichever column currently contains it — so the reorder zone (outer quarter) and
-// stack zone (middle half) are mutually exclusive and exhaustive by construction.
-// Both modes are ALSO render-only until release, with exactly one real model
-// mutation on `interactiveMoveResizeFinished` (matching whichever hover state is
-// current at that instant): the target (and, for a cross-column drag out of an
-// existing stack, the source) column's tiles preview-reflow to open/close a gap for
-// stacking, or the affected columns preview-slide to their would-be positions for
-// reordering, via `ReorderPreview`/`Grid.previewOffsetsWithColumnAt`. Reorder used
-// to commit `Grid.moveColumn` live, every tick, off the dragged window's own EDGE
-// crossing a neighbor's CENTER — that live commit is what made stacking
-// geometrically unreachable in practice: the moment a swap landed, it relabeled the
-// neighbor's entire spatial territory as belonging to the dragged column, so the
-// cursor could never again be observed hovering a DIFFERENT column's true middle
-// 50% during one continuous drag (proven empirically, not just by inspection — see
-// the design doc's bugfix note). Deferring the commit to release, exactly like
-// stacking already did, removes that capture entirely: `Grid.ordered` never changes
-// mid-drag, so `resolveStackHover`/`resolveReorderTarget`'s column lookups stay
-// stable and reachable throughout. The window's own real geometry is never touched
-// while dragging in either mode — it keeps following the cursor untouched
-// throughout.
+// drag-to-stack, deciding per tick between the two via a priority check (docs:
+// 2026-09-04-drag-reorder-stack-priority-design): reorder — the dragged window's own
+// edge crossing a neighbor's center (`Grid.insertionIndexForEdges`) — is checked
+// first and, when it fires, commits `Grid.moveColumn` immediately, live, exactly as
+// it did before drag-to-stack existed. Only when reorder does NOT fire this tick is
+// stack considered: whichever column the real mouse pointer (not the dragged
+// window's geometry) currently sits over, gated by a dwell timer so a drag merely
+// passing through on its way to a reorder swap never flashes a stack preview. Stack
+// stays preview-only until release, unlike reorder — the two triggers use different
+// measurements and different timing, so they never contest the same tick. Hovering
+// the dragged tile's own column (same-column reorder-within-stack) is unaffected by
+// any of this and keeps working exactly as before, with no dwell.
 
 import { Column } from '../core/column';
 import { Rect } from '../core/coordinates';
 import { Grid } from '../core/grid';
+import { debug } from '../debug';
 import { toVirtualX } from '../kwin/geometry-sync';
 import { WindowAdapter } from '../kwin/window-adapter';
-import { ReorderPreview, StackPreview } from '../runtime/strip';
+import { StackPreview } from '../runtime/strip';
+import { EdgeDwell } from '../viewport/edge-dwell';
 import { Viewport } from '../viewport/viewport';
-import { resolveReorderTarget, resolveStackHover, StackHover } from './drag-hover';
+import { resolveStackSlot, StackHover } from './drag-hover';
 
 /** Minimal view of `ColumnRegistry` this module needs — resolving the dragged
  * window's CURRENT column/tile fresh on every tick, rather than closing over a
@@ -49,13 +40,16 @@ export interface DragReorderDeps {
     registry: DragRegistryView;
     viewport: Viewport;
     area: Rect;
-    render(
-        excludeWindowId?: string,
-        instant?: boolean,
-        verticalOffsetY?: undefined,
-        stackPreview?: StackPreview,
-        reorderPreview?: ReorderPreview,
-    ): void;
+    render(excludeWindowId?: string, instant?: boolean, verticalOffsetY?: undefined, stackPreview?: StackPreview): void;
+    /** Real mouse pointer position, in real (screen) coordinates — used for stack-zone
+     * hover, not the dragged window's own geometry: a window is typically grabbed away
+     * from its center (e.g. near the titlebar), so relying on the window's edge either
+     * overshoots or never crosses at all (docs: 2026-09-04-drag-reorder-stack-priority-design). */
+    cursorPos(): { x: number; y: number };
+    /** Builds a dwell timer armed on a neighbor column id, firing `onFire` once hovered
+     * past `columnDragDwellMs` — one instance per drag-reorder connection, reused across
+     * every drag that window does. */
+    createStackDwell(onFire: (columnId: number) => void): EdgeDwell<number>;
     snapColumn(columnId: number): void;
     commitTileIntoStack(fromColumnId: number, fromTileId: number, toColumnId: number, slot: number): void;
     /** Row-crossing hooks (docs: 2026-09-02-cross-row-drag-design) — StripStack supplies
@@ -73,15 +67,13 @@ export interface DragReorderDeps {
     revealFocused(): void;
 }
 
-/** Virtual x of `win`'s own center, and its real y-center relative to `area` — the
- * anchor stack-hover resolution uses, since a column/tile's own middle-zone/slot
- * detection is naturally center-based rather than edge-based
- * (docs: 2026-09-03-drag-to-stack-design). */
-function windowCenter(win: WindowAdapter, area: Rect, viewportOffsetX: number): { virtualX: number; y: number } {
+/** `win`'s own current left/right edges, in virtual x — what reorder measures against
+ * a neighbor's center (docs: 2026-09-04-drag-reorder-stack-priority-design). */
+function windowEdgesVirtualX(win: WindowAdapter, area: Rect, viewportOffsetX: number): { left: number; right: number } {
     const rect = win.frameGeometry();
     return {
-        virtualX: toVirtualX(rect.x + rect.width / 2, area, viewportOffsetX),
-        y: rect.y + rect.height / 2 - area.y,
+        left: toVirtualX(rect.x, area, viewportOffsetX),
+        right: toVirtualX(rect.x + rect.width, area, viewportOffsetX),
     };
 }
 
@@ -108,9 +100,13 @@ function requireColumn(grid: Grid, columnId: number): Column {
 export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, initiallyDragging = false): () => void {
     let dragging = initiallyDragging;
     let lastStackHover: StackHover | null = null;
+    /** Which neighbor column id the stack dwell has actually FIRED for — null while
+     * merely hovering, before the dwell elapses. Only a fired target shows a preview. */
+    let armedStackTarget: number | null = null;
 
     const disconnectStarted = win.onInteractiveMoveResizeStarted(() => {
         dragging = win.isInteractiveMove();
+        debug(`drag started: win=${win.id} isInteractiveMove=${dragging}`);
         if (dragging) {
             deps.onDragStarted?.(win);
         }
@@ -121,12 +117,10 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
     const currentLocation = (): { columnId: number; tileId: number } | null => deps.registry.tileOf(win.id);
 
     /** Expels a stack tile into its own standalone column the first time a drag
-     * carries it from a stack zone into a reorder zone — `resolveReorderCommit`
-     * requires the dragged window to already own a real, standalone Grid column,
-     * which a stack tile does not. Placement doesn't need to be exact here:
-     * subsequent ticks converge it over the next tick or two, the same way a
-     * mid-drag row-reparent already tolerates a short convergence window
-     * (docs: 2026-09-03-drag-to-stack-design). */
+     * carries it into a reorder swap — reorder operates on standalone columns, which
+     * a stack tile is not. Placement doesn't need to be exact here: subsequent ticks
+     * converge it over the next tick or two, the same way a mid-drag row-reparent
+     * already tolerates a short convergence window (docs: 2026-09-03-drag-to-stack-design). */
     const expelToStandaloneColumn = (columnId: number, tileId: number): number => {
         const column = requireColumn(deps.grid, columnId);
         column.removeTile(tileId);
@@ -137,9 +131,7 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
 
     /** Resolves the standalone column id a reorder swap should operate on for
      * `location` — the tile's own column if it's already standalone (single-tile), or a
-     * freshly expelled one otherwise. Shared by `tick()`'s reorder-zone branch and the
-     * release handler's reorder-zone branch, since both need the same resolution before
-     * calling `resolveReorderCommit`. */
+     * freshly expelled one otherwise. */
     const resolveReorderColumn = (location: { columnId: number; tileId: number }): number => {
         const homeColumn = requireColumn(deps.grid, location.columnId);
         return homeColumn.tileCount() === 1
@@ -147,58 +139,24 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
             : expelToStandaloneColumn(location.columnId, location.tileId);
     };
 
-    /** Resolves what a reorder commit WOULD do for `location` at `virtualXCenter`,
-     * without doing it: expelling a currently-stacked tile to standalone is still
-     * resolved eagerly (see `resolveReorderColumn`) — it's a one-time, idempotent
-     * transition that doesn't repeatedly contest the same territory the way a swap
-     * does — but the actual `Grid.moveColumn` swap is left to the caller, which
-     * decides whether to preview it (`tick`) or commit it for real
-     * (`interactiveMoveResizeFinished`). Returns null when the center is still
-     * within its own column: nothing to reorder into yet. */
-    const resolveReorderCommit = (
+    /** Renders a live stack-entry preview for `slot` within `hoverColumnId`, and remembers
+     * it as `lastStackHover` for the eventual release commit. Shared by same-column hover
+     * (no dwell) and cross-column hover (dwell-gated, see `stackDwell` below) — both
+     * resolve a slot the same way, via `resolveStackSlot`. */
+    const renderStackPreview = (
         location: { columnId: number; tileId: number },
-        virtualXCenter: number,
-    ): { columnId: number; targetIndex: number } | null => {
-        const reorderTargetId = resolveReorderTarget(deps.grid, location.columnId, virtualXCenter);
-        if (reorderTargetId === null) {
-            return null;
-        }
-        const columnId = resolveReorderColumn(location);
-        return { columnId, targetIndex: deps.grid.indexOf(reorderTargetId) };
-    };
-
-    const tick = (): void => {
-        const location = currentLocation();
-        if (location === null) {
-            return;
-        }
-        const center = windowCenter(win, deps.area, deps.viewport.offset());
-        const hover = resolveStackHover(deps.grid, location.columnId, location.tileId, center.virtualX, center.y);
-
-        if (hover === null) {
-            // Reorder zone: preview only, nothing committed until release — mirrors stack
-            // mode exactly, and is what keeps a live swap from "capturing" a neighbor's
-            // territory and making its stack zone unreachable (see the module doc comment).
-            lastStackHover = null;
-            const commit = resolveReorderCommit(location, center.virtualX);
-            if (commit === null) {
-                deps.render(win.id, false); // clear any stale preview from a moment ago
-                return;
-            }
-            deps.render(win.id, false, undefined, undefined, commit);
-            return;
-        }
-
-        // Stack zone: preview only, nothing committed until release.
-        lastStackHover = hover;
-        const sameColumn = hover.columnId === location.columnId;
+        hoverColumnId: number,
+        slot: number,
+    ): void => {
+        lastStackHover = { columnId: hoverColumnId, slot };
+        const sameColumn = hoverColumnId === location.columnId;
         if (sameColumn) {
             // Same-column reorder commits via Column.moveTile, which never redistributes
             // height — so the dragged tile's own current height is already what it will
             // actually end up at. Using anything else here would fight what's about to happen.
             deps.render(win.id, false, undefined, {
-                enteringColumnId: hover.columnId,
-                enteringIndex: hover.slot,
+                enteringColumnId: hoverColumnId,
+                enteringIndex: slot,
                 enteringGapHeight: win.frameGeometry().height,
                 enteringExcludeTileId: location.tileId,
             });
@@ -211,13 +169,13 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
         // reserve a wildly oversized gap in the target stack for the whole hover;
         // docs: 2026-09-03-drag-to-stack-design).
         const homeColumn = requireColumn(deps.grid, location.columnId);
-        const targetColumn = requireColumn(deps.grid, hover.columnId);
+        const targetColumn = requireColumn(deps.grid, hoverColumnId);
         const targetTiles = targetColumn.tiles();
         const targetTotalHeight = targetTiles.reduce((sum, tile) => sum + tile.height, 0);
         const gapHeight = targetTotalHeight / (targetTiles.length + 1);
         const stackPreview: StackPreview = {
-            enteringColumnId: hover.columnId,
-            enteringIndex: hover.slot,
+            enteringColumnId: hoverColumnId,
+            enteringIndex: slot,
             enteringGapHeight: gapHeight,
         };
         if (homeColumn.tileCount() > 1) {
@@ -225,6 +183,113 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
             stackPreview.leavingTileId = location.tileId;
         }
         deps.render(win.id, false, undefined, stackPreview);
+    };
+
+    // Fires once the pointer has held over a neighbor column past columnDragDwellMs.
+    // Recomputes fresh against the pointer's CURRENT position rather than whatever it was
+    // when the dwell armed — the dwell's own timer tick is independent of frameGeometryChanged,
+    // so a few more pixels of drag may have happened since.
+    const stackDwell = deps.createStackDwell((columnId) => {
+        armedStackTarget = columnId;
+        const location = currentLocation();
+        if (location === null) {
+            return;
+        }
+        const pointer = deps.cursorPos();
+        const pointerY = pointer.y - deps.area.y;
+        const slot = resolveStackSlot(deps.grid, columnId, location.columnId, location.tileId, pointerY);
+        if (slot === null) {
+            return;
+        }
+        renderStackPreview(location, columnId, slot);
+    });
+
+    const tickInner = (): void => {
+        const location = currentLocation();
+        if (location === null) {
+            debug('drag tick: currentLocation() is null (window not in registry)');
+            return;
+        }
+
+        const winEdges = windowEdgesVirtualX(win, deps.area, deps.viewport.offset());
+        const pointer = deps.cursorPos();
+        const pointerVirtualX = toVirtualX(pointer.x, deps.area, deps.viewport.offset());
+        const pointerY = pointer.y - deps.area.y;
+        const pointerColumnId = deps.grid.columnAtVirtualX(pointerVirtualX);
+
+        debug(
+            `drag tick: win=${win.id} loc=col${location.columnId}/tile${location.tileId} ` +
+                `winEdges=(${winEdges.left.toFixed(0)},${winEdges.right.toFixed(0)}) ` +
+                `pointer=(${pointerVirtualX.toFixed(0)},${pointerY.toFixed(0)}) pointerCol=${pointerColumnId}`,
+        );
+
+        if (pointerColumnId === null) {
+            stackDwell.update(null);
+            armedStackTarget = null;
+            lastStackHover = null;
+            deps.render(win.id, false);
+            return;
+        }
+
+        if (pointerColumnId === location.columnId) {
+            // Home territory: same-column tile reorder, unaffected by dwell.
+            stackDwell.update(null);
+            armedStackTarget = null;
+            const slot = resolveStackSlot(deps.grid, location.columnId, location.columnId, location.tileId, pointerY);
+            if (slot === null) {
+                lastStackHover = null;
+                deps.render(win.id, false);
+                return;
+            }
+            renderStackPreview(location, location.columnId, slot);
+            return;
+        }
+
+        // Cross-column: reorder is checked first, live — restored original behavior.
+        const homeIndex = deps.grid.indexOf(location.columnId);
+        const reorderIndex = deps.grid.insertionIndexForEdges(location.columnId, winEdges.left, winEdges.right);
+        if (reorderIndex !== homeIndex) {
+            debug(`drag tick: reorder triggered col${location.columnId} idx${homeIndex}->${reorderIndex}`);
+            stackDwell.update(null);
+            armedStackTarget = null;
+            lastStackHover = null;
+            const columnId = resolveReorderColumn(location);
+            // Recompute fresh: expulsion may have appended a new column, shifting indices.
+            const finalIndex = deps.grid.insertionIndexForEdges(columnId, winEdges.left, winEdges.right);
+            deps.grid.moveColumn(columnId, finalIndex);
+            deps.render(win.id, false);
+            return;
+        }
+
+        // Reorder didn't fire: pointer sits over a neighbor -> stack dwell territory.
+        if (armedStackTarget !== null && armedStackTarget !== pointerColumnId) {
+            armedStackTarget = null; // left the previously-armed neighbor; re-arm fresh below
+        }
+        stackDwell.update(pointerColumnId);
+        if (armedStackTarget !== pointerColumnId) {
+            // Not armed for this neighbor yet — dwell still counting, no preview.
+            lastStackHover = null;
+            deps.render(win.id, false);
+            return;
+        }
+        const slot = resolveStackSlot(deps.grid, pointerColumnId, location.columnId, location.tileId, pointerY);
+        if (slot === null) {
+            lastStackHover = null;
+            deps.render(win.id, false);
+            return;
+        }
+        renderStackPreview(location, pointerColumnId, slot);
+    };
+
+    // TEMPORARY DEBUG INSTRUMENTATION: writes to the OSD debug console (Meta+Shift+D)
+    // to diagnose reports of drag behavior mismatching expectations. Remove once no
+    // further live-testing rounds are needed.
+    const tick = (): void => {
+        try {
+            tickInner();
+        } catch (error) {
+            debug(`drag tick ERROR: ${error instanceof Error ? `${error.message}\n${error.stack}` : String(error)}`);
+        }
     };
 
     const disconnectGeometryChanged = win.onFrameGeometryChanged(() => {
@@ -235,28 +300,26 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
         deps.onDragTick?.(win);
     });
 
-    const disconnectFinished = win.onInteractiveMoveResizeFinished(() => {
+    const finishedInner = (): void => {
         if (!dragging) {
+            debug('drag finished: ignored, dragging flag already false');
             return;
         }
         dragging = false;
+        stackDwell.stop();
+        armedStackTarget = null;
         const location = currentLocation();
+        debug(
+            `drag finished: win=${win.id} loc=${location ? `col${location.columnId}/tile${location.tileId}` : 'null'}`,
+        );
         if (location === null) {
             deps.onDragFinished?.();
             return;
         }
         if (lastStackHover === null) {
-            // The one real reorder mutation, if any: recomputed fresh against the window's
-            // final geometry rather than trusting a cached mid-drag value (nothing in the
-            // real Grid has moved yet — see `resolveReorderCommit` — so this is exactly the
-            // same decision `tick()` would make one more time, now actually applied).
-            const center = windowCenter(win, deps.area, deps.viewport.offset());
-            const commit = resolveReorderCommit(location, center.virtualX);
-            const columnId = commit === null ? location.columnId : commit.columnId;
-            if (commit !== null) {
-                deps.grid.moveColumn(commit.columnId, commit.targetIndex);
-            }
-            deps.snapColumn(columnId);
+            // Reorder already committed live, tick by tick — nothing left to apply here
+            // except settling the dragged column's own animation at its final real slot.
+            deps.snapColumn(location.columnId);
         } else if (lastStackHover.columnId === location.columnId) {
             requireColumn(deps.grid, location.columnId).moveTile(location.tileId, lastStackHover.slot);
         } else {
@@ -266,11 +329,27 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
         deps.render();
         deps.revealFocused();
         deps.onDragFinished?.();
+    };
+
+    const disconnectFinished = win.onInteractiveMoveResizeFinished(() => {
+        try {
+            finishedInner();
+        } catch (error) {
+            debug(
+                `drag finished ERROR: ${error instanceof Error ? `${error.message}\n${error.stack}` : String(error)}`,
+            );
+            dragging = false;
+            stackDwell.stop();
+            armedStackTarget = null;
+            lastStackHover = null;
+            deps.onDragFinished?.();
+        }
     });
 
     return () => {
         disconnectStarted();
         disconnectGeometryChanged();
         disconnectFinished();
+        stackDwell.stop();
     };
 }

@@ -1,33 +1,36 @@
-// Detects the pointer dragged past a screen edge and held there, firing after a dwell period —
-// used to trigger a row-flip during cross-row drag (docs: 2026-09-02-cross-row-drag-design).
-// Pure and KWin-free, driven entirely by an injected clock and Timer, like Animator/ColumnMotion.
+// Detects the pointer dragged past a screen edge (or hovering some other identified zone)
+// and held there, firing after a dwell period — used to trigger a row-flip during cross-row
+// drag (docs: 2026-09-02-cross-row-drag-design) and reused for the horizontal drag-to-stack
+// dwell, armed on a neighbor column id instead of an edge direction (docs: 2026-09-04-drag-
+// reorder-stack-priority-design). Pure and KWin-free, driven entirely by an injected clock
+// and Timer, like Animator/ColumnMotion. Generic over `T` (the "direction"/zone identity)
+// so both callers share the exact same arm/fire/disarm semantics.
 
-import type { EdgeDirection } from '../core/coordinates';
 import type { Timer } from './animator';
 
-export class EdgeDwell {
-    private armedDirection: EdgeDirection | null = null;
+export class EdgeDwell<T> {
+    private armedDirection: T | null = null;
     private armedAt = 0;
     /** Set to the direction just fired, and cleared only once `update` reports `null` (the
      * pointer genuinely back within bounds). Blocks re-arming for that same direction from the
      * continued same-direction reports every later drag tick still sends while the pointer
      * keeps holding past the edge, unmoved — without this, one continuous hold would flip
      * through rows every `dwellMs` instead of just once. */
-    private awaitingRelease: EdgeDirection | null = null;
+    private awaitingRelease: T | null = null;
 
     constructor(
         private readonly timer: Timer,
         private readonly now: () => number,
         private readonly tickIntervalMs: number,
         private readonly dwellMs: number,
-        private readonly onFire: (direction: EdgeDirection) => void,
+        private readonly onFire: (direction: T) => void,
     ) {}
 
     /** Reports the dragged window's current edge state. Arms the dwell timer on a new
      * direction, disarms on `null` (back within bounds), and leaves an already-armed
      * direction alone — the dwell keeps counting from when it first armed, not restarting
      * on every tick. A direction that just fired is ignored until `null` is reported first. */
-    update(direction: EdgeDirection | null): void {
+    update(direction: T | null): void {
         if (direction === null) {
             this.awaitingRelease = null;
             this.disarm();

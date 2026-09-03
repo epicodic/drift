@@ -32,8 +32,19 @@ function fakeTimer(): ManualTimer {
     return new ManualTimer();
 }
 
-function fakeWorkspaceAdapter(screens: ScreenInfo[] = []): WorkspaceAdapter {
-    return { screens: () => screens } as unknown as WorkspaceAdapter;
+interface FakeWorkspaceAdapter extends WorkspaceAdapter {
+    cursor: { x: number; y: number };
+}
+
+function fakeWorkspaceAdapter(screens: ScreenInfo[] = []): FakeWorkspaceAdapter {
+    const adapter = {
+        screens: () => screens,
+        cursor: { x: 0, y: 0 },
+        cursorPos(): { x: number; y: number } {
+            return adapter.cursor;
+        },
+    };
+    return adapter as unknown as FakeWorkspaceAdapter;
 }
 
 interface FakeWindow {
@@ -1040,52 +1051,119 @@ describe('Strip — commitTileIntoStack', () => {
     });
 });
 
-describe('Strip — render reorderPreview', () => {
-    it('previews a column reorder swap (via columnMotion) without mutating the real grid order', () => {
-        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
-        const left = fakeWindow('left', { width: 640 });
-        const right = fakeWindow('right', { width: 640 });
-        strip.addWindow(left.adapter);
-        strip.addWindow(right.adapter);
-        const leftLocation = strip.locationOf('left')!;
+describe('Strip — live reorder commit (restored original edge-crosses-center behavior)', () => {
+    it("commits a real Grid.moveColumn swap, live, when the dragged window's own edge crosses the neighbor's center", () => {
+        // Regression coverage for docs: 2026-09-04-drag-reorder-stack-priority-design — reorder
+        // is live again (not deferred to release), and triggers off the dragged WINDOW's own
+        // edge, not the real pointer. Goes through the real Strip.addWindow wiring, not a direct
+        // strip.render(...) call, so it exercises the actual DragReorderDeps.render wrapper too.
+        const workspaceAdapter = fakeWorkspaceAdapter();
+        const strip = new Strip(WIDE_AREA, INSTANT_SETTINGS, fakeTimer(), workspaceAdapter);
+        const a = fakeWindow('a', { width: 640 });
+        const b = fakeWindow('b', { width: 640 });
+        strip.addWindow(a.adapter);
+        strip.addWindow(b.adapter);
 
-        strip.render(); // establish real, committed positions
-        const leftCalls = left.setFrameGeometry.mock.calls;
-        const leftRealX = leftCalls[leftCalls.length - 1][0].x;
-        const rightCalls = right.setFrameGeometry.mock.calls;
-        const rightRealX = rightCalls[rightCalls.length - 1][0].x;
+        const aCalls = a.setFrameGeometry.mock.calls;
+        const aRealX = aCalls[aCalls.length - 1][0].x;
+        const bCalls = b.setFrameGeometry.mock.calls;
+        const bRealX = bCalls[bCalls.length - 1][0].x;
 
-        // Preview: as if `left` (currently index 0) were moved to index 1 (right's slot).
-        strip.render('left', false, undefined, undefined, { columnId: leftLocation.columnId, targetIndex: 1 });
-        const previewCalls = right.setFrameGeometry.mock.calls;
-        const previewRect = previewCalls[previewCalls.length - 1][0];
-        expect(previewRect.x).toBe(leftRealX); // right visually slides into left's old (real) slot
+        // Pointer parked over column a — irrelevant to reorder (which measures the window's own
+        // edges), but needed so the tick reaches the cross-column branch at all rather than the
+        // same-column one (pointer over b's own, empty-of-anyone-else home column).
+        workspaceAdapter.cursor = { x: aRealX + 100, y: 500 };
+        b.startDrag();
+        // b's LEFT edge (aRealX + 100) crosses a's center (aRealX + 320).
+        b.setFrameGeometryValue({ x: aRealX + 100, y: 0, width: 640, height: 1000 });
+        b.triggerFrameGeometryChanged({ x: bRealX, y: 0, width: 640, height: 1000 });
 
-        // A subsequent render with no reorder preview reflects the real, untouched order:
-        // right snaps back to its own actual, uncommitted position.
+        const aCallsAfter = a.setFrameGeometry.mock.calls;
+        expect(aCallsAfter[aCallsAfter.length - 1][0].x).toBe(bRealX); // a slides into b's old real slot
+
+        b.finishDrag();
+
+        // The commit is real, not a preview: it survives an unrelated render() with no drag state.
         strip.render();
-        const afterCalls = right.setFrameGeometry.mock.calls;
-        const realRectAgain = afterCalls[afterCalls.length - 1][0];
-        expect(realRectAgain.x).toBe(rightRealX);
+        const aFinalCalls = a.setFrameGeometry.mock.calls;
+        expect(aFinalCalls[aFinalCalls.length - 1][0].x).toBe(bRealX);
+    });
+});
+
+describe('Strip — stack dwell preview (docs: 2026-09-04-drag-reorder-stack-priority-design)', () => {
+    it('shows no preview while merely hovering a neighbor, before the dwell elapses', () => {
+        const workspaceAdapter = fakeWorkspaceAdapter();
+        const strip = new Strip(WIDE_AREA, INSTANT_SETTINGS, fakeTimer(), workspaceAdapter);
+        const a = fakeWindow('a', { width: 640 });
+        const b = fakeWindow('b', { width: 640 });
+        strip.addWindow(a.adapter);
+        strip.addWindow(b.adapter);
+        const bCalls = b.setFrameGeometry.mock.calls;
+        const bRealX = bCalls[bCalls.length - 1][0].x;
+        a.setFrameGeometry.mockClear();
+
+        // Real pointer over column a, but b's own window geometry never moved — reorder's
+        // edge-crossing check (which measures the window, not the pointer) never fires.
+        workspaceAdapter.cursor = { x: 100, y: 500 };
+        b.startDrag();
+        b.setFrameGeometryValue({ x: bRealX, y: 0, width: 640, height: 1000 });
+        b.triggerFrameGeometryChanged({ x: bRealX, y: 0, width: 640, height: 1000 });
+
+        // No stack preview yet: a's own tile rect is untouched (no gap opened) — render() always
+        // reapplies geometry to every visible column, so a call happens, but its rect must still
+        // be the plain, full-height, ungapped one.
+        const aCalls = a.setFrameGeometry.mock.calls;
+        expect(aCalls[aCalls.length - 1][0]).toEqual({ x: 0, y: 0, width: 640, height: 1000 });
+
+        b.finishDrag();
     });
 
-    it('applies the preview instantly (via columnMotion.snapTo) when instant is true', () => {
-        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
-        const left = fakeWindow('left', { width: 640 });
-        const right = fakeWindow('right', { width: 640 });
-        strip.addWindow(left.adapter);
-        strip.addWindow(right.adapter);
-        const leftLocation = strip.locationOf('left')!;
+    it('previews stacking into the hovered neighbor once the dwell elapses', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const workspaceAdapter = fakeWorkspaceAdapter();
+            const timer = new ManualTimer();
+            const strip = new Strip(
+                WIDE_AREA,
+                { ...INSTANT_SETTINGS, columnDragDwellMs: 100 },
+                timer,
+                workspaceAdapter,
+            );
+            const a = fakeWindow('a', { width: 640 });
+            const b = fakeWindow('b', { width: 640 });
+            strip.addWindow(a.adapter);
+            strip.addWindow(b.adapter);
+            const bCalls = b.setFrameGeometry.mock.calls;
+            const bRealX = bCalls[bCalls.length - 1][0].x;
+            a.setFrameGeometry.mockClear();
 
-        strip.render();
-        const leftCalls = left.setFrameGeometry.mock.calls;
-        const leftRealX = leftCalls[leftCalls.length - 1][0].x;
+            workspaceAdapter.cursor = { x: 100, y: 100 }; // over column a, near its top
+            b.startDrag();
+            b.setFrameGeometryValue({ x: bRealX, y: 0, width: 640, height: 1000 });
+            b.triggerFrameGeometryChanged({ x: bRealX, y: 0, width: 640, height: 1000 }); // arms the dwell
 
-        strip.render('left', true, undefined, undefined, { columnId: leftLocation.columnId, targetIndex: 1 });
+            const aCallsBeforeFire = a.setFrameGeometry.mock.calls;
+            expect(aCallsBeforeFire[aCallsBeforeFire.length - 1][0]).toEqual({
+                x: 0,
+                y: 0,
+                width: 640,
+                height: 1000,
+            }); // still just armed, not fired — no gap yet
 
-        const previewCalls = right.setFrameGeometry.mock.calls;
-        const previewRect = previewCalls[previewCalls.length - 1][0];
-        expect(previewRect.x).toBe(leftRealX);
+            vi.setSystemTime(100);
+            timer.fire(); // dwell elapses
+
+            // a's column now shows a gap-opening preview for the incoming stack tile: its own
+            // tile shifts down to make room for the gap above it (slot 0), instead of sitting
+            // at y=0 like the plain, ungapped rect above.
+            const aCallsAfterFire = a.setFrameGeometry.mock.calls;
+            expect(aCallsAfterFire[aCallsAfterFire.length - 1][0].y).toBeGreaterThan(0);
+
+            b.finishDrag();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });
 

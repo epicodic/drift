@@ -28,7 +28,7 @@ describe('EdgeDwell', () => {
         const timer = new FakeTimer();
         let clock = 0;
         const fired: string[] = [];
-        const dwell = new EdgeDwell(
+        const dwell = new EdgeDwell<string>(
             timer,
             () => clock,
             16,
@@ -47,7 +47,7 @@ describe('EdgeDwell', () => {
         const timer = new FakeTimer();
         let clock = 0;
         const fired: string[] = [];
-        const dwell = new EdgeDwell(
+        const dwell = new EdgeDwell<string>(
             timer,
             () => clock,
             16,
@@ -66,7 +66,7 @@ describe('EdgeDwell', () => {
         const timer = new FakeTimer();
         let clock = 0;
         const fired: string[] = [];
-        const dwell = new EdgeDwell(
+        const dwell = new EdgeDwell<string>(
             timer,
             () => clock,
             16,
@@ -91,7 +91,7 @@ describe('EdgeDwell', () => {
         const timer = new FakeTimer();
         let clock = 0;
         const fired: string[] = [];
-        const dwell = new EdgeDwell(
+        const dwell = new EdgeDwell<string>(
             timer,
             () => clock,
             16,
@@ -114,7 +114,7 @@ describe('EdgeDwell', () => {
         const timer = new FakeTimer();
         let clock = 0;
         const fired: string[] = [];
-        const dwell = new EdgeDwell(
+        const dwell = new EdgeDwell<string>(
             timer,
             () => clock,
             16,
@@ -138,7 +138,7 @@ describe('EdgeDwell', () => {
         const timer = new FakeTimer();
         let clock = 0;
         const fired: string[] = [];
-        const dwell = new EdgeDwell(
+        const dwell = new EdgeDwell<string>(
             timer,
             () => clock,
             16,
@@ -159,7 +159,7 @@ describe('EdgeDwell', () => {
         const timer = new FakeTimer();
         let clock = 0;
         const fired: string[] = [];
-        const dwell = new EdgeDwell(
+        const dwell = new EdgeDwell<string>(
             timer,
             () => clock,
             16,
@@ -180,7 +180,7 @@ describe('EdgeDwell', () => {
         const timer = new FakeTimer();
         let clock = 0;
         const fired: string[] = [];
-        const dwell = new EdgeDwell(
+        const dwell = new EdgeDwell<string>(
             timer,
             () => clock,
             16,
@@ -201,7 +201,7 @@ describe('EdgeDwell', () => {
         const timer = new FakeTimer();
         let clock = 0;
         const fired: string[] = [];
-        const dwell = new EdgeDwell(
+        const dwell = new EdgeDwell<string>(
             timer,
             () => clock,
             16,
@@ -216,5 +216,27 @@ describe('EdgeDwell', () => {
         timer.fire();
 
         expect(fired).toEqual(['below']);
+    });
+
+    it('works with a non-EdgeDirection type parameter, e.g. a column id (generic reuse)', () => {
+        // EdgeDwell is reused for the horizontal drag-to-stack dwell, armed on a neighbor
+        // COLUMN ID rather than an 'above'/'below' edge direction (docs: 2026-09-04-drag-
+        // reorder-stack-priority-design). Same arm/fire/disarm semantics, just a different T.
+        const timer = new FakeTimer();
+        let clock = 0;
+        const fired: number[] = [];
+        const dwell = new EdgeDwell<number>(
+            timer,
+            () => clock,
+            16,
+            100,
+            (columnId) => fired.push(columnId),
+        );
+
+        dwell.update(42);
+        clock = 100;
+        timer.fire();
+
+        expect(fired).toEqual([42]);
     });
 });

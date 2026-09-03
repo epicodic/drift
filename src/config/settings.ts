@@ -60,6 +60,12 @@ export interface Settings {
      * reach the edge itself, not go past it — this border gives that a little slack against
      * rounding/jitter rather than requiring the exact boundary pixel. */
     rowDragEdgeBorderPx: number;
+    /** How long the pointer must dwell over a neighbor column before a cross-column drag
+     * previews stacking into it (docs: 2026-09-04-drag-reorder-stack-priority-design). Until
+     * the dwell elapses, hovering a neighbor whose edge-crossing threshold hasn't fired shows
+     * no preview at all — this is what stops a fast drag-through from flashing a stack preview
+     * on its way to a genuine reorder swap. */
+    columnDragDwellMs: number;
     /** How long the minimap overlay stays visible after the last focus-step press, in milliseconds. */
     minimapAutoHideMs: number;
     /** Whether the minimap's column boxes show a live preview of each window's content
@@ -93,6 +99,7 @@ export const DEFAULT_SETTINGS: Settings = {
     viewportShiftStep: 400,
     rowDragDwellMs: 400,
     rowDragEdgeBorderPx: 2,
+    columnDragDwellMs: 400,
     minimapAutoHideMs: 1200,
     minimapShowThumbnails: true,
 };
@@ -108,6 +115,7 @@ export function loadSettings(): Settings {
         viewportShiftStep: readNumberConfig('viewportShiftStep', DEFAULT_SETTINGS.viewportShiftStep),
         rowDragDwellMs: readNumberConfig('rowDragDwellMs', DEFAULT_SETTINGS.rowDragDwellMs),
         rowDragEdgeBorderPx: readNumberConfig('rowDragEdgeBorderPx', DEFAULT_SETTINGS.rowDragEdgeBorderPx),
+        columnDragDwellMs: readNumberConfig('columnDragDwellMs', DEFAULT_SETTINGS.columnDragDwellMs),
         minimapAutoHideMs: readNumberConfig('minimapAutoHideMs', DEFAULT_SETTINGS.minimapAutoHideMs),
         minimapShowThumbnails: readBooleanConfig('minimapShowThumbnails', DEFAULT_SETTINGS.minimapShowThumbnails),
         shortcutFocusLeft: readStringConfig('shortcutFocusLeft', DEFAULT_SETTINGS.shortcutFocusLeft),
