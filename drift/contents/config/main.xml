@@ -62,5 +62,17 @@
         <entry name="shortcutMoveWindowToRowBelow" type="String">
             <default>Meta+Shift+Down</default>
         </entry>
+        <entry name="shortcutFocusUp" type="String">
+            <default>Meta+Alt+Up</default>
+        </entry>
+        <entry name="shortcutFocusDown" type="String">
+            <default>Meta+Alt+Down</default>
+        </entry>
+        <entry name="shortcutAbsorbRight" type="String">
+            <default>Meta+I</default>
+        </entry>
+        <entry name="shortcutExpel" type="String">
+            <default>Meta+O</default>
+        </entry>
     </group>
 </kcfg>
