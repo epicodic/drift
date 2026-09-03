@@ -34,6 +34,17 @@ export interface Settings {
     shortcutMoveWindowToRowAbove: string;
     /** Shortcut sequence for moving the focused window to the row below and following it there. */
     shortcutMoveWindowToRowBelow: string;
+    /** Shortcut sequence for moving tile focus up within the focused column's stack
+     * (docs: 2026-09-03-vertical-tiling-design). */
+    shortcutFocusUp: string;
+    /** Shortcut sequence for moving tile focus down within the focused column's stack. */
+    shortcutFocusDown: string;
+    /** Shortcut sequence for absorbing the column to the right into the focused
+     * column's stack, as a new tile. */
+    shortcutAbsorbRight: string;
+    /** Shortcut sequence for expelling the focused tile into its own new column
+     * to the right. */
+    shortcutExpel: string;
     /** Distance the viewport pans per shortcut press, in pixels. */
     viewportShiftStep: number;
     /** How long the pointer must stay at the screen's top/bottom edge before the dragged
@@ -69,6 +80,10 @@ export const DEFAULT_SETTINGS: Settings = {
     shortcutRowDown: 'Meta+Down',
     shortcutMoveWindowToRowAbove: 'Meta+Shift+Up',
     shortcutMoveWindowToRowBelow: 'Meta+Shift+Down',
+    shortcutFocusUp: 'Meta+Alt+Up',
+    shortcutFocusDown: 'Meta+Alt+Down',
+    shortcutAbsorbRight: 'Meta+I',
+    shortcutExpel: 'Meta+O',
     viewportShiftStep: 400,
     rowDragDwellMs: 400,
     rowDragEdgeBorderPx: 2,
@@ -115,6 +130,10 @@ export function loadSettings(): Settings {
             'shortcutMoveWindowToRowBelow',
             DEFAULT_SETTINGS.shortcutMoveWindowToRowBelow,
         ),
+        shortcutFocusUp: readStringConfig('shortcutFocusUp', DEFAULT_SETTINGS.shortcutFocusUp),
+        shortcutFocusDown: readStringConfig('shortcutFocusDown', DEFAULT_SETTINGS.shortcutFocusDown),
+        shortcutAbsorbRight: readStringConfig('shortcutAbsorbRight', DEFAULT_SETTINGS.shortcutAbsorbRight),
+        shortcutExpel: readStringConfig('shortcutExpel', DEFAULT_SETTINGS.shortcutExpel),
     });
 }
 

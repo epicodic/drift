@@ -29,4 +29,11 @@ describe('DEFAULT_SETTINGS', () => {
     it('defaults the row-drag edge border to 2px', () => {
         expect(DEFAULT_SETTINGS.rowDragEdgeBorderPx).toBe(2);
     });
+
+    it('defaults the four vertical-tiling shortcuts', () => {
+        expect(DEFAULT_SETTINGS.shortcutFocusUp).toBe('Meta+Alt+Up');
+        expect(DEFAULT_SETTINGS.shortcutFocusDown).toBe('Meta+Alt+Down');
+        expect(DEFAULT_SETTINGS.shortcutAbsorbRight).toBe('Meta+I');
+        expect(DEFAULT_SETTINGS.shortcutExpel).toBe('Meta+O');
+    });
 });
