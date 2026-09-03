@@ -1,8 +1,8 @@
-// A centered OSD overlay showing every strip in the active StripStack, aligned to their real
-// relative positions, shown on Meta+Left/Meta+Right/Meta+PgUp/Meta+PgDown (docs:
-// 2026-09-01-minimap-design, 2026-09-01-minimap-thumbnails-design,
-// 2026-09-02-multi-strip-minimap-design). Built via `Qt.createQmlObject`, the same pattern as
-// `debug-console.ts`.
+// A centered OSD overlay showing every strip in the active StripStack, each row left-aligned
+// independently (not preserving relative horizontal offset between rows), shown on
+// Meta+Left/Meta+Right/Meta+PgUp/Meta+PgDown (docs: 2026-09-01-minimap-design,
+// 2026-09-01-minimap-thumbnails-design, 2026-09-02-multi-strip-minimap-design). Built via
+// `Qt.createQmlObject`, the same pattern as `debug-console.ts`.
 
 import type { Rect } from '../core/coordinates';
 import type { StripStackMinimapSnapshot } from '../ui/minimap';
@@ -183,13 +183,16 @@ export function createMinimapOverlay(parent: QmlObject, autoHideMs: number, show
 
 /** The uniform scale factor is `min` of the two per-axis fits (not each axis scaled
  * independently) so that a column's rendered width:height ratio always matches its true
- * `columnWidth : gridHeight` ratio (docs: 2026-09-01-minimap-thumbnails-design). Spans every
- * row's columns (plus the active viewport's own extent) horizontally, and every row's real
- * `rowIndex * rowPitch` position vertically — a row with no entry between the lowest and
- * highest existing `rowIndex` (pruned or never created) is simply never drawn, leaving real
- * blank space at its position (docs: 2026-09-02-multi-strip-minimap-design). */
+ * `columnWidth : gridHeight` ratio (docs: 2026-09-01-minimap-thumbnails-design). Each row is
+ * left-aligned independently: `rowLefts` maps every `rowIndex` to that row's own leftmost edge
+ * (its columns' min x, plus the active viewport's own extent for the active row), so relative
+ * horizontal offset between rows is not preserved — only the widest row's span drives the
+ * horizontal scale. Rows are still spaced vertically by their real `rowIndex * rowPitch`
+ * position — a row with no entry between the lowest and highest existing `rowIndex` (pruned or
+ * never created) is simply never drawn, leaving real blank space at its position (docs:
+ * 2026-09-02-multi-strip-minimap-design). */
 function panelLayout(snapshot: StripStackMinimapSnapshot): {
-    left: number;
+    rowLefts: Map<number, number>;
     top: number;
     scale: number;
     panelWidth: number;
@@ -197,26 +200,38 @@ function panelLayout(snapshot: StripStackMinimapSnapshot): {
     rowHeight: number;
 } {
     const { viewport } = snapshot;
-    let left = Math.min(viewport.contentLeft, viewport.offset);
-    let right = Math.max(viewport.contentLeft + viewport.contentWidth, viewport.offset + viewport.width);
+    const rowLefts = new Map<number, number>();
+    let widestRowSpan = 1;
     let minRowIndex = viewport.rowIndex;
     let maxRowIndex = viewport.rowIndex;
     for (const row of snapshot.rows) {
         minRowIndex = Math.min(minRowIndex, row.rowIndex);
         maxRowIndex = Math.max(maxRowIndex, row.rowIndex);
+        let left = Infinity;
+        let right = -Infinity;
         for (const column of row.columns) {
             left = Math.min(left, column.x);
             right = Math.max(right, column.x + column.width);
         }
+        if (row.rowIndex === viewport.rowIndex) {
+            left = Math.min(left, viewport.contentLeft, viewport.offset);
+            right = Math.max(right, viewport.contentLeft + viewport.contentWidth, viewport.offset + viewport.width);
+        }
+        if (!Number.isFinite(left)) {
+            left = 0;
+            right = 0;
+        }
+        rowLefts.set(row.rowIndex, left);
+        widestRowSpan = Math.max(widestRowSpan, right - left);
     }
     const top = minRowIndex * snapshot.rowPitch;
     const bottom = maxRowIndex * snapshot.rowPitch + snapshot.gridHeight;
 
-    const virtualWidth = Math.max(right - left, 1);
+    const virtualWidth = Math.max(widestRowSpan, 1);
     const virtualHeight = Math.max(bottom - top, 1);
     const scale = Math.min(PANEL_WIDTH / virtualWidth, MAX_MINIMAP_HEIGHT / virtualHeight);
     return {
-        left,
+        rowLefts,
         top,
         scale,
         panelWidth: virtualWidth * scale,
@@ -226,21 +241,25 @@ function panelLayout(snapshot: StripStackMinimapSnapshot): {
 }
 
 function toPanelRows(snapshot: StripStackMinimapSnapshot): PanelRow[] {
-    const { left, top, scale } = panelLayout(snapshot);
-    return snapshot.rows.map((row) => ({
-        y: (row.rowIndex * snapshot.rowPitch - top) * scale,
-        columns: row.columns.map((column) => ({
-            x: (column.x - left) * scale,
-            width: column.width * scale,
-            focused: column.focused,
-            icon: column.icon,
-            thumbnail: column.thumbnail,
-        })),
-    }));
+    const { rowLefts, top, scale } = panelLayout(snapshot);
+    return snapshot.rows.map((row) => {
+        const left = rowLefts.get(row.rowIndex) ?? 0;
+        return {
+            y: (row.rowIndex * snapshot.rowPitch - top) * scale,
+            columns: row.columns.map((column) => ({
+                x: (column.x - left) * scale,
+                width: column.width * scale,
+                focused: column.focused,
+                icon: column.icon,
+                thumbnail: column.thumbnail,
+            })),
+        };
+    });
 }
 
 function toPanelViewportBox(snapshot: StripStackMinimapSnapshot): PanelViewportBox {
-    const { left, top, scale } = panelLayout(snapshot);
+    const { rowLefts, top, scale } = panelLayout(snapshot);
+    const left = rowLefts.get(snapshot.viewport.rowIndex) ?? 0;
     return {
         x: (snapshot.viewport.offset - left) * scale,
         y: (snapshot.viewport.rowIndex * snapshot.rowPitch - top) * scale,

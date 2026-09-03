@@ -21,6 +21,8 @@ export interface ShortcutActions {
     focusDown(): void;
     absorbRight(): void;
     expel(): void;
+    moveWindowLeft(): void;
+    moveWindowRight(): void;
 }
 
 export function registerShortcuts(parent: QmlObject, settings: Settings, actions: ShortcutActions): void {
@@ -93,6 +95,20 @@ export function registerShortcuts(parent: QmlObject, settings: Settings, actions
         actions.absorbRight,
     );
     createShortcut(parent, 'DriftExpel', 'Drift: Expel Focused Tile', settings.shortcutExpel, actions.expel);
+    createShortcut(
+        parent,
+        'DriftMoveWindowLeft',
+        'Drift: Move Window Left',
+        settings.shortcutMoveWindowLeft,
+        actions.moveWindowLeft,
+    );
+    createShortcut(
+        parent,
+        'DriftMoveWindowRight',
+        'Drift: Move Window Right',
+        settings.shortcutMoveWindowRight,
+        actions.moveWindowRight,
+    );
 }
 
 export function createShortcut(

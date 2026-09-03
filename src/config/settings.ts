@@ -45,6 +45,10 @@ export interface Settings {
     /** Shortcut sequence for expelling the focused tile into its own new column
      * to the right. */
     shortcutExpel: string;
+    /** Shortcut sequence for moving the focused window's column left within the strip. */
+    shortcutMoveWindowLeft: string;
+    /** Shortcut sequence for moving the focused window's column right within the strip. */
+    shortcutMoveWindowRight: string;
     /** Distance the viewport pans per shortcut press, in pixels. */
     viewportShiftStep: number;
     /** How long the pointer must stay at the screen's top/bottom edge before the dragged
@@ -78,12 +82,14 @@ export const DEFAULT_SETTINGS: Settings = {
     shortcutViewportShiftRight: 'Meta+Alt+Right',
     shortcutRowUp: 'Meta+Up',
     shortcutRowDown: 'Meta+Down',
-    shortcutMoveWindowToRowAbove: 'Meta+Shift+Up',
-    shortcutMoveWindowToRowBelow: 'Meta+Shift+Down',
+    shortcutMoveWindowToRowAbove: 'Meta+Ctrl+Up',
+    shortcutMoveWindowToRowBelow: 'Meta+Ctrl+Down',
     shortcutFocusUp: 'Meta+Alt+Up',
     shortcutFocusDown: 'Meta+Alt+Down',
     shortcutAbsorbRight: 'Meta+I',
     shortcutExpel: 'Meta+O',
+    shortcutMoveWindowLeft: 'Meta+Ctrl+Left',
+    shortcutMoveWindowRight: 'Meta+Ctrl+Right',
     viewportShiftStep: 400,
     rowDragDwellMs: 400,
     rowDragEdgeBorderPx: 2,
@@ -134,6 +140,8 @@ export function loadSettings(): Settings {
         shortcutFocusDown: readStringConfig('shortcutFocusDown', DEFAULT_SETTINGS.shortcutFocusDown),
         shortcutAbsorbRight: readStringConfig('shortcutAbsorbRight', DEFAULT_SETTINGS.shortcutAbsorbRight),
         shortcutExpel: readStringConfig('shortcutExpel', DEFAULT_SETTINGS.shortcutExpel),
+        shortcutMoveWindowLeft: readStringConfig('shortcutMoveWindowLeft', DEFAULT_SETTINGS.shortcutMoveWindowLeft),
+        shortcutMoveWindowRight: readStringConfig('shortcutMoveWindowRight', DEFAULT_SETTINGS.shortcutMoveWindowRight),
     });
 }
 

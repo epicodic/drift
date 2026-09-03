@@ -10,7 +10,7 @@ The minimap currently only ever renders `stack.activeStrip()`, so the user has n
 
 - Every currently existing row in the active `StripStack` is drawn, not just the active one.
 - All rows share one uniform scale (both axes) — no row is stretched or shrunk relative to another.
-- Rows are drawn at their true relative position: each row's columns use its own real content-space x (including its own independent scroll/viewport offset), and rows are spaced vertically by their real `rowIndex` distance. A pruned/never-created row between two existing rows leaves real blank space rather than being compacted away.
+- Each row is drawn left-aligned independently: a row's own leftmost column (or, for the active row, its viewport's leftmost extent) starts at the panel's left edge, regardless of any other row's real horizontal offset. Rows are spaced vertically by their real `rowIndex` distance. A pruned/never-created row between two existing rows leaves real blank space rather than being compacted away. (Updated 2026-09-03: relative horizontal offset between rows was previously preserved — see git history — but is no longer drawn.)
 - The focused-window blue border is shown only for the truly active window (the active row's focused column) — inactive rows' own remembered focus is not drawn, since it isn't real OS focus.
 - The white viewport-position border now also carries a vertical (row) position, so it visibly jumps between rows on `Meta+PgUp`/`Meta+PgDown`, not just left/right within one row.
 
@@ -81,12 +81,14 @@ minimapSnapshot(): StripStackMinimapSnapshot {
 
 `MinimapOverlay.show()` now takes a `StripStackMinimapSnapshot` instead of a `MinimapSnapshot`.
 
-`panelLayout()` widens its horizontal scan from one row's columns to every row's columns (plus the active viewport's own extent, as today), and gains a vertical pass:
+`panelLayout()` computes each row's own left edge independently (`rowLefts: Map<rowIndex, number>` — that row's columns' min x, plus the active viewport's own extent for the active row), and gains a vertical pass:
 
 - `minRowIndex`/`maxRowIndex` from `snapshot.rows`.
 - `top = minRowIndex * snapshot.rowPitch`, `bottom = maxRowIndex * snapshot.rowPitch + snapshot.gridHeight`.
 - `virtualHeight = max(bottom - top, 1)` (replacing today's single-row `gridHeight`).
-- Same formula as today, just with the new `virtualHeight` and a raised ceiling: `scale = min(PANEL_WIDTH / virtualWidth, MAX_MINIMAP_HEIGHT / virtualHeight)`, where `MAX_MINIMAP_HEIGHT = 600` (replacing today's `PANEL_MAX_HEIGHT = 250`). A single active row therefore renders close to today's size; more rows grow the panel up to the 600px ceiling, beyond which scale shrinks further to fit — no separate per-row target/clamp needed.
+- `virtualWidth = max` over rows of `(row's right - row's own left)` — the widest row's span, since every row renders left-aligned to its own edge rather than sharing one global left.
+- `scale = min(PANEL_WIDTH / virtualWidth, MAX_MINIMAP_HEIGHT / virtualHeight)`, where `MAX_MINIMAP_HEIGHT = 600` (replacing the original single-row `PANEL_MAX_HEIGHT = 250`). A single active row therefore renders close to the original single-row size; more rows grow the panel up to the 600px ceiling, beyond which scale shrinks further to fit — no separate per-row target/clamp needed.
+- `toPanelRows()`/`toPanelViewportBox()` subtract each row's own `rowLefts.get(rowIndex)` (not a shared `left`) before scaling, so every row starts at panel x=0.
 - A row with no entry in `snapshot.rows` between `minRowIndex` and `maxRowIndex` (pruned or never created) is simply never drawn, leaving real blank vertical space at its `rowIndex * rowPitch` position — gap preservation falls out of this math for free, no special-casing required.
 
 QML changes:

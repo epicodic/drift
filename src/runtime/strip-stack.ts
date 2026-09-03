@@ -110,6 +110,14 @@ export class StripStack {
         this.activeStrip().focusDown();
     }
 
+    moveWindowLeft(): void {
+        this.activeStrip().moveWindowLeft();
+    }
+
+    moveWindowRight(): void {
+        this.activeStrip().moveWindowRight();
+    }
+
     absorbRight(): void {
         this.activeStrip().absorbRight();
     }
