@@ -35,6 +35,10 @@ Use Serena's symbol replacement and insertion tools for structure-aware edits, a
 Use ordinary file reads and searches for Markdown, YAML, JSON, and other files without language-server symbols.
 Serena currently uses its LSP backend for the `drift` project.
 
+# graphify
+- **graphify** (`~/.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
+When the user types `/graphify`, use the installed graphify skill or instructions before doing anything else.
+
 ---
 
 ## Writing Documentation

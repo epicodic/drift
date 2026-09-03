@@ -350,6 +350,36 @@ export class Strip {
         this.activateColumn(this.grid.focusRight());
     }
 
+    moveWindowLeft(): void {
+        const focused = this.grid.focusedColumn();
+        if (focused === null) {
+            return;
+        }
+        const currentIndex = this.grid.indexOf(focused.id);
+        if (currentIndex <= 0) {
+            return;
+        }
+        this.grid.moveColumn(focused.id, currentIndex - 1);
+        this.snapColumn(focused.id);
+        this.render();
+        this.revealFocused();
+    }
+
+    moveWindowRight(): void {
+        const focused = this.grid.focusedColumn();
+        if (focused === null) {
+            return;
+        }
+        const currentIndex = this.grid.indexOf(focused.id);
+        if (currentIndex >= this.grid.columns().length - 1) {
+            return;
+        }
+        this.grid.moveColumn(focused.id, currentIndex + 1);
+        this.snapColumn(focused.id);
+        this.render();
+        this.revealFocused();
+    }
+
     /** Moves tile focus up within the focused column's stack and activates the newly
      * focused tile's window. No-op if there's no focused column or it's not a stack. */
     focusUp(): void {
