@@ -32,8 +32,8 @@ Empty cells mean the project has no equivalent (by design, or not yet built).
 |---|---|---|---|---|---|
 | Focus column/window left | `Mod+H` / `Mod+←` | `Super+Left` | `Meta+A` | `Meta+Left` | Meta+Left |
 | Focus column/window right | `Mod+L` / `Mod+→` | `Super+Right` | `Meta+D` | `Meta+Right` | Meta+Right |
-| Focus window above (in-column) | `Mod+K` / `Mod+↑` | `Super+Up` | `Meta+W` | — (no vertical stacking yet) | Meta+Up |
-| Focus window below (in-column) | `Mod+J` / `Mod+↓` | `Super+Down` | `Meta+S` | — (no vertical stacking yet) | Meta+Down |
+| Focus window above (in-column) | `Mod+K` / `Mod+↑` | `Super+Up` | `Meta+W` | `Meta+Alt+Up` | Meta+Alt+Up |
+| Focus window below (in-column) | `Mod+J` / `Mod+↓` | `Super+Down` | `Meta+S` | `Meta+Alt+Down` | Meta+Alt+Down |
 | Focus first/last column | — | `Super+Home` / `Super+End` | `Meta+Home` / `Meta+End` | — | Meta+Home / Meta+End |
 | Cycle recently-focused windows | — | `Super+Tab` / `Alt+Tab` (+`Shift` reverse) | — | — |  |
 | Move column left | `Mod+Ctrl+H` / `Mod+Ctrl+←` | `Super+Ctrl+Left` (or `Shift+Super+,`) | `Meta+Ctrl+Shift+A` | — (drag-to-reorder by mouse only) | Meta+Ctrl+Left |
@@ -49,7 +49,7 @@ Empty cells mean the project has no equivalent (by design, or not yet built).
 | Equalize / squeeze column widths | — | — | `Meta+Ctrl+X` (equalize), `Meta+Ctrl+A` / `D` (squeeze) | — |  |
 | Scroll viewport without changing focus | — | — | `Meta+Alt+A` / `D` (one column), `Meta+Alt+PgUp` / `PgDown` (page) | `Meta+Alt+Left` / `Meta+Alt+Right` | `Meta+Alt+Left` / `Meta+Alt+Right` |
 | Scroll viewport to start/end | — | — | `Meta+Alt+Home` / `End` | — | `Meta+Alt+Home` / `End` |
-| Absorb/expel window (vertical stacking) | `Mod+[` / `Mod+]` (consume/expel) | `Super+I` (absorb) / `Super+O` (expel) | — | — (no vertical stacking yet, see roadmap) | Meta+I  (absorb)/ Meta+O (expel) |
+| Absorb/expel window (vertical stacking) | `Mod+[` / `Mod+]` (consume/expel) | `Super+I` (absorb) / `Super+O` (expel) | — | `Meta+I (absorb) / Meta+O (expel)` | `Meta+I (absorb) / Meta+O (expel)` |
 | Toggle stacked layout for column | — | — | `Meta+X` | — |  |
 | Toggle floating | `Mod+V` | `Shift+Super+Escape` (scratch layer) | `Meta+Space` | — (no float/undock yet, see roadmap) | Meta+Space |
 | Toggle fullscreen | `Mod+Shift+F` | `Shift+Super+F` | — | — |  |
@@ -74,7 +74,7 @@ Empty cells mean the project has no equivalent (by design, or not yet built).
 - **Drift's secondary-modifier budget is the smallest of the four** — only `Shift`. Karousel in particular layers `Ctrl`, `Shift`, and `Alt` independently to fit ~25 distinct actions into one letter-based grid; Drift's 11 actions haven't needed that yet, but the roadmap items below will add more.
 - **Column/window reordering by keyboard is a gap.** Every peer binds it (Niri `Mod+Ctrl+H/L`, PaperWM `Super+Ctrl+Left/Right`, Karousel `Meta+Shift+A/D`); Drift only supports it by mouse drag today.
 - **Column width control is a gap.** All three peers bind both a "cycle preset widths" action and an "increment/decrement width" action; Drift has neither yet (no per-column width model currently exists — see roadmap).
-- **Vertical stacking bindings are a gap by design, not oversight** — Drift doesn't yet support more than one window per column, so absorb/expel and in-column focus/move have no Drift equivalent. When that roadmap item lands, PaperWM's `Super+I`/`Super+O` (absorb/expel) and Niri's `Mod+[`/`Mod+]` (consume/expel) are the two existing naming conventions to choose between.
+- **Vertical stacking bindings shipped using PaperWM's naming convention** — `Meta+I`/`Meta+O` for absorb/expel, matching `Super+I`/`Super+O`. In-column focus (`Meta+Alt+Up`/`Down`) could not reuse this doc's earlier "Drift Target" guess of `Meta+Up`/`Meta+Down`, since those were already claimed by row paging (`shortcutRowUp`/`shortcutRowDown`) by the time this shipped — a reminder that this doc's "Drift Target" column can drift out of sync with `src/config/settings.ts` and should be cross-checked against it, not trusted alone, before implementing a target.
 - **Drift's row paging already lines up conceptually** with Niri's and PaperWM's workspace-up/down bindings (`Mod+I`/`Mod+U`, `Super+PageUp`/`PageDown`) even though the underlying model differs (see [`comparison-paperwm.md`](comparison-paperwm.md#where-drift-already-differs-by-design-not-by-gap)); Drift already uses `Page_Up`/`Page_Down` for this, matching one of Niri's two accepted key choices and PaperWM's only one.
 - **Cycle-align has no direct peer equivalent** — it's closer to Niri's/Karousel's "center column" (`Mod+C` / `Meta+Alt+Return`) than to their width-cycling actions, but Drift's version cycles between three screen-relative positions (left/center/right) rather than jumping straight to center.
 
