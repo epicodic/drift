@@ -27,7 +27,7 @@ import { Animator, type Timer } from '../viewport/animator';
 import { ColumnMotion } from '../viewport/column-motion';
 import { SharedTicker } from '../viewport/shared-ticker';
 import { Viewport } from '../viewport/viewport';
-import { ColumnRegistry } from './column-registry';
+import { ColumnRegistry, type TileLocation } from './column-registry';
 import {
     onFullScreenChanged,
     onMinimizedChanged,
@@ -40,6 +40,35 @@ import { SignalManager } from '../utils/signal-manager';
  * `Grid`/`Viewport`/rendering internals — used by `StripStack` to watch a dragged window's
  * vertical position (docs: 2026-09-02-cross-row-drag-design). */
 export type RowDragHooks = Pick<DragReorderDeps, 'onDragStarted' | 'onDragTick' | 'onDragFinished'>;
+
+/** Optional live-drag stack preview passed to `render()`: which tile rects to compute
+ * from a hypothetical layout instead of the committed one. `enteringColumnId`/
+ * `enteringIndex`/`enteringGapHeight` describe the column opening a gap for the dragged
+ * tile; `leavingColumnId`/`leavingTileId` (only set for a cross-column drag whose source
+ * is itself a multi-tile stack) describe the column closing the gap the dragged tile is
+ * leaving. Exported for `src/input/drag.ts` to reference when wiring real drag signals
+ * (docs: 2026-09-03-drag-to-stack-design). */
+export interface StackPreview {
+    enteringColumnId: number;
+    enteringIndex: number;
+    enteringGapHeight: number;
+    enteringExcludeTileId?: number;
+    leavingColumnId?: number;
+    leavingTileId?: number;
+}
+
+/** Optional live-drag reorder preview: as if `columnId` were already at
+ * `targetIndex` in column order — render()'s columns are positioned from
+ * `Grid.previewOffsetsWithColumnAt(columnId, targetIndex)` instead of their real,
+ * committed offsets, without mutating `Grid.ordered`. The one real `Grid.moveColumn`
+ * commit happens once, on drag release (docs: 2026-09-03-drag-to-stack-design) —
+ * mirroring `StackPreview`'s render-only-until-release model, needed so a live
+ * reorder swap can no longer "capture" a neighbor's spatial territory mid-drag and
+ * foreclose ever reaching that neighbor's stack zone. */
+export interface ReorderPreview {
+    columnId: number;
+    targetIndex: number;
+}
 
 export class Strip {
     private readonly grid: Grid;
@@ -93,12 +122,25 @@ export class Strip {
      * code (`applyVerticalOffset`, `snapRestingRows`, and its `switchToRow` priming call) ever
      * passes an explicit value — that's what keeps a parked, off-screen row parked instead of
      * snapping back to y=0 on the next unrelated internal render() (docs:
-     * 2026-09-01-row-navigation-design). */
-    render(excludeWindowId?: string, instant = false, verticalOffsetY?: number): void {
+     * 2026-09-01-row-navigation-design).
+     *
+     * `stackPreview` (see `StackPreview`): optional live-drag stack preview. The dragged
+     * tile's own window keeps being excluded from geometry sync via `excludeWindowId`,
+     * unchanged (docs: 2026-09-03-drag-to-stack-design). */
+    render(
+        excludeWindowId?: string,
+        instant = false,
+        verticalOffsetY?: number,
+        stackPreview?: StackPreview,
+        reorderPreview?: ReorderPreview,
+    ): void {
         if (verticalOffsetY !== undefined) {
             this.verticalOffsetY = verticalOffsetY;
         }
         this.viewport.setContentGeometry(this.grid.contentLeft(), this.grid.virtualWidth());
+        const previewOffsets = reorderPreview
+            ? this.grid.previewOffsetsWithColumnAt(reorderPreview.columnId, reorderPreview.targetIndex)
+            : null;
         for (const column of this.grid.columns()) {
             const columnRect = this.grid.columnRect(column.id);
             if (column.hidden) {
@@ -137,13 +179,25 @@ export class Strip {
             if (allTilesExcluded) {
                 continue;
             }
+            const targetX = previewOffsets?.get(column.id) ?? columnRect.x;
             let x: number;
             if (instant) {
-                this.columnMotion.snapTo(column.id, columnRect.x);
-                x = columnRect.x;
+                this.columnMotion.snapTo(column.id, targetX);
+                x = targetX;
             } else {
-                x = this.columnMotion.update(column.id, columnRect.x, Date.now(), this.settings.animationDurationMs);
+                x = this.columnMotion.update(column.id, targetX, Date.now(), this.settings.animationDurationMs);
             }
+            const previewRects =
+                stackPreview && column.id === stackPreview.enteringColumnId
+                    ? column.previewRectsWithGapAt(
+                          stackPreview.enteringIndex,
+                          stackPreview.enteringGapHeight,
+                          columnRect,
+                          stackPreview.enteringExcludeTileId,
+                      )
+                    : stackPreview && column.id === stackPreview.leavingColumnId
+                      ? column.previewRectsWithoutTile(stackPreview.leavingTileId!, columnRect)
+                      : null;
             for (const tile of column.tiles()) {
                 const key = this.tileKey(column.id, tile.id);
                 if (this.fullScreenTiles.has(key) || this.minimizedTiles.has(key)) {
@@ -153,7 +207,7 @@ export class Strip {
                 if (!win || win.id === excludeWindowId) {
                     continue;
                 }
-                const rect = column.tileRect(tile.id, columnRect);
+                const rect = previewRects?.get(tile.id) ?? column.tileRect(tile.id, columnRect);
                 this.geometrySync.apply(
                     win,
                     Object.assign({}, rect, { x }),
@@ -163,9 +217,16 @@ export class Strip {
             }
         }
         if (this.columnMotion.isAnimating()) {
-            // Preserve excludeWindowId: a live drag-reorder must keep skipping the
-            // dragged window's own geometry across continuation ticks, not just the first.
-            this.columnMotionTimer.start(this.settings.animationTickMs, () => this.render(excludeWindowId, false));
+            // Preserve excludeWindowId, stackPreview, AND reorderPreview: a live drag-reorder
+            // must keep skipping the dragged window's own geometry across continuation ticks,
+            // not just the first, and a live stack-hover or reorder-swap preview must not
+            // flicker back to committed rects/offsets for one frame while a column-position
+            // animation is still in flight. verticalOffsetY is intentionally still omitted
+            // here — it's sticky via `this.verticalOffsetY` (see render()'s own doc comment),
+            // so omitting it is safe.
+            this.columnMotionTimer.start(this.settings.animationTickMs, () =>
+                this.render(excludeWindowId, false, undefined, stackPreview, reorderPreview),
+            );
         } else {
             this.columnMotionTimer.stop();
         }
@@ -179,6 +240,13 @@ export class Strip {
      * while its neighbors keep animating (docs: 2026-08-31-drag-reorder-live-preview). */
     snapColumn(columnId: number): void {
         this.columnMotion.snapTo(columnId, this.grid.columnRect(columnId).x);
+    }
+
+    /** Which (column, tile) a window is currently registered under — used by drag
+     * wiring to resolve the dragged window's live location on every tick instead of
+     * a fixed id captured once (docs: 2026-09-03-drag-to-stack-design). */
+    locationOf(windowId: string): TileLocation | null {
+        return this.registry.tileOf(windowId);
     }
 
     revealFocused(): void {
@@ -228,14 +296,25 @@ export class Strip {
         signals.add(
             registerDragReorder(
                 win,
-                column.id,
                 Object.assign(
                     {
                         grid: this.grid,
+                        registry: this.registry,
                         viewport: this.viewport,
                         area: this.area,
-                        render: (excludeWindowId?: string, instant?: boolean) => this.render(excludeWindowId, instant),
+                        render: (
+                            excludeWindowId?: string,
+                            instant?: boolean,
+                            verticalOffsetY?: undefined,
+                            stackPreview?: StackPreview,
+                        ) => this.render(excludeWindowId, instant, verticalOffsetY, stackPreview),
                         snapColumn: (id: number) => this.snapColumn(id),
+                        commitTileIntoStack: (
+                            fromColumnId: number,
+                            fromTileId: number,
+                            toColumnId: number,
+                            slot: number,
+                        ) => this.commitTileIntoStack(fromColumnId, fromTileId, toColumnId, slot),
                         revealFocused: () => this.revealFocused(),
                     },
                     rowDragHooks,
@@ -440,6 +519,19 @@ export class Strip {
         this.registry.moveWindow(focused.id, result.fromTileId, result.toColumnId, result.toTileId);
         this.render();
         this.revealFocused();
+    }
+
+    /** Moves `fromTileId` out of `fromColumnId` and into `toColumnId` at `slot` —
+     * the general, drag-driven form of `absorbRight`, for any source/target pair.
+     * `fromColumnId` must differ from `toColumnId`; same-column reordering goes
+     * through `Column.moveTile` directly (see drag.ts), which needs no registry or
+     * bookkeeping changes at all (docs: 2026-09-03-drag-to-stack-design). */
+    commitTileIntoStack(fromColumnId: number, fromTileId: number, toColumnId: number, slot: number): void {
+        const toTileId = this.grid.moveTileIntoColumn(fromColumnId, fromTileId, toColumnId, slot);
+        this.registry.moveWindow(fromColumnId, fromTileId, toColumnId, toTileId);
+        this.fullScreenTiles.delete(this.tileKey(fromColumnId, fromTileId));
+        this.minimizedTiles.delete(this.tileKey(fromColumnId, fromTileId));
+        this.columnMotion.forget(fromColumnId);
     }
 
     /** Focus-stepping only moves Drift's own notion of the focused column (`Grid`) —

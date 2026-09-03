@@ -77,18 +77,36 @@ export class Column {
         this.focusedTile = id;
     }
 
-    /** Appends a new tile at the bottom of the stack (absorb), splitting height evenly
-     * across every tile including the new one. Does not change which tile is focused.
-     * Returns the new tile's id. */
-    addTile(): number {
+    /** Inserts a new tile at `index` (0 = top of the stack), shrinking existing tiles
+     * proportionally to make room — the general form of `addTile`, which is now
+     * `insertTileAt(tiles.length)`. Does not change which tile is focused. Returns
+     * the new tile's id (docs: 2026-09-03-drag-to-stack-design). */
+    insertTileAt(index: number): number {
         const totalHeight = this.stack.reduce((sum, tile) => sum + tile.height, 0);
         const evenHeight = totalHeight / (this.stack.length + 1);
         for (const tile of this.stack) {
             tile.height = evenHeight;
         }
         const id = this.nextTileId++;
-        this.stack.push({ id, height: evenHeight });
+        this.stack.splice(index, 0, { id, height: evenHeight });
         return id;
+    }
+
+    /** Appends a new tile at the bottom of the stack (absorb), splitting height evenly
+     * across every tile including the new one. Does not change which tile is focused.
+     * Returns the new tile's id. */
+    addTile(): number {
+        return this.insertTileAt(this.stack.length);
+    }
+
+    /** Reorders a tile to `newIndex` within the stack, without touching any tile's
+     * height — only its position (and therefore its derived y from `tileRect`)
+     * changes. Used for drag-reordering within a single stack
+     * (docs: 2026-09-03-drag-to-stack-design). */
+    moveTile(id: number, newIndex: number): void {
+        const index = this.requireTileIndex(id);
+        const [tile] = this.stack.splice(index, 1);
+        this.stack.splice(newIndex, 0, tile);
     }
 
     /** Removes a tile (expel), redistributing its height proportionally to the rest.
@@ -145,6 +163,57 @@ export class Column {
             width: columnRect.width,
             height: this.stack[index].height,
         };
+    }
+
+    /** Preview-only: rects for every tile except `excludeTileId` (if given), as if a
+     * new tile of `gapHeight` were being inserted at `index` — reserves that much
+     * space and shifts everything from `index` on down, without mutating the column,
+     * redistributing height, or touching any existing tile's own height. Used to
+     * render a live drag-to-stack gap preview. The eventual committed insert
+     * (`insertTileAt`) still evenly redistributes height across the whole stack, so a
+     * cross-column drop can show a small one-time height jump on release — an
+     * accepted, documented visual note, not solved here
+     * (docs: 2026-09-03-drag-to-stack-design). */
+    previewRectsWithGapAt(
+        index: number,
+        gapHeight: number,
+        columnRect: Rect,
+        excludeTileId?: number,
+    ): Map<number, Rect> {
+        const others = this.stack.filter((tile) => tile.id !== excludeTileId);
+        const result = new Map<number, Rect>();
+        let y = columnRect.y;
+        let cursor = 0;
+        for (let slot = 0; slot <= others.length; slot++) {
+            if (slot === index) {
+                y += gapHeight;
+                continue;
+            }
+            const tile = others[cursor++];
+            result.set(tile.id, { x: columnRect.x, y, width: columnRect.width, height: tile.height });
+            y += tile.height;
+        }
+        return result;
+    }
+
+    /** Preview-only: rects for every tile except `excludeTileId`, as if it had already
+     * been removed and the rest simply shifted up to close the gap it left — without
+     * mutating the column, redistributing height, or touching any remaining tile's
+     * own height. The eventual committed removal (`removeTile`) still redistributes
+     * height proportionally, so this can show a small one-time height jump on
+     * release too — same accepted trade-off as `previewRectsWithGapAt`
+     * (docs: 2026-09-03-drag-to-stack-design). */
+    previewRectsWithoutTile(excludeTileId: number, columnRect: Rect): Map<number, Rect> {
+        const result = new Map<number, Rect>();
+        let y = columnRect.y;
+        for (const tile of this.stack) {
+            if (tile.id === excludeTileId) {
+                continue;
+            }
+            result.set(tile.id, { x: columnRect.x, y, width: columnRect.width, height: tile.height });
+            y += tile.height;
+        }
+        return result;
     }
 
     /** Moves tile focus up (toward the top of the stack). No-op at the top. */
