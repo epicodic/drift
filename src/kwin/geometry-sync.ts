@@ -6,8 +6,8 @@ import { Rect, rectsEqualRounded } from '../core/coordinates';
 import { WindowAdapter } from './window-adapter';
 
 /** Maps a rect from virtual strip coordinates into the real screen area. `viewportOffsetY`
- * is the row-navigation vertical camera offset (docs: 2026-09-01-row-navigation-design) —
- * 0 for the active row, non-zero to park an inactive row's windows off-screen. */
+ * is the strip-navigation vertical camera offset (docs: 2026-09-01-row-navigation-design) —
+ * 0 for the active strip, non-zero to park an inactive strip's windows off-screen. */
 export function toRealRect(virtualRect: Rect, area: Rect, viewportOffsetX: number, viewportOffsetY = 0): Rect {
     return {
         x: area.x + virtualRect.x - viewportOffsetX,

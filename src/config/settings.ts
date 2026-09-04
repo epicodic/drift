@@ -27,16 +27,16 @@ export interface Settings {
     /** Shortcut sequence for panning the viewport right without changing focus. */
     shortcutViewportShiftRight: string;
     /** Shortcut sequence for moving tile focus up within the focused column's stack if
-     * it can, otherwise paging to the row above (docs: 2026-09-01-row-navigation-design,
+     * it can, otherwise paging to the strip above (docs: 2026-09-01-row-navigation-design,
      * 2026-09-03-vertical-tiling-design). */
     shortcutNavigateUp: string;
     /** Shortcut sequence for moving tile focus down within the focused column's stack if
-     * it can, otherwise paging to the row below. */
+     * it can, otherwise paging to the strip below. */
     shortcutNavigateDown: string;
-    /** Shortcut sequence for moving the focused window to the row above and following it there. */
-    shortcutMoveWindowToRowAbove: string;
-    /** Shortcut sequence for moving the focused window to the row below and following it there. */
-    shortcutMoveWindowToRowBelow: string;
+    /** Shortcut sequence for moving the focused window to the strip above and following it there. */
+    shortcutMoveWindowToStripAbove: string;
+    /** Shortcut sequence for moving the focused window to the strip below and following it there. */
+    shortcutMoveWindowToStripBelow: string;
     /** Shortcut sequence for absorbing the column to the right into the focused
      * column's stack, as a new tile. */
     shortcutAbsorbRight: string;
@@ -50,14 +50,14 @@ export interface Settings {
     /** Distance the viewport pans per shortcut press, in pixels. */
     viewportShiftStep: number;
     /** How long the pointer must stay at the screen's top/bottom edge before the dragged
-     * window flips into the row above/below, in milliseconds (docs:
+     * window flips into the strip above/below, in milliseconds (docs:
      * 2026-09-02-cross-row-drag-design). */
-    rowDragDwellMs: number;
+    stripDragDwellMs: number;
     /** How close to the screen's top/bottom edge, in pixels, the pointer must be for a
-     * cross-row drag to arm. The OS clamps the pointer to the screen, so it can only ever
+     * cross-strip drag to arm. The OS clamps the pointer to the screen, so it can only ever
      * reach the edge itself, not go past it — this border gives that a little slack against
      * rounding/jitter rather than requiring the exact boundary pixel. */
-    rowDragEdgeBorderPx: number;
+    stripDragEdgeBorderPx: number;
     /** How long the pointer must dwell over a neighbor column before a cross-column drag
      * previews stacking into it (docs: 2026-09-04-drag-reorder-stack-priority-design). Until
      * the dwell elapses, hovering a neighbor whose edge-crossing threshold hasn't fired shows
@@ -86,15 +86,15 @@ export const DEFAULT_SETTINGS: Settings = {
     shortcutViewportShiftRight: 'Meta+Alt+Right',
     shortcutNavigateUp: 'Meta+Up',
     shortcutNavigateDown: 'Meta+Down',
-    shortcutMoveWindowToRowAbove: 'Meta+Ctrl+Up',
-    shortcutMoveWindowToRowBelow: 'Meta+Ctrl+Down',
+    shortcutMoveWindowToStripAbove: 'Meta+Ctrl+Up',
+    shortcutMoveWindowToStripBelow: 'Meta+Ctrl+Down',
     shortcutAbsorbRight: 'Meta+I',
     shortcutExpel: 'Meta+O',
     shortcutMoveWindowLeft: 'Meta+Ctrl+Left',
     shortcutMoveWindowRight: 'Meta+Ctrl+Right',
     viewportShiftStep: 400,
-    rowDragDwellMs: 400,
-    rowDragEdgeBorderPx: 2,
+    stripDragDwellMs: 400,
+    stripDragEdgeBorderPx: 2,
     columnDragDwellMs: 400,
     minimapAutoHideMs: 1200,
     minimapShowThumbnails: true,
@@ -109,8 +109,8 @@ export function loadSettings(): Settings {
         defaultColumnWidth: readNumberConfig('defaultColumnWidth', DEFAULT_SETTINGS.defaultColumnWidth),
         animationDurationMs: readNumberConfig('animationDurationMs', DEFAULT_SETTINGS.animationDurationMs),
         viewportShiftStep: readNumberConfig('viewportShiftStep', DEFAULT_SETTINGS.viewportShiftStep),
-        rowDragDwellMs: readNumberConfig('rowDragDwellMs', DEFAULT_SETTINGS.rowDragDwellMs),
-        rowDragEdgeBorderPx: readNumberConfig('rowDragEdgeBorderPx', DEFAULT_SETTINGS.rowDragEdgeBorderPx),
+        stripDragDwellMs: readNumberConfig('stripDragDwellMs', DEFAULT_SETTINGS.stripDragDwellMs),
+        stripDragEdgeBorderPx: readNumberConfig('stripDragEdgeBorderPx', DEFAULT_SETTINGS.stripDragEdgeBorderPx),
         columnDragDwellMs: readNumberConfig('columnDragDwellMs', DEFAULT_SETTINGS.columnDragDwellMs),
         minimapAutoHideMs: readNumberConfig('minimapAutoHideMs', DEFAULT_SETTINGS.minimapAutoHideMs),
         minimapShowThumbnails: readBooleanConfig('minimapShowThumbnails', DEFAULT_SETTINGS.minimapShowThumbnails),
@@ -132,13 +132,13 @@ export function loadSettings(): Settings {
         ),
         shortcutNavigateUp: readStringConfig('shortcutNavigateUp', DEFAULT_SETTINGS.shortcutNavigateUp),
         shortcutNavigateDown: readStringConfig('shortcutNavigateDown', DEFAULT_SETTINGS.shortcutNavigateDown),
-        shortcutMoveWindowToRowAbove: readStringConfig(
-            'shortcutMoveWindowToRowAbove',
-            DEFAULT_SETTINGS.shortcutMoveWindowToRowAbove,
+        shortcutMoveWindowToStripAbove: readStringConfig(
+            'shortcutMoveWindowToStripAbove',
+            DEFAULT_SETTINGS.shortcutMoveWindowToStripAbove,
         ),
-        shortcutMoveWindowToRowBelow: readStringConfig(
-            'shortcutMoveWindowToRowBelow',
-            DEFAULT_SETTINGS.shortcutMoveWindowToRowBelow,
+        shortcutMoveWindowToStripBelow: readStringConfig(
+            'shortcutMoveWindowToStripBelow',
+            DEFAULT_SETTINGS.shortcutMoveWindowToStripBelow,
         ),
         shortcutAbsorbRight: readStringConfig('shortcutAbsorbRight', DEFAULT_SETTINGS.shortcutAbsorbRight),
         shortcutExpel: readStringConfig('shortcutExpel', DEFAULT_SETTINGS.shortcutExpel),

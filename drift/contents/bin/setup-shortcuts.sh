@@ -54,8 +54,8 @@ DriftViewportShiftLeft|Drift: Shift Viewport Left|Meta+Alt+Left
 DriftViewportShiftRight|Drift: Shift Viewport Right|Meta+Alt+Right
 DriftNavigateUp|Drift: Navigate Up|Meta+Up
 DriftNavigateDown|Drift: Navigate Down|Meta+Down
-DriftMoveWindowToRowAbove|Drift: Move Window To Row Above|Meta+Ctrl+Up
-DriftMoveWindowToRowBelow|Drift: Move Window To Row Below|Meta+Ctrl+Down
+DriftMoveWindowToStripAbove|Drift: Move Window To Strip Above|Meta+Ctrl+Up
+DriftMoveWindowToStripBelow|Drift: Move Window To Strip Below|Meta+Ctrl+Down
 DriftAbsorbRight|Drift: Absorb Column Right|Meta+I
 DriftExpel|Drift: Expel Focused Tile|Meta+O
 DriftMoveWindowLeft|Drift: Move Window Left|Meta+Ctrl+Left

@@ -369,16 +369,16 @@ describe('Strip', () => {
     });
 
     it('remembers a parked vertical offset across an internal render() call that passes none (regression)', () => {
-        // StripStack parks an inactive row off-screen via an explicit render(undefined, true, offset)
-        // call, then never touches that row again except through Strip's own internal call sites
+        // StripStack parks an inactive strip off-screen via an explicit render(undefined, true, offset)
+        // call, then never touches that strip again except through Strip's own internal call sites
         // (addWindow, removeWindow, detachFocusedColumn, window-events handlers, ...) which all omit
         // the third argument. Before the fix, render()'s third parameter defaulted to 0, so any such
-        // internal-only call silently reset the row's already-visible windows back to y=0, right on
-        // top of whatever row was actually on screen.
+        // internal-only call silently reset the strip's already-visible windows back to y=0, right on
+        // top of whatever strip was actually on screen.
         const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win1 = fakeWindow('w1');
         strip.addWindow(win1.adapter);
-        strip.render(undefined, true, 1000); // park this row off-screen, as StripStack does for an inactive row
+        strip.render(undefined, true, 1000); // park this strip off-screen, as StripStack does for an inactive strip
         win1.setFrameGeometry.mockClear();
 
         const win2 = fakeWindow('w2');
@@ -442,7 +442,7 @@ describe('Strip', () => {
         expect(win.setFrameGeometry).toHaveBeenCalled();
     });
 
-    it('skips revealFocused for a window added mid-drag, so a row-overflow reveal-pan never fights the live drag (regression)', () => {
+    it('skips revealFocused for a window added mid-drag, so a strip-overflow reveal-pan never fights the live drag (regression)', () => {
         // AREA is 1280 wide; two 800-wide columns overflow it (1608 virtual width), so
         // revealFocused() for the second one already pans the viewport — the scenario in
         // which an un-guarded revealFocused() on a mid-drag add would start a real Animator
@@ -507,7 +507,7 @@ describe('Strip', () => {
         expect(existing.setFrameGeometry).toHaveBeenCalled();
     });
 
-    it('invokes the supplied row-drag hooks on start/tick/finish', () => {
+    it('invokes the supplied strip-drag hooks on start/tick/finish', () => {
         const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1', { width: 400 });
         const onDragStarted = vi.fn();

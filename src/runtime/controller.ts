@@ -50,8 +50,8 @@ export class Controller {
             shiftViewportRight: () => this.stripManager.activeStripStack().shiftViewportRight(),
             navigateUp: () => this.focusAndShowMinimap((stack) => stack.navigateUp()),
             navigateDown: () => this.focusAndShowMinimap((stack) => stack.navigateDown()),
-            moveWindowToRowAbove: () => this.focusAndShowMinimap((stack) => stack.moveWindowToRowAbove()),
-            moveWindowToRowBelow: () => this.focusAndShowMinimap((stack) => stack.moveWindowToRowBelow()),
+            moveWindowToStripAbove: () => this.focusAndShowMinimap((stack) => stack.moveWindowToStripAbove()),
+            moveWindowToStripBelow: () => this.focusAndShowMinimap((stack) => stack.moveWindowToStripBelow()),
             absorbRight: () => this.focusAndShowMinimap((stack) => stack.absorbRight()),
             expel: () => this.focusAndShowMinimap((stack) => stack.expel()),
             moveWindowLeft: () => this.focusAndShowMinimap((stack) => stack.moveWindowLeft()),
@@ -65,8 +65,8 @@ export class Controller {
         const stack = this.stripManager.activeStripStack();
         move(stack);
         const snapshot = stack.minimapSnapshot();
-        const activeRow = snapshot.rows.find((row) => row.rowIndex === snapshot.viewport.rowIndex);
-        if (!activeRow?.columns.some((column) => column.tiles.some((tile) => tile.focused))) {
+        const activeStrip = snapshot.strips.find((strip) => strip.stripIndex === snapshot.viewport.stripIndex);
+        if (!activeStrip?.columns.some((column) => column.tiles.some((tile) => tile.focused))) {
             return;
         }
         this.minimapOverlay.show(snapshot, this.workspaceAdapter.screenGeometryAtCursor());

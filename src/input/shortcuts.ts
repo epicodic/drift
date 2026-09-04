@@ -15,8 +15,8 @@ export interface ShortcutActions {
     shiftViewportRight(): void;
     navigateUp(): void;
     navigateDown(): void;
-    moveWindowToRowAbove(): void;
-    moveWindowToRowBelow(): void;
+    moveWindowToStripAbove(): void;
+    moveWindowToStripBelow(): void;
     absorbRight(): void;
     expel(): void;
     moveWindowLeft(): void;
@@ -77,17 +77,17 @@ export function registerShortcuts(parent: QmlObject, settings: Settings, actions
     );
     createShortcut(
         parent,
-        'DriftMoveWindowToRowAbove',
-        'Drift: Move Window To Row Above',
-        settings.shortcutMoveWindowToRowAbove,
-        actions.moveWindowToRowAbove,
+        'DriftMoveWindowToStripAbove',
+        'Drift: Move Window To Strip Above',
+        settings.shortcutMoveWindowToStripAbove,
+        actions.moveWindowToStripAbove,
     );
     createShortcut(
         parent,
-        'DriftMoveWindowToRowBelow',
-        'Drift: Move Window To Row Below',
-        settings.shortcutMoveWindowToRowBelow,
-        actions.moveWindowToRowBelow,
+        'DriftMoveWindowToStripBelow',
+        'Drift: Move Window To Strip Below',
+        settings.shortcutMoveWindowToStripBelow,
+        actions.moveWindowToStripBelow,
     );
     createShortcut(
         parent,

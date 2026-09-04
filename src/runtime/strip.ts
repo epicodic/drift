@@ -40,7 +40,7 @@ import { SignalManager } from '../utils/signal-manager';
 /** The subset of `DragReorderDeps` a caller can supply per-window without knowing about
  * `Grid`/`Viewport`/rendering internals — used by `StripStack` to watch a dragged window's
  * vertical position (docs: 2026-09-02-cross-row-drag-design). */
-export type RowDragHooks = Pick<DragReorderDeps, 'onDragStarted' | 'onDragTick' | 'onDragFinished'>;
+export type StripDragHooks = Pick<DragReorderDeps, 'onDragStarted' | 'onDragTick' | 'onDragFinished'>;
 
 /** Optional live-drag stack preview passed to `render()`: which tile rects to compute
  * from a hypothetical layout instead of the committed one. `enteringColumnId`/
@@ -107,9 +107,9 @@ export class Strip {
      * and remembers it as `this.verticalOffsetY` for every later call that omits the argument
      * (internal call sites — addWindow, detachColumn, the horizontal Animator's own tick, drag-
      * reorder, window-events handlers — all omit it). Omitting it does NOT mean "use 0"; it means
-     * "keep whatever this row was last explicitly told to use." Only `StripStack`'s transition
-     * code (`applyVerticalOffset`, `snapRestingRows`, and its `switchToRow` priming call) ever
-     * passes an explicit value — that's what keeps a parked, off-screen row parked instead of
+     * "keep whatever this strip was last explicitly told to use." Only `StripStack`'s transition
+     * code (`applyVerticalOffset`, `snapRestingStrips`, and its `switchToStrip` priming call) ever
+     * passes an explicit value — that's what keeps a parked, off-screen strip parked instead of
      * snapping back to y=0 on the next unrelated internal render() (docs:
      * 2026-09-01-row-navigation-design).
      *
@@ -170,14 +170,14 @@ export class Strip {
             const previewRects =
                 stackPreview && column.id === stackPreview.enteringColumnId
                     ? column.previewRectsWithGapAt(
-                        stackPreview.enteringIndex,
-                        stackPreview.enteringGapHeight,
-                        columnRect,
-                        stackPreview.enteringExcludeTileId,
-                    )
+                          stackPreview.enteringIndex,
+                          stackPreview.enteringGapHeight,
+                          columnRect,
+                          stackPreview.enteringExcludeTileId,
+                      )
                     : stackPreview && column.id === stackPreview.leavingColumnId
-                        ? column.previewRectsWithoutTile(stackPreview.leavingTileId!, columnRect)
-                        : null;
+                      ? column.previewRectsWithoutTile(stackPreview.leavingTileId!, columnRect)
+                      : null;
             for (const tile of column.tiles()) {
                 const key = this.tileKey(column.id, tile.id);
                 if (this.fullScreenTiles.has(key) || this.minimizedTiles.has(key)) {
@@ -258,7 +258,7 @@ export class Strip {
         return buildMinimapSnapshot(this.grid, this.viewport, this.registry, this.animator.targetOffset());
     }
 
-    addWindow(win: WindowAdapter, initiallyDragging = false, rowDragHooks?: RowDragHooks): void {
+    addWindow(win: WindowAdapter, initiallyDragging = false, stripDragHooks?: StripDragHooks): void {
         const width = Math.round(win.frameGeometry().width) || this.settings.defaultColumnWidth;
         const column = this.grid.addColumn(width);
         const signals = new SignalManager();
@@ -305,14 +305,14 @@ export class Strip {
                         ) => this.commitTileIntoStack(fromColumnId, fromTileId, toColumnId, slot),
                         revealFocused: () => this.revealFocused(),
                     },
-                    rowDragHooks,
+                    stripDragHooks,
                 ),
                 initiallyDragging,
             ),
         );
         this.render(initiallyDragging ? win.id : undefined);
         // A mid-drag add skips revealFocused(): Grid.addColumn always focuses the new column,
-        // and if this row's content already overflows the viewport, revealFocused() would kick
+        // and if this strip's content already overflows the viewport, revealFocused() would kick
         // off a real Animator pan whose tick callback calls render() with NO excludeWindowId —
         // fighting the live KWin interactive move on the x-axis. registerDragReorder's own
         // interactiveMoveResizeFinished handler (src/input/drag.ts) calls revealFocused() too,
@@ -342,9 +342,9 @@ export class Strip {
     }
 
     /** Detaches the whole focused column — every tile's window, as a unit — from this
-     * strip, returning them so a caller (StripStack's cross-row move) can re-add them
+     * strip, returning them so a caller (StripStack's cross-strip move) can re-add them
      * elsewhere. A stacked column's tiles are NOT preserved as a stack in the target
-     * row this pass — each is re-added via addWindow as its own column there (docs:
+     * strip this pass — each is re-added via addWindow as its own column there (docs:
      * 2026-09-03-vertical-tiling-design, Out of Scope). Empty array if there's nothing
      * to detach. */
     detachFocusedColumn(): WindowAdapter[] {
@@ -384,14 +384,14 @@ export class Strip {
         this.revealFocused();
     }
 
-    /** True when this row has no windows — used by row-pruning (docs:
+    /** True when this strip has no windows — used by strip-pruning (docs:
      * 2026-09-01-row-navigation-design). */
     isEmpty(): boolean {
         return this.registry.isEmpty();
     }
 
-    /** Toggles `skipTaskbar` on every window currently in this row — used while paging rows,
-     * so an inactive row's windows don't clutter the taskbar (docs:
+    /** Toggles `skipTaskbar` on every window currently in this strip — used while paging strips,
+     * so an inactive strip's windows don't clutter the taskbar (docs:
      * 2026-09-01-row-navigation-design). */
     setSkipTaskbar(skipTaskbar: boolean): void {
         for (const win of this.registry.windows()) {
@@ -576,7 +576,7 @@ export class Strip {
         const step = nextAlignStep(direction, offset, offsets);
         debug(
             `cycleAlign(${direction}): offset=${offset} screenIndex=${screenIndex} offsets=${JSON.stringify(offsets)} ` +
-            `step=${JSON.stringify(step)}`,
+                `step=${JSON.stringify(step)}`,
         );
 
         if (screenIndex !== null && Math.round(step.targetOffset) === Math.round(offset)) {

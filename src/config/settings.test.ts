@@ -15,15 +15,15 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.minimapShowThumbnails).toBe(true);
     });
 
-    it('defaults the row-drag dwell to 400ms', () => {
-        expect(DEFAULT_SETTINGS.rowDragDwellMs).toBe(400);
+    it('defaults the strip-drag dwell to 400ms', () => {
+        expect(DEFAULT_SETTINGS.stripDragDwellMs).toBe(400);
     });
 
     it('defaults the column-stack drag dwell to 400ms', () => {
         expect(DEFAULT_SETTINGS.columnDragDwellMs).toBe(400);
     });
 
-    it('defaults the row-drag edge border to 2px', () => {
-        expect(DEFAULT_SETTINGS.rowDragEdgeBorderPx).toBe(2);
+    it('defaults the strip-drag edge border to 2px', () => {
+        expect(DEFAULT_SETTINGS.stripDragEdgeBorderPx).toBe(2);
     });
 });

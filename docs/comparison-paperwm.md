@@ -19,7 +19,7 @@ Columns can hold more than one window, stacked vertically (`Super+I` absorbs the
 | Host environment | KDE Plasma / KWin script | GNOME Shell extension |
 | Multi-monitor model | One strip spans every screen | One workspace (one strip) per monitor, drawn from a shared workspace stack |
 | Vertical (in-column) stacking | Yes — `Meta+I`/`Meta+O` absorb/expel, resizable tile heights | Yes — absorb/expel windows into a column, resize stacked heights |
-| Row / stacked navigation | Yes — `StripStack` rows nested inside each activity/desktop strip, paged with `Meta+Page_Up`/`Meta+Page_Down` (`Meta+Shift+Page_Up`/`Down` moves a window along) | Yes — a "workspace stack" you page through (`Super+PageUp/PageDown`, `Super+`` `) |
+| Strip / stacked navigation | Yes — `StripStack` strips nested inside each activity/desktop strip, paged with `Meta+Page_Up`/`Meta+Page_Down` (`Meta+Shift+Page_Up`/`Down` moves a window along) | Yes — a "workspace stack" you page through (`Super+PageUp/PageDown`, `Super+`` `) |
 | Window rules | Not yet, see [roadmap](roadmap.md) | Yes — "winprops": per `wm_class`/`title` rules (`preferredWidth`, force-floating via `scratch_layer`) |
 | Minimap / position indicator | Not yet, see [roadmap](roadmap.md) | Yes — both a `minimap.js` overlay and a persistent "window position bar" in the top bar |
 | Floating escape hatch (Drift's "undock/redock") | Not yet, see [roadmap](roadmap.md) | Yes — the "scratch layer": toggle a window between tiled and always-on-top floating |
@@ -42,7 +42,7 @@ A few PaperWM features suggest additional roadmap items or refinements of the ex
 ## Where Drift already differs by design, not by gap
 
 - Drift's multi-monitor model (one strip spanning every screen) and PaperWM's (one strip per monitor, shared workspace stack) are genuinely different designs, not one being a superset of the other — worth an explicit decision if multi-monitor behavior is ever revisited, rather than assuming PaperWM's model is strictly better.
-- Row navigation is also a different design, not a gap: PaperWM's "workspace stack" pages through workspaces themselves, while Drift's `StripStack` rows are a separate axis nested inside each activity/desktop's own strip, keeping the desktop dimension's existing meaning intact (see [`docs/architecture.md`](architecture.md#rows)).
+- Strip navigation is also a different design, not a gap: PaperWM's "workspace stack" pages through workspaces themselves, while Drift's `StripStack` strips are a separate axis nested inside each activity/desktop's own strip, keeping the desktop dimension's existing meaning intact (see [`docs/architecture.md`](architecture.md#strips)).
 - Live mouse drag-to-reorder is something PaperWM does not have and Drift does; no action needed here, just noted so it isn't accidentally regressed toward PaperWM's keybinding-only model.
 
 ## Sources

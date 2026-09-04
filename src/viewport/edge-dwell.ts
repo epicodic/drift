@@ -1,5 +1,5 @@
 // Detects the pointer dragged past a screen edge (or hovering some other identified zone)
-// and held there, firing after a dwell period — used to trigger a row-flip during cross-row
+// and held there, firing after a dwell period — used to trigger a strip-flip during cross-strip
 // drag (docs: 2026-09-02-cross-row-drag-design) and reused for the horizontal drag-to-stack
 // dwell, armed on a neighbor column id instead of an edge direction (docs: 2026-09-04-drag-
 // reorder-stack-priority-design). Pure and KWin-free, driven entirely by an injected clock
@@ -15,7 +15,7 @@ export class EdgeDwell<T> {
      * pointer genuinely back within bounds). Blocks re-arming for that same direction from the
      * continued same-direction reports every later drag tick still sends while the pointer
      * keeps holding past the edge, unmoved — without this, one continuous hold would flip
-     * through rows every `dwellMs` instead of just once. */
+     * through strips every `dwellMs` instead of just once. */
     private awaitingRelease: T | null = null;
 
     constructor(

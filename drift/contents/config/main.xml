@@ -17,10 +17,10 @@
         <entry name="viewportShiftStep" type="UInt">
             <default>400</default>
         </entry>
-        <entry name="rowDragDwellMs" type="UInt">
+        <entry name="stripDragDwellMs" type="UInt">
             <default>400</default>
         </entry>
-        <entry name="rowDragEdgeBorderPx" type="UInt">
+        <entry name="stripDragEdgeBorderPx" type="UInt">
             <default>2</default>
         </entry>
         <entry name="columnDragDwellMs" type="UInt">
@@ -59,10 +59,10 @@
         <entry name="shortcutNavigateDown" type="String">
             <default>Meta+Down</default>
         </entry>
-        <entry name="shortcutMoveWindowToRowAbove" type="String">
+        <entry name="shortcutMoveWindowToStripAbove" type="String">
             <default>Meta+Ctrl+Up</default>
         </entry>
-        <entry name="shortcutMoveWindowToRowBelow" type="String">
+        <entry name="shortcutMoveWindowToStripBelow" type="String">
             <default>Meta+Ctrl+Down</default>
         </entry>
         <entry name="shortcutAbsorbRight" type="String">
