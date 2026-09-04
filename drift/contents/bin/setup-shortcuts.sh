@@ -52,12 +52,10 @@ DriftCycleAlignLeft|Drift: Cycle Column Align Left|Meta+Shift+Left
 DriftCycleAlignRight|Drift: Cycle Column Align Right|Meta+Shift+Right
 DriftViewportShiftLeft|Drift: Shift Viewport Left|Meta+Alt+Left
 DriftViewportShiftRight|Drift: Shift Viewport Right|Meta+Alt+Right
-DriftRowUp|Drift: Page Row Up|Meta+Up
-DriftRowDown|Drift: Page Row Down|Meta+Down
+DriftNavigateUp|Drift: Navigate Up|Meta+Up
+DriftNavigateDown|Drift: Navigate Down|Meta+Down
 DriftMoveWindowToRowAbove|Drift: Move Window To Row Above|Meta+Ctrl+Up
 DriftMoveWindowToRowBelow|Drift: Move Window To Row Below|Meta+Ctrl+Down
-DriftFocusUp|Drift: Focus Tile Up|Meta+Alt+Up
-DriftFocusDown|Drift: Focus Tile Down|Meta+Alt+Down
 DriftAbsorbRight|Drift: Absorb Column Right|Meta+I
 DriftExpel|Drift: Expel Focused Tile|Meta+O
 DriftMoveWindowLeft|Drift: Move Window Left|Meta+Ctrl+Left

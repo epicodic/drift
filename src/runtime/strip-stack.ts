@@ -102,12 +102,28 @@ export class StripStack {
         this.activeStrip().focusRight();
     }
 
-    focusUp(): void {
-        this.activeStrip().focusUp();
+    focusUp(): boolean {
+        return this.activeStrip().focusUp();
     }
 
-    focusDown(): void {
-        this.activeStrip().focusDown();
+    focusDown(): boolean {
+        return this.activeStrip().focusDown();
+    }
+
+    /** Moves tile focus up within the active row's stack if it can; otherwise pages to
+     * the row above (docs: unifying in-column and row navigation onto one key). */
+    navigateUp(): void {
+        if (!this.focusUp()) {
+            this.rowUp();
+        }
+    }
+
+    /** Moves tile focus down within the active row's stack if it can; otherwise pages
+     * to the row below. */
+    navigateDown(): void {
+        if (!this.focusDown()) {
+            this.rowDown();
+        }
     }
 
     moveWindowLeft(): void {

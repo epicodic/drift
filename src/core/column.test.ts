@@ -112,17 +112,17 @@ describe('Column — tile stack', () => {
         const secondId = column.addTile();
         const thirdId = column.addTile();
 
-        column.focusUp(); // already at the top tile — no-op
+        expect(column.focusUp()).toBe(false); // already at the top tile — no-op
         expect(column.focusedTileId).toBe(firstId);
 
-        column.focusDown();
+        expect(column.focusDown()).toBe(true);
         expect(column.focusedTileId).toBe(secondId);
-        column.focusDown();
+        expect(column.focusDown()).toBe(true);
         expect(column.focusedTileId).toBe(thirdId);
-        column.focusDown(); // already at the bottom tile — no-op
+        expect(column.focusDown()).toBe(false); // already at the bottom tile — no-op
         expect(column.focusedTileId).toBe(thirdId);
 
-        column.focusUp();
+        expect(column.focusUp()).toBe(true);
         expect(column.focusedTileId).toBe(secondId);
     });
 

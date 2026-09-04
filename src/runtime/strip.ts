@@ -170,14 +170,14 @@ export class Strip {
             const previewRects =
                 stackPreview && column.id === stackPreview.enteringColumnId
                     ? column.previewRectsWithGapAt(
-                          stackPreview.enteringIndex,
-                          stackPreview.enteringGapHeight,
-                          columnRect,
-                          stackPreview.enteringExcludeTileId,
-                      )
+                        stackPreview.enteringIndex,
+                        stackPreview.enteringGapHeight,
+                        columnRect,
+                        stackPreview.enteringExcludeTileId,
+                    )
                     : stackPreview && column.id === stackPreview.leavingColumnId
-                      ? column.previewRectsWithoutTile(stackPreview.leavingTileId!, columnRect)
-                      : null;
+                        ? column.previewRectsWithoutTile(stackPreview.leavingTileId!, columnRect)
+                        : null;
             for (const tile of column.tiles()) {
                 const key = this.tileKey(column.id, tile.id);
                 if (this.fullScreenTiles.has(key) || this.minimizedTiles.has(key)) {
@@ -448,29 +448,29 @@ export class Strip {
     }
 
     /** Moves tile focus up within the focused column's stack and activates the newly
-     * focused tile's window. No-op if there's no focused column or it's not a stack. */
-    focusUp(): void {
-        this.moveTileFocus((column) => column.focusUp());
+     * focused tile's window. No-op if there's no focused column or it's not a stack.
+     * Returns whether focus actually moved. */
+    focusUp(): boolean {
+        return this.moveTileFocus((column) => column.focusUp());
     }
 
-    /** Moves tile focus down within the focused column's stack. */
-    focusDown(): void {
-        this.moveTileFocus((column) => column.focusDown());
+    /** Moves tile focus down within the focused column's stack. Returns whether focus
+     * actually moved. */
+    focusDown(): boolean {
+        return this.moveTileFocus((column) => column.focusDown());
     }
 
-    private moveTileFocus(move: (column: Column) => void): void {
+    private moveTileFocus(move: (column: Column) => boolean): boolean {
         const column = this.grid.focusedColumn();
         if (column === null) {
-            return;
+            return false;
         }
-        const before = column.focusedTileId;
-        move(column);
-        // A no-op move (already at the top/bottom of the stack) must not re-activate the
-        // still-focused tile's window a second time.
-        if (column.focusedTileId !== before) {
+        const moved = move(column);
+        if (moved) {
             this.registry.get(column.id, column.focusedTileId)?.activate();
         }
         this.revealFocused();
+        return moved;
     }
 
     /** Absorb: pull the column to the right of the focused one into its stack, as a
@@ -576,7 +576,7 @@ export class Strip {
         const step = nextAlignStep(direction, offset, offsets);
         debug(
             `cycleAlign(${direction}): offset=${offset} screenIndex=${screenIndex} offsets=${JSON.stringify(offsets)} ` +
-                `step=${JSON.stringify(step)}`,
+            `step=${JSON.stringify(step)}`,
         );
 
         if (screenIndex !== null && Math.round(step.targetOffset) === Math.round(offset)) {

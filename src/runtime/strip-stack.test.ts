@@ -720,11 +720,13 @@ describe('StripStack cross-row drag', () => {
 });
 
 describe('StripStack — focusUp/focusDown/absorbRight/expel', () => {
-    it("delegate to the active row's Strip", () => {
+    it("delegate to the active row's Strip and propagate its return value", () => {
         const { stack, created } = makeStack();
+        created[0].focusUp.mockReturnValue(true);
+        created[0].focusDown.mockReturnValue(false);
 
-        stack.focusUp();
-        stack.focusDown();
+        expect(stack.focusUp()).toBe(true);
+        expect(stack.focusDown()).toBe(false);
         stack.absorbRight();
         stack.expel();
 
@@ -732,6 +734,44 @@ describe('StripStack — focusUp/focusDown/absorbRight/expel', () => {
         expect(created[0].focusDown).toHaveBeenCalledTimes(1);
         expect(created[0].absorbRight).toHaveBeenCalledTimes(1);
         expect(created[0].expel).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('StripStack — navigateUp/navigateDown', () => {
+    it("moves tile focus within the active row's stack when it can", () => {
+        const { stack, created } = makeStack();
+        created[0].focusUp.mockReturnValue(true);
+        created[0].focusDown.mockReturnValue(true);
+
+        stack.navigateUp();
+        stack.navigateDown();
+        stack.render();
+
+        expect(created[0].focusUp).toHaveBeenCalledTimes(1);
+        expect(created[0].focusDown).toHaveBeenCalledTimes(1);
+        expect(created).toHaveLength(1); // no row paging happened
+    });
+
+    it('pages to the row above when there is no adjacent tile to focus up to', () => {
+        const { stack, created } = makeStack();
+        created[0].focusUp.mockReturnValue(false);
+
+        stack.navigateUp();
+        stack.render();
+
+        expect(created).toHaveLength(2); // row 0 and the newly created row -1
+        expect(created[1].render).toHaveBeenCalled();
+    });
+
+    it('pages to the row below when there is no adjacent tile to focus down to', () => {
+        const { stack, created } = makeStack();
+        created[0].focusDown.mockReturnValue(false);
+
+        stack.navigateDown();
+        stack.render();
+
+        expect(created).toHaveLength(2); // row 0 and the newly created row 1
+        expect(created[1].render).toHaveBeenCalled();
     });
 });
 

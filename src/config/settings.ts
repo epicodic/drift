@@ -26,19 +26,17 @@ export interface Settings {
     shortcutViewportShiftLeft: string;
     /** Shortcut sequence for panning the viewport right without changing focus. */
     shortcutViewportShiftRight: string;
-    /** Shortcut sequence for paging to the row above (docs: 2026-09-01-row-navigation-design). */
-    shortcutRowUp: string;
-    /** Shortcut sequence for paging to the row below. */
-    shortcutRowDown: string;
+    /** Shortcut sequence for moving tile focus up within the focused column's stack if
+     * it can, otherwise paging to the row above (docs: 2026-09-01-row-navigation-design,
+     * 2026-09-03-vertical-tiling-design). */
+    shortcutNavigateUp: string;
+    /** Shortcut sequence for moving tile focus down within the focused column's stack if
+     * it can, otherwise paging to the row below. */
+    shortcutNavigateDown: string;
     /** Shortcut sequence for moving the focused window to the row above and following it there. */
     shortcutMoveWindowToRowAbove: string;
     /** Shortcut sequence for moving the focused window to the row below and following it there. */
     shortcutMoveWindowToRowBelow: string;
-    /** Shortcut sequence for moving tile focus up within the focused column's stack
-     * (docs: 2026-09-03-vertical-tiling-design). */
-    shortcutFocusUp: string;
-    /** Shortcut sequence for moving tile focus down within the focused column's stack. */
-    shortcutFocusDown: string;
     /** Shortcut sequence for absorbing the column to the right into the focused
      * column's stack, as a new tile. */
     shortcutAbsorbRight: string;
@@ -86,12 +84,10 @@ export const DEFAULT_SETTINGS: Settings = {
     shortcutCycleAlignRight: 'Meta+Shift+Right',
     shortcutViewportShiftLeft: 'Meta+Alt+Left',
     shortcutViewportShiftRight: 'Meta+Alt+Right',
-    shortcutRowUp: 'Meta+Up',
-    shortcutRowDown: 'Meta+Down',
+    shortcutNavigateUp: 'Meta+Up',
+    shortcutNavigateDown: 'Meta+Down',
     shortcutMoveWindowToRowAbove: 'Meta+Ctrl+Up',
     shortcutMoveWindowToRowBelow: 'Meta+Ctrl+Down',
-    shortcutFocusUp: 'Meta+Alt+Up',
-    shortcutFocusDown: 'Meta+Alt+Down',
     shortcutAbsorbRight: 'Meta+I',
     shortcutExpel: 'Meta+O',
     shortcutMoveWindowLeft: 'Meta+Ctrl+Left',
@@ -134,8 +130,8 @@ export function loadSettings(): Settings {
             'shortcutViewportShiftRight',
             DEFAULT_SETTINGS.shortcutViewportShiftRight,
         ),
-        shortcutRowUp: readStringConfig('shortcutRowUp', DEFAULT_SETTINGS.shortcutRowUp),
-        shortcutRowDown: readStringConfig('shortcutRowDown', DEFAULT_SETTINGS.shortcutRowDown),
+        shortcutNavigateUp: readStringConfig('shortcutNavigateUp', DEFAULT_SETTINGS.shortcutNavigateUp),
+        shortcutNavigateDown: readStringConfig('shortcutNavigateDown', DEFAULT_SETTINGS.shortcutNavigateDown),
         shortcutMoveWindowToRowAbove: readStringConfig(
             'shortcutMoveWindowToRowAbove',
             DEFAULT_SETTINGS.shortcutMoveWindowToRowAbove,
@@ -144,8 +140,6 @@ export function loadSettings(): Settings {
             'shortcutMoveWindowToRowBelow',
             DEFAULT_SETTINGS.shortcutMoveWindowToRowBelow,
         ),
-        shortcutFocusUp: readStringConfig('shortcutFocusUp', DEFAULT_SETTINGS.shortcutFocusUp),
-        shortcutFocusDown: readStringConfig('shortcutFocusDown', DEFAULT_SETTINGS.shortcutFocusDown),
         shortcutAbsorbRight: readStringConfig('shortcutAbsorbRight', DEFAULT_SETTINGS.shortcutAbsorbRight),
         shortcutExpel: readStringConfig('shortcutExpel', DEFAULT_SETTINGS.shortcutExpel),
         shortcutMoveWindowLeft: readStringConfig('shortcutMoveWindowLeft', DEFAULT_SETTINGS.shortcutMoveWindowLeft),
