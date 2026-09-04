@@ -105,63 +105,63 @@ describe('combineStripStackSnapshot', () => {
         return { y: 0, height: 1000, focused, icon: null, thumbnail: null };
     }
 
-    function row(
-        rowIndex: number,
+    function strip(
+        stripIndex: number,
         columns: MinimapColumn[],
         viewport: MinimapViewport = viewportA,
         gridHeight = 1000,
-    ): { rowIndex: number; snapshot: MinimapSnapshot } {
-        return { rowIndex, snapshot: { columns, viewport, gridHeight } };
+    ): { stripIndex: number; snapshot: MinimapSnapshot } {
+        return { stripIndex, snapshot: { columns, viewport, gridHeight } };
     }
 
-    it('merges every row, tagging each with its own rowIndex', () => {
-        const rowMinus1 = row(-1, [{ id: 1, x: 0, width: 400, tiles: [tile(false)] }]);
-        const row0 = row(0, [{ id: 2, x: 0, width: 600, tiles: [tile(true)] }]);
+    it('merges every strip, tagging each with its own stripIndex', () => {
+        const stripMinus1 = strip(-1, [{ id: 1, x: 0, width: 400, tiles: [tile(false)] }]);
+        const strip0 = strip(0, [{ id: 2, x: 0, width: 600, tiles: [tile(true)] }]);
 
-        const combined = combineStripStackSnapshot([rowMinus1, row0], 0, 1000);
+        const combined = combineStripStackSnapshot([stripMinus1, strip0], 0, 1000);
 
-        expect(combined.rows).toEqual([
-            { rowIndex: -1, columns: rowMinus1.snapshot.columns },
-            { rowIndex: 0, columns: row0.snapshot.columns },
+        expect(combined.strips).toEqual([
+            { stripIndex: -1, columns: stripMinus1.snapshot.columns },
+            { stripIndex: 0, columns: strip0.snapshot.columns },
         ]);
     });
 
-    it('suppresses focused on every row except the active one', () => {
-        const inactive = row(-1, [{ id: 1, x: 0, width: 400, tiles: [tile(true)] }]);
-        const active = row(0, [{ id: 2, x: 0, width: 600, tiles: [tile(true)] }]);
+    it('suppresses focused on every strip except the active one', () => {
+        const inactive = strip(-1, [{ id: 1, x: 0, width: 400, tiles: [tile(true)] }]);
+        const active = strip(0, [{ id: 2, x: 0, width: 600, tiles: [tile(true)] }]);
 
         const combined = combineStripStackSnapshot([inactive, active], 0, 1000);
 
-        expect(combined.rows[0].columns[0].tiles[0].focused).toBe(false);
-        expect(combined.rows[1].columns[0].tiles[0].focused).toBe(true);
+        expect(combined.strips[0].columns[0].tiles[0].focused).toBe(false);
+        expect(combined.strips[1].columns[0].tiles[0].focused).toBe(true);
     });
 
-    it('suppresses focused on every tile in a stacked column on an inactive row', () => {
-        const inactive = row(-1, [{ id: 1, x: 0, width: 400, tiles: [tile(false), tile(true)] }]);
-        const active = row(0, []);
+    it('suppresses focused on every tile in a stacked column on an inactive strip', () => {
+        const inactive = strip(-1, [{ id: 1, x: 0, width: 400, tiles: [tile(false), tile(true)] }]);
+        const active = strip(0, []);
 
         const combined = combineStripStackSnapshot([inactive, active], 0, 1000);
 
-        expect(combined.rows[0].columns[0].tiles.map((t) => t.focused)).toEqual([false, false]);
+        expect(combined.strips[0].columns[0].tiles.map((t) => t.focused)).toEqual([false, false]);
     });
 
-    it('takes viewport and gridHeight from the active row, tagged with its rowIndex', () => {
-        const inactive = row(-1, [], { offset: 999, width: 1, contentLeft: 999, contentWidth: 1 }, 1);
-        const active = row(2, [], viewportA, 1000);
+    it('takes viewport and gridHeight from the active strip, tagged with its stripIndex', () => {
+        const inactive = strip(-1, [], { offset: 999, width: 1, contentLeft: 999, contentWidth: 1 }, 1);
+        const active = strip(2, [], viewportA, 1000);
 
         const combined = combineStripStackSnapshot([inactive, active], 2, 1000);
 
-        expect(combined.viewport).toEqual({ rowIndex: 2, ...viewportA });
+        expect(combined.viewport).toEqual({ stripIndex: 2, ...viewportA });
         expect(combined.gridHeight).toBe(1000);
     });
 
-    it('passes rowPitch through unchanged', () => {
-        const combined = combineStripStackSnapshot([row(0, [])], 0, 1234);
+    it('passes stripPitch through unchanged', () => {
+        const combined = combineStripStackSnapshot([strip(0, [])], 0, 1234);
 
-        expect(combined.rowPitch).toBe(1234);
+        expect(combined.stripPitch).toBe(1234);
     });
 
-    it('throws when no row matches the active index', () => {
-        expect(() => combineStripStackSnapshot([row(0, [])], 5, 1000)).toThrow('5');
+    it('throws when no strip matches the active index', () => {
+        expect(() => combineStripStackSnapshot([strip(0, [])], 5, 1000)).toThrow('5');
     });
 });

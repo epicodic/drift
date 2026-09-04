@@ -52,10 +52,10 @@ export interface DragReorderDeps {
     createStackDwell(onFire: (columnId: number) => void): EdgeDwell<number>;
     snapColumn(columnId: number): void;
     commitTileIntoStack(fromColumnId: number, fromTileId: number, toColumnId: number, slot: number): void;
-    /** Row-crossing hooks (docs: 2026-09-02-cross-row-drag-design) — StripStack supplies
+    /** Strip-crossing hooks (docs: 2026-09-02-cross-row-drag-design) — StripStack supplies
      * these to watch the pointer's vertical position on every drag tick without a second,
      * independent signal connection on the same window. All optional; omitted when not
-     * row-aware (e.g. a Strip used outside a StripStack). */
+     * strip-aware (e.g. a Strip used outside a StripStack). */
     onDragStarted?(win: WindowAdapter): void;
     onDragTick?(win: WindowAdapter): void;
     onDragFinished?(): void;
@@ -92,8 +92,8 @@ function requireColumn(grid: Grid, columnId: number): Column {
 
 /** Wires `win`'s move lifecycle to reorder or stack live, and to settle it on
  * release. `initiallyDragging` seeds the local dragging state for a connection
- * created mid-drag — e.g. when a cross-row move reparents the window into a new
- * row's Strip while the user is still holding the drag (docs:
+ * created mid-drag — e.g. when a cross-strip move reparents the window into a new
+ * strip while the user is still holding the drag (docs:
  * 2026-09-02-cross-row-drag-design): the new connection never sees
  * `interactiveMoveResizeStarted`, since it already fired once on the connection this
  * one replaces. Returns a disconnect function. */
@@ -119,7 +119,7 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
     /** Expels a stack tile into its own standalone column the first time a drag
      * carries it into a reorder swap — reorder operates on standalone columns, which
      * a stack tile is not. Placement doesn't need to be exact here: subsequent ticks
-     * converge it over the next tick or two, the same way a mid-drag row-reparent
+     * converge it over the next tick or two, the same way a mid-drag strip-reparent
      * already tolerates a short convergence window (docs: 2026-09-03-drag-to-stack-design). */
     const expelToStandaloneColumn = (columnId: number, tileId: number): number => {
         const column = requireColumn(deps.grid, columnId);

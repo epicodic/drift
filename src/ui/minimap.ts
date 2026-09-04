@@ -77,16 +77,16 @@ export function buildMinimapSnapshot(
     };
 }
 
-export interface MinimapRow {
-    rowIndex: number;
+export interface MinimapStrip {
+    stripIndex: number;
     columns: MinimapColumn[];
 }
 
 /** A stack-level viewport: where the user is actually looking, in both dimensions — which
- * row (`rowIndex`) plus the horizontal scroll/content extent within it. Only the active row
- * ever has a real on-screen viewport, so a stack snapshot carries exactly one of these. */
+ * strip (`stripIndex`) plus the horizontal scroll/content extent within it. Only the active
+ * strip ever has a real on-screen viewport, so a stack snapshot carries exactly one of these. */
 export interface StripStackMinimapViewport {
-    rowIndex: number;
+    stripIndex: number;
     offset: number;
     width: number;
     contentLeft: number;
@@ -94,42 +94,42 @@ export interface StripStackMinimapViewport {
 }
 
 export interface StripStackMinimapSnapshot {
-    rows: MinimapRow[];
+    strips: MinimapStrip[];
     viewport: StripStackMinimapViewport;
     gridHeight: number;
-    /** Real-pixel vertical distance between adjacent rows' origins (`StripStack`'s own
+    /** Real-pixel vertical distance between adjacent strips' origins (`StripStack`'s own
      * `area.height`) — may exceed `gridHeight` (which excludes `settings.bottomMargin`),
-     * leaving a real gap between rows in the rendered map, matching their on-screen look. */
-    rowPitch: number;
+     * leaving a real gap between strips in the rendered map, matching their on-screen look. */
+    stripPitch: number;
 }
 
-/** Merges every row currently in a `StripStack` into one aggregate snapshot. A row's own
+/** Merges every strip currently in a `StripStack` into one aggregate snapshot. A strip's own
  * `Grid` always remembers its last-focused column even while inactive — that isn't real
- * (OS-level) focus, so every row except `activeRowIndex` has `focused` forced to `false`
+ * (OS-level) focus, so every strip except `activeStripIndex` has `focused` forced to `false`
  * on its columns (docs: 2026-09-02-multi-strip-minimap-design). */
 export function combineStripStackSnapshot(
-    rows: { rowIndex: number; snapshot: MinimapSnapshot }[],
-    activeRowIndex: number,
-    rowPitch: number,
+    strips: { stripIndex: number; snapshot: MinimapSnapshot }[],
+    activeStripIndex: number,
+    stripPitch: number,
 ): StripStackMinimapSnapshot {
-    const active = rows.find((row) => row.rowIndex === activeRowIndex);
+    const active = strips.find((strip) => strip.stripIndex === activeStripIndex);
     if (active === undefined) {
-        throw new Error(`combineStripStackSnapshot: no row at active index ${activeRowIndex}`);
+        throw new Error(`combineStripStackSnapshot: no strip at active index ${activeStripIndex}`);
     }
     return {
-        rows: rows.map((row) => ({
-            rowIndex: row.rowIndex,
+        strips: strips.map((strip) => ({
+            stripIndex: strip.stripIndex,
             columns:
-                row.rowIndex === activeRowIndex
-                    ? row.snapshot.columns
-                    : row.snapshot.columns.map((column) =>
+                strip.stripIndex === activeStripIndex
+                    ? strip.snapshot.columns
+                    : strip.snapshot.columns.map((column) =>
                           Object.assign({}, column, {
                               tiles: column.tiles.map((tile) => Object.assign({}, tile, { focused: false })),
                           }),
                       ),
         })),
-        viewport: Object.assign({ rowIndex: activeRowIndex }, active.snapshot.viewport),
+        viewport: Object.assign({ stripIndex: activeStripIndex }, active.snapshot.viewport),
         gridHeight: active.snapshot.gridHeight,
-        rowPitch,
+        stripPitch,
     };
 }

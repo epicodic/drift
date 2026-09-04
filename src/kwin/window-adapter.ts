@@ -73,7 +73,7 @@ export class WindowAdapter {
     }
 
     /** Toggles taskbar visibility without affecting tiling: used to hide a window's taskbar
-     * entry while its row is inactive (docs: 2026-09-01-row-navigation-design). Safe to call on
+     * entry while its strip is inactive (docs: 2026-09-01-row-navigation-design). Safe to call on
      * an already-managed window — `isTileable()` is only read once, at the moment `WindowManager`
      * first sees the window (`window-manager.ts`), never on a live-changed signal. */
     setSkipTaskbar(skipTaskbar: boolean): void {

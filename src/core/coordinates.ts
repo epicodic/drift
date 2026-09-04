@@ -55,7 +55,7 @@ export type EdgeDirection = 'above' | 'below';
 
 /** Which screen edge, if any, `pointerY` is within `borderWidth` pixels of, inside `area`'s
  * vertical bounds — used to detect the mouse pointer dragged to the strip's top/bottom edge,
- * the trigger for a cross-row drag (docs: 2026-09-02-cross-row-drag-design). Driven by the
+ * the trigger for a cross-strip drag (docs: 2026-09-02-cross-row-drag-design). Driven by the
  * pointer rather than the dragged window's own frame geometry, since the window is typically
  * grabbed away from its center (e.g. near the titlebar), so its far edge crosses the boundary
  * well before the pointer does. Checks "at or within the border", not "past" it: the OS clamps

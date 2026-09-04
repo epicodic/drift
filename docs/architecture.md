@@ -29,7 +29,7 @@ Columns are ordered left to right; a column's virtual `x` is the sum of the widt
 Column height always equals the available screen height (minus any reserved margin).
 A column can hold more than one window stacked vertically — an ordered list of *tiles*, each with its own height, summing to the column's fixed total.
 Absorb (`Meta+I`) pulls the column to the right into the focused column's stack as a new tile; expel (`Meta+O`) pops the focused tile back out into its own column to the right, matching PaperWM's model.
-`Meta+Up`/`Meta+Down` move tile focus within a stack when there's an adjacent tile to move to, falling back to paging between rows otherwise (see [Rows](#rows)); `focusLeft`/`focusRight` keep moving between columns and land on whichever tile was last focused there.
+`Meta+Up`/`Meta+Down` move tile focus within a stack when there's an adjacent tile to move to, falling back to paging between strips otherwise (see [Strips](#strips)); `focusLeft`/`focusRight` keep moving between columns and land on whichever tile was last focused there.
 See [`docs/agents/specs/2026-09-03-vertical-tiling-design.md`](agents/specs/2026-09-03-vertical-tiling-design.md).
 Resizing a column's width shifts every column to its right — never resizes them — and grows or shrinks the strip's total virtual width.
 
@@ -50,21 +50,21 @@ Two further shortcut pairs move the camera without moving focus: `cycleAlignLeft
 ### Activities and Virtual Desktops
 
 Drift keeps one independent `StripStack` per `(activity, virtual desktop)` combination, so windows on different activities or desktops never affect each other's layout.
-A `StripStack` in turn owns one or more rows, each row a `Grid`/`Viewport` pair — a `Strip` (see [Rows](#rows) below).
+A `StripStack` in turn owns one or more strips, each a `Grid`/`Viewport` pair — a `Strip` (see [Strips](#strips) below).
 `StripManager` creates `StripStack`s lazily and prunes them once their activity or desktop no longer exists; `WindowManager` routes each window to the `StripStack` for its current activity+desktop and moves it between stacks if that assignment changes.
 A window on multiple activities/desktops (or none) is left unmanaged.
 Grids always span every screen, so screen is not part of the key.
 
-### Rows
+### Strips
 
-Each `StripStack` holds an ordered set of rows, addressed by an integer index that can be positive, negative, or zero — the stack is unbounded in both directions.
-A row is exactly what a `Strip` has always been: its own `Grid` + `Viewport` + `Animator` + `GeometrySync` + `ColumnRegistry`.
-Row `0` is created eagerly as the stack's starting position; every row, in either direction, is created lazily after that (paging past the edge of the existing rows, or moving a window into a new one) and pruned once empty and inactive — including row `0`, which is no longer special-cased once the stack has grown beyond it, the same lazy-create/prune shape `StripManager` already applies to activity/desktop keys.
-`StripStack` tracks an `activeRowIndex` and pages between rows with a second, vertical `Animator`, so a row transition animates as a one-row-height vertical slide rather than a jump — see the `shortcutNavigateUp`/`shortcutNavigateDown` (falls back to row paging once in-column focus has nowhere left to go) and `shortcutMoveWindowToRowAbove`/`shortcutMoveWindowToRowBelow` shortcuts.
-A window parked in an inactive row is moved off-screen rather than minimized, so the row transition has something to animate, and has `skipTaskbar` toggled while parked so it doesn't clutter the taskbar.
-Activating such a window (from the taskbar, Alt-Tab, a notification) pages `StripStack` to the row that owns it before delegating to that row's `Strip`, extending the "every focus change triggers a reveal" model from [Focus Model](#focus-model) up one level.
-KWin's Alt-Tab switcher and Overview/Present Windows are not affected by `skipTaskbar`, though, so a window parked in an inactive row can still show up there, positioned off-screen — a known, accepted limitation rather than an oversight.
-See [`docs/agents/specs/2026-09-01-row-navigation-design.md`](agents/specs/2026-09-01-row-navigation-design.md) for the original design, including the vertical coordinate math, and [`docs/agents/specs/2026-09-02-symmetric-row-stack-design.md`](agents/specs/2026-09-02-symmetric-row-stack-design.md) for how the row-0 boundary was later removed.
+Each `StripStack` holds an ordered set of strips, addressed by an integer index that can be positive, negative, or zero — the stack is unbounded in both directions.
+A strip is exactly what a `Strip` has always been: its own `Grid` + `Viewport` + `Animator` + `GeometrySync` + `ColumnRegistry`.
+Strip `0` is created eagerly as the stack's starting position; every strip, in either direction, is created lazily after that (paging past the edge of the existing strips, or moving a window into a new one) and pruned once empty and inactive — including strip `0`, which is no longer special-cased once the stack has grown beyond it, the same lazy-create/prune shape `StripManager` already applies to activity/desktop keys.
+`StripStack` tracks an `activeStripIndex` and pages between strips with a second, vertical `Animator`, so a strip transition animates as a one-strip-height vertical slide rather than a jump — see the `shortcutNavigateUp`/`shortcutNavigateDown` (falls back to strip paging once in-column focus has nowhere left to go) and `shortcutMoveWindowToStripAbove`/`shortcutMoveWindowToStripBelow` shortcuts.
+A window parked in an inactive strip is moved off-screen rather than minimized, so the strip transition has something to animate, and has `skipTaskbar` toggled while parked so it doesn't clutter the taskbar.
+Activating such a window (from the taskbar, Alt-Tab, a notification) pages `StripStack` to the strip that owns it before delegating to that strip's `Strip`, extending the "every focus change triggers a reveal" model from [Focus Model](#focus-model) up one level.
+KWin's Alt-Tab switcher and Overview/Present Windows are not affected by `skipTaskbar`, though, so a window parked in an inactive strip can still show up there, positioned off-screen — a known, accepted limitation rather than an oversight.
+See [`docs/agents/specs/2026-09-01-row-navigation-design.md`](agents/specs/2026-09-01-row-navigation-design.md) for the original design, including the vertical coordinate math, and [`docs/agents/specs/2026-09-02-symmetric-row-stack-design.md`](agents/specs/2026-09-02-symmetric-row-stack-design.md) for how the strip-0 boundary was later removed.
 
 ## Module Map
 
@@ -75,7 +75,7 @@ See [`docs/agents/specs/2026-09-01-row-navigation-design.md`](agents/specs/2026-
 | [`src/kwin/`](../src/kwin) | The only code that touches the live KWin API: `WindowAdapter`, `WorkspaceAdapter`, `GeometrySync`, `createQmlTimer`, and `createDebugConsole` (the on-screen debug overlay). Thin by design; only `toRealRect`/`toVirtualX` and `GeometrySync`'s echo tracking are unit-tested. |
 | [`src/input/`](../src/input) | Wires KWin interaction events (drag lifecycle, global shortcuts) to `core`/`viewport` calls. |
 | [`src/config/`](../src/config) | Settings defaults and `kwinrc` config loading. |
-| [`src/runtime/`](../src/runtime) | Orchestration layer that composes the pure modules and adapters: `Controller` (root), `Strip` (one row = `Grid` + `Viewport` + `Animator` + `ColumnRegistry`), `StripStack` (one or more rows of `Strip`s, see [Rows](#rows)), `StripManager` (one `StripStack` per activity+desktop, see [Activities and Virtual Desktops](#activities-and-virtual-desktops)), and `WindowManager` (routes/reassigns windows to stacks). Also holds the extracted `window-events` handlers and `workspace-signals` registration. |
+| [`src/runtime/`](../src/runtime) | Orchestration layer that composes the pure modules and adapters: `Controller` (root), `Strip` (one strip = `Grid` + `Viewport` + `Animator` + `ColumnRegistry`), `StripStack` (one or more strips of `Strip`s, see [Strips](#strips)), `StripManager` (one `StripStack` per activity+desktop, see [Activities and Virtual Desktops](#activities-and-virtual-desktops)), and `WindowManager` (routes/reassigns windows to stacks). Also holds the extracted `window-events` handlers and `workspace-signals` registration. |
 | [`src/utils/`](../src/utils) | Small cross-cutting helpers: `SignalManager`, which tracks adapter disconnect thunks and tears them all down in one call. |
 | [`src/debug/`](../src/debug) | Debug-console snapshot builders (`debugRows`/`debugCamera`); the debug output channel itself remains in `src/debug.ts`. |
 | [`src/main.ts`](../src/main.ts) | Entry point (`init`) called by the QML host. Constructs and starts the `Controller`; contains no logic of its own. |

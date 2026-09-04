@@ -1,5 +1,5 @@
-// A centered OSD overlay showing every strip in the active StripStack, each row left-aligned
-// independently (not preserving relative horizontal offset between rows), shown on
+// A centered OSD overlay showing every strip in the active StripStack, each strip left-aligned
+// independently (not preserving relative horizontal offset between strips), shown on
 // Meta+Left/Meta+Right/Meta+PgUp/Meta+PgDown (docs: 2026-09-01-minimap-design,
 // 2026-09-01-minimap-thumbnails-design, 2026-09-02-multi-strip-minimap-design). Built via
 // `Qt.createQmlObject`, the same pattern as `debug-console.ts`.
@@ -22,11 +22,11 @@ import org.kde.kirigami as Kirigami
 import org.kde.kwin 3.0 as KWinComponents
 PlasmaCore.Dialog {
     id: dialog
-    property var rows: []
+    property var strips: []
     property var viewportBox: ({ x: 0, y: 0, width: 0 })
     property real panelWidth: ${PANEL_WIDTH}
     property real panelHeight: ${MAX_MINIMAP_HEIGHT}
-    property real rowHeight: ${MAX_MINIMAP_HEIGHT}
+    property real stripHeight: ${MAX_MINIMAP_HEIGHT}
     property bool showThumbnails: false
     title: "${MINIMAP_OVERLAY_WINDOW_TITLE}"
     type: PlasmaCore.Dialog.OnScreenDisplay
@@ -43,19 +43,19 @@ PlasmaCore.Dialog {
             anchors.fill: parent
             anchors.margins: ${PANEL_MARGIN}
             Repeater {
-                model: dialog.rows
+                model: dialog.strips
                 delegate: Item {
                     x: 0
                     y: modelData.y
                     width: parent.width
-                    height: dialog.rowHeight
+                    height: dialog.stripHeight
                     Repeater {
                         model: modelData.columns
                         delegate: Item {
                             id: columnItem
                             x: modelData.x
                             width: Math.max(modelData.width, 2)
-                            height: dialog.rowHeight
+                            height: dialog.stripHeight
                             Rectangle {
                                 // Clips every stacked tile to one rounded outer shape, mirroring
                                 // a single-tile column's look (docs: 2026-09-03-vertical-tiling-design).
@@ -148,7 +148,7 @@ PlasmaCore.Dialog {
                 x: dialog.viewportBox.x
                 y: dialog.viewportBox.y - 6
                 width: Math.max(dialog.viewportBox.width, 2)
-                height: dialog.rowHeight + 12
+                height: dialog.stripHeight + 12
                 radius: 4
                 color: "transparent"
                 border.color: "#ffffff"
@@ -172,7 +172,7 @@ interface PanelColumn {
     tiles: PanelTile[];
 }
 
-interface PanelRow {
+interface PanelStrip {
     y: number;
     columns: PanelColumn[];
 }
@@ -194,12 +194,12 @@ export function createMinimapOverlay(parent: QmlObject, autoHideMs: number, show
 
     return {
         show(snapshot: StripStackMinimapSnapshot, screen: Rect): void {
-            const { panelWidth, panelHeight, rowHeight } = panelLayout(snapshot);
-            dialog.rows = toPanelRows(snapshot);
+            const { panelWidth, panelHeight, stripHeight } = panelLayout(snapshot);
+            dialog.strips = toPanelStrips(snapshot);
             dialog.viewportBox = toPanelViewportBox(snapshot);
             dialog.panelWidth = panelWidth;
             dialog.panelHeight = panelHeight;
-            dialog.rowHeight = rowHeight;
+            dialog.stripHeight = stripHeight;
             const dialogWidth = panelWidth + PANEL_MARGIN * 2;
             const dialogHeight = panelHeight + PANEL_MARGIN * 2;
             dialog.width = dialogWidth;
@@ -217,37 +217,37 @@ export function createMinimapOverlay(parent: QmlObject, autoHideMs: number, show
 
 /** The uniform scale factor is `min` of the two per-axis fits (not each axis scaled
  * independently) so that a column's rendered width:height ratio always matches its true
- * `columnWidth : gridHeight` ratio (docs: 2026-09-01-minimap-thumbnails-design). Each row is
- * left-aligned independently: `rowLefts` maps every `rowIndex` to that row's own leftmost edge
- * (its columns' min x, plus the active viewport's own extent for the active row), so relative
- * horizontal offset between rows is not preserved — only the widest row's span drives the
- * horizontal scale. Rows are still spaced vertically by their real `rowIndex * rowPitch`
- * position — a row with no entry between the lowest and highest existing `rowIndex` (pruned or
- * never created) is simply never drawn, leaving real blank space at its position (docs:
- * 2026-09-02-multi-strip-minimap-design). */
+ * `columnWidth : gridHeight` ratio (docs: 2026-09-01-minimap-thumbnails-design). Each strip is
+ * left-aligned independently: `stripLefts` maps every `stripIndex` to that strip's own leftmost
+ * edge (its columns' min x, plus the active viewport's own extent for the active strip), so
+ * relative horizontal offset between strips is not preserved — only the widest strip's span
+ * drives the horizontal scale. Strips are still spaced vertically by their real
+ * `stripIndex * stripPitch` position — a strip with no entry between the lowest and highest
+ * existing `stripIndex` (pruned or never created) is simply never drawn, leaving real blank
+ * space at its position (docs: 2026-09-02-multi-strip-minimap-design). */
 function panelLayout(snapshot: StripStackMinimapSnapshot): {
-    rowLefts: Map<number, number>;
+    stripLefts: Map<number, number>;
     top: number;
     scale: number;
     panelWidth: number;
     panelHeight: number;
-    rowHeight: number;
+    stripHeight: number;
 } {
     const { viewport } = snapshot;
-    const rowLefts = new Map<number, number>();
-    let widestRowSpan = 1;
-    let minRowIndex = viewport.rowIndex;
-    let maxRowIndex = viewport.rowIndex;
-    for (const row of snapshot.rows) {
-        minRowIndex = Math.min(minRowIndex, row.rowIndex);
-        maxRowIndex = Math.max(maxRowIndex, row.rowIndex);
+    const stripLefts = new Map<number, number>();
+    let widestStripSpan = 1;
+    let minStripIndex = viewport.stripIndex;
+    let maxStripIndex = viewport.stripIndex;
+    for (const strip of snapshot.strips) {
+        minStripIndex = Math.min(minStripIndex, strip.stripIndex);
+        maxStripIndex = Math.max(maxStripIndex, strip.stripIndex);
         let left = Infinity;
         let right = -Infinity;
-        for (const column of row.columns) {
+        for (const column of strip.columns) {
             left = Math.min(left, column.x);
             right = Math.max(right, column.x + column.width);
         }
-        if (row.rowIndex === viewport.rowIndex) {
+        if (strip.stripIndex === viewport.stripIndex) {
             left = Math.min(left, viewport.contentLeft, viewport.offset);
             right = Math.max(right, viewport.contentLeft + viewport.contentWidth, viewport.offset + viewport.width);
         }
@@ -255,32 +255,32 @@ function panelLayout(snapshot: StripStackMinimapSnapshot): {
             left = 0;
             right = 0;
         }
-        rowLefts.set(row.rowIndex, left);
-        widestRowSpan = Math.max(widestRowSpan, right - left);
+        stripLefts.set(strip.stripIndex, left);
+        widestStripSpan = Math.max(widestStripSpan, right - left);
     }
-    const top = minRowIndex * snapshot.rowPitch;
-    const bottom = maxRowIndex * snapshot.rowPitch + snapshot.gridHeight;
+    const top = minStripIndex * snapshot.stripPitch;
+    const bottom = maxStripIndex * snapshot.stripPitch + snapshot.gridHeight;
 
-    const virtualWidth = Math.max(widestRowSpan, 1);
+    const virtualWidth = Math.max(widestStripSpan, 1);
     const virtualHeight = Math.max(bottom - top, 1);
     const scale = Math.min(PANEL_WIDTH / virtualWidth, MAX_MINIMAP_HEIGHT / virtualHeight);
     return {
-        rowLefts,
+        stripLefts,
         top,
         scale,
         panelWidth: virtualWidth * scale,
         panelHeight: virtualHeight * scale,
-        rowHeight: snapshot.gridHeight * scale,
+        stripHeight: snapshot.gridHeight * scale,
     };
 }
 
-function toPanelRows(snapshot: StripStackMinimapSnapshot): PanelRow[] {
-    const { rowLefts, top, scale } = panelLayout(snapshot);
-    return snapshot.rows.map((row) => {
-        const left = rowLefts.get(row.rowIndex) ?? 0;
+function toPanelStrips(snapshot: StripStackMinimapSnapshot): PanelStrip[] {
+    const { stripLefts, top, scale } = panelLayout(snapshot);
+    return snapshot.strips.map((strip) => {
+        const left = stripLefts.get(strip.stripIndex) ?? 0;
         return {
-            y: (row.rowIndex * snapshot.rowPitch - top) * scale,
-            columns: row.columns.map((column) => ({
+            y: (strip.stripIndex * snapshot.stripPitch - top) * scale,
+            columns: strip.columns.map((column) => ({
                 x: (column.x - left) * scale,
                 width: column.width * scale,
                 tiles: column.tiles.map((tile) => ({
@@ -296,11 +296,11 @@ function toPanelRows(snapshot: StripStackMinimapSnapshot): PanelRow[] {
 }
 
 function toPanelViewportBox(snapshot: StripStackMinimapSnapshot): PanelViewportBox {
-    const { rowLefts, top, scale } = panelLayout(snapshot);
-    const left = rowLefts.get(snapshot.viewport.rowIndex) ?? 0;
+    const { stripLefts, top, scale } = panelLayout(snapshot);
+    const left = stripLefts.get(snapshot.viewport.stripIndex) ?? 0;
     return {
         x: (snapshot.viewport.offset - left) * scale,
-        y: (snapshot.viewport.rowIndex * snapshot.rowPitch - top) * scale,
+        y: (snapshot.viewport.stripIndex * snapshot.stripPitch - top) * scale,
         width: snapshot.viewport.width * scale,
     };
 }

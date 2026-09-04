@@ -155,16 +155,16 @@
                                 </widget>
                             </item>
                             <item row="2" column="0">
-                                <widget class="QLabel" name="label_rowDragDwellMs">
+                                <widget class="QLabel" name="label_stripDragDwellMs">
                                     <property name="text">
-                                        <string>Row-drag dwell:</string>
+                                        <string>Strip-drag dwell:</string>
                                     </property>
                                 </widget>
                             </item>
                             <item row="2" column="1">
-                                <widget class="QSpinBox" name="kcfg_rowDragDwellMs">
+                                <widget class="QSpinBox" name="kcfg_stripDragDwellMs">
                                     <property name="toolTip">
-                                        <string>How long a dragged window must stay past the screen's top/bottom edge before it moves to the row above/below</string>
+                                        <string>How long a dragged window must stay past the screen's top/bottom edge before it moves to the strip above/below</string>
                                     </property>
                                     <property name="suffix">
                                         <string> ms</string>
@@ -181,16 +181,16 @@
                                 </widget>
                             </item>
                             <item row="3" column="0">
-                                <widget class="QLabel" name="label_rowDragEdgeBorderPx">
+                                <widget class="QLabel" name="label_stripDragEdgeBorderPx">
                                     <property name="text">
-                                        <string>Row-drag edge border:</string>
+                                        <string>Strip-drag edge border:</string>
                                     </property>
                                 </widget>
                             </item>
                             <item row="3" column="1">
-                                <widget class="QSpinBox" name="kcfg_rowDragEdgeBorderPx">
+                                <widget class="QSpinBox" name="kcfg_stripDragEdgeBorderPx">
                                     <property name="toolTip">
-                                        <string>How close to the screen's top/bottom edge the pointer must be for a cross-row drag to arm</string>
+                                        <string>How close to the screen's top/bottom edge the pointer must be for a cross-strip drag to arm</string>
                                     </property>
                                     <property name="suffix">
                                         <string> px</string>
