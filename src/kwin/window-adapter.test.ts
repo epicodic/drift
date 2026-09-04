@@ -16,6 +16,7 @@ function createWindow(overrides: Partial<Window> = {}): Window {
         maxSize: { width: 1920, height: 1080 },
         move: false,
         resize: false,
+        resizeable: true,
         minimized: false,
         icon: {} as QIcon,
         activities: ['activity-1'],
@@ -28,10 +29,14 @@ function createWindow(overrides: Partial<Window> = {}): Window {
         desktopsChanged: { connect: () => {}, disconnect: () => {} },
         interactiveMoveResizeStarted: { connect: () => {}, disconnect: () => {} },
         interactiveMoveResizeFinished: { connect: () => {}, disconnect: () => {} },
+        transient: false,
+        fullScreen: false,
+        modal: false,
+        managed: true,
+        pid: 1234,
+        resourceClass: 'test-window',
         ...overrides,
-        transient: overrides.transient ?? false,
-        fullScreen: overrides.fullScreen ?? false,
-    };
+    } as Window;
 }
 
 describe('WindowAdapter.isTileable', () => {
@@ -61,6 +66,30 @@ describe('WindowAdapter.isTileable', () => {
 
     it('rejects the minimap overlay window by title', () => {
         const window = createWindow({ caption: MINIMAP_OVERLAY_WINDOW_TITLE });
+
+        expect(new WindowAdapter(window).isTileable()).toBe(false);
+    });
+
+    it('rejects modal windows', () => {
+        const window = createWindow({ modal: true });
+
+        expect(new WindowAdapter(window).isTileable()).toBe(false);
+    });
+
+    it('rejects unmanaged windows', () => {
+        const window = createWindow({ managed: false });
+
+        expect(new WindowAdapter(window).isTileable()).toBe(false);
+    });
+
+    it('rejects windows with invalid pid', () => {
+        const window = createWindow({ pid: -1 });
+
+        expect(new WindowAdapter(window).isTileable()).toBe(false);
+    });
+
+    it('rejects non-resizeable windows', () => {
+        const window = createWindow({ resizeable: false });
 
         expect(new WindowAdapter(window).isTileable()).toBe(false);
     });
