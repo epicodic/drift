@@ -6,13 +6,21 @@ import type { Grid } from '../core/grid';
 import type { ColumnRegistry } from '../runtime/column-registry';
 import type { Viewport } from '../viewport/viewport';
 
+/** One window in a column's vertical tile stack (docs: 2026-09-03-vertical-tiling-design). A
+ * plain single-window column has exactly one, filling the column's full height. */
+export interface MinimapTile {
+    y: number;
+    height: number;
+    focused: boolean;
+    icon: QIcon | null;
+    thumbnail: Window | null;
+}
+
 export interface MinimapColumn {
     id: number;
     x: number;
     width: number;
-    focused: boolean;
-    icon: QIcon | null;
-    thumbnail: Window | null;
+    tiles: MinimapTile[];
 }
 
 export interface MinimapViewport {
@@ -40,14 +48,21 @@ export function buildMinimapSnapshot(
         .filter((column) => !column.hidden)
         .map((column) => {
             const rect = grid.columnRect(column.id);
-            const window = registry.get(column.id, column.focusedTileId);
             return {
                 id: column.id,
                 x: rect.x,
                 width: rect.width,
-                focused: column.id === focusedId,
-                icon: window?.icon() ?? null,
-                thumbnail: window?.windowHandle() ?? null,
+                tiles: column.tiles().map((tile) => {
+                    const tileRect = column.tileRect(tile.id, rect);
+                    const window = registry.get(column.id, tile.id);
+                    return {
+                        y: tileRect.y,
+                        height: tileRect.height,
+                        focused: column.id === focusedId && tile.id === column.focusedTileId,
+                        icon: window?.icon() ?? null,
+                        thumbnail: window?.windowHandle() ?? null,
+                    };
+                }),
             };
         });
     return {
@@ -107,7 +122,11 @@ export function combineStripStackSnapshot(
             columns:
                 row.rowIndex === activeRowIndex
                     ? row.snapshot.columns
-                    : row.snapshot.columns.map((column) => Object.assign({}, column, { focused: false })),
+                    : row.snapshot.columns.map((column) =>
+                          Object.assign({}, column, {
+                              tiles: column.tiles.map((tile) => Object.assign({}, tile, { focused: false })),
+                          }),
+                      ),
         })),
         viewport: Object.assign({ rowIndex: activeRowIndex }, active.snapshot.viewport),
         gridHeight: active.snapshot.gridHeight,
