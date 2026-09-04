@@ -243,6 +243,57 @@ describe('Grid — insertion index skips hidden columns', () => {
     });
 });
 
+describe('Grid — expel direction for drag edges', () => {
+    it('returns null on both sides for the only column until an edge crosses its own boundary', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300); // a: [0,300), no neighbor on either side
+
+        expect(grid.expelDirectionForEdges(a.id, 0, 300)).toBeNull(); // exactly at its own edges -> not crossed
+        expect(grid.expelDirectionForEdges(a.id, -10, 310)).toBe('right'); // right checked first
+    });
+
+    it("returns 'left' once the left edge crosses past a column with no left neighbor", () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300); // a: [0,300), no left neighbor
+
+        expect(grid.expelDirectionForEdges(a.id, -1, 300)).toBe('left');
+    });
+
+    it("returns 'right' once the right edge crosses past the rightmost column's own boundary", () => {
+        const grid = new Grid(HEIGHT, GAP);
+        grid.addColumn(300); // a: [0,300)
+        const b = grid.addColumn(500); // b (dragged): [310,810), no right neighbor
+
+        expect(grid.expelDirectionForEdges(b.id, 310, 811)).toBe('right');
+    });
+
+    it("returns 'left' once the left edge crosses past the leftmost column's own boundary", () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300); // a (dragged): [0,300), no left neighbor
+        grid.addColumn(500); // b: [310,810)
+
+        expect(grid.expelDirectionForEdges(a.id, -1, 300)).toBe('left');
+    });
+
+    it('returns null when a visible neighbor exists on both sides, regardless of the edges', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        grid.addColumn(300); // a
+        const b = grid.addColumn(500); // b (dragged), has a neighbor on both sides
+        grid.addColumn(200); // c
+
+        expect(grid.expelDirectionForEdges(b.id, -999, 999)).toBeNull();
+    });
+
+    it('ignores a hidden column when checking for a visible neighbor', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300); // a (dragged): [0,300)
+        const hidden = grid.addColumn(500); // hidden — contributes no visible neighbor
+        grid.hideColumn(hidden.id);
+
+        expect(grid.expelDirectionForEdges(a.id, -1, 300)).toBe('left');
+    });
+});
+
 describe('Grid — resizing shifts neighbors', () => {
     it('shifts downstream columns when a column widens', () => {
         const grid = new Grid(HEIGHT, GAP);

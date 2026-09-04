@@ -236,6 +236,23 @@ describe('Column — tile stack', () => {
         expect(preview.get(onlyId)).toEqual({ x: 0, y: 300, width: 300, height: 900 });
     });
 
+    it('previewRectsWithGapAt at a trailing index shrinks the preceding tile to reserve visible space', () => {
+        // A gap at others.length (append after everything) has no later tile to shift down —
+        // without shrinking the tile right before it, the preview would show no visible change
+        // at all, which is exactly the "no live preview for the lower half of a neighboring
+        // window" bug this guards against.
+        const column = new Column(1, 300, 900);
+        const topId = column.tiles()[0].id;
+        const bottomId = column.addTile(); // top=450, bottom=450
+        column.resizeTile(topId, 600); // top=600, bottom=300
+        const columnRect = { x: 0, y: 0, width: 300, height: 900 };
+
+        const preview = column.previewRectsWithGapAt(2, 100, columnRect); // append after bottom
+
+        expect(preview.get(topId)).toEqual({ x: 0, y: 0, width: 300, height: 600 }); // untouched
+        expect(preview.get(bottomId)).toEqual({ x: 0, y: 600, width: 300, height: 200 }); // shrunk by gapHeight
+    });
+
     it('previewRectsWithGapAt excludes excludeTileId from consideration entirely', () => {
         const column = new Column(1, 300, 900);
         const topId = column.tiles()[0].id;
@@ -243,10 +260,11 @@ describe('Column — tile stack', () => {
         const columnRect = { x: 0, y: 0, width: 300, height: 900 };
 
         // Same-stack reorder preview: move "top" to slot 1 (after bottom), excluding it from the base list.
+        // Trailing gap: the base list is [bottom] only, so bottom is the tile shrunk to reserve space.
         const preview = column.previewRectsWithGapAt(1, 450, columnRect, topId);
 
         expect(preview.has(topId)).toBe(false);
-        expect(preview.get(bottomId)).toEqual({ x: 0, y: 0, width: 300, height: 450 });
+        expect(preview.get(bottomId)).toEqual({ x: 0, y: 0, width: 300, height: 0 });
     });
 
     it('previewRectsWithoutTile closes the gap by shifting later tiles up, without redistributing height', () => {

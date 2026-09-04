@@ -232,9 +232,35 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
         }
 
         if (pointerColumnId === location.columnId) {
-            // Home territory: same-column tile reorder, unaffected by dwell.
+            // Home territory: same-column tile reorder, unaffected by dwell — unless the
+            // dragged tile is a stack member whose own edge has crossed past the column's
+            // outer boundary on a side with no neighbor to reorder against. `columnAtVirtualX`
+            // always sticks to the outermost column past the strip's edge, so that case would
+            // otherwise never resolve to anything but "home territory" and could never expel
+            // (docs: 2026-09-04-drag-reorder-stack-priority-design's own gap: reorder needs a
+            // real neighbor to cross, which doesn't exist here).
             stackDwell.update(null);
             armedStackTarget = null;
+            const homeColumn = requireColumn(deps.grid, location.columnId);
+            if (homeColumn.tileCount() > 1) {
+                const expelDirection = deps.grid.expelDirectionForEdges(
+                    location.columnId,
+                    winEdges.left,
+                    winEdges.right,
+                );
+                if (expelDirection !== null) {
+                    debug(`drag tick: edge-expel triggered col${location.columnId} dir=${expelDirection}`);
+                    lastStackHover = null;
+                    const newColumnId = expelToStandaloneColumn(location.columnId, location.tileId);
+                    const homeIndexAfterExpel = deps.grid.indexOf(location.columnId);
+                    deps.grid.moveColumn(
+                        newColumnId,
+                        expelDirection === 'left' ? homeIndexAfterExpel : homeIndexAfterExpel + 1,
+                    );
+                    deps.render(win.id, false);
+                    return;
+                }
+            }
             const slot = resolveStackSlot(deps.grid, location.columnId, location.columnId, location.tileId, pointerY);
             if (slot === null) {
                 lastStackHover = null;

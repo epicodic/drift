@@ -7,7 +7,8 @@ build: lint test
 	npm run build
 
 npm-install:
-	npm install
+	#npm install
+	npm install --no-audit --no-fund
 
 lint: npm-install
 	npm run lint

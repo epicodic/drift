@@ -173,7 +173,10 @@ export class Column {
      * (`insertTileAt`) still evenly redistributes height across the whole stack, so a
      * cross-column drop can show a small one-time height jump on release — an
      * accepted, documented visual note, not solved here
-     * (docs: 2026-09-03-drag-to-stack-design). */
+     * (docs: 2026-09-03-drag-to-stack-design). A trailing gap (`index === others.length`,
+     * appending after everything) has no later tile to shift down, which would
+     * otherwise leave the preview visually unchanged — so that case instead shrinks
+     * the immediately preceding tile by `gapHeight` to make the reserved space visible. */
     previewRectsWithGapAt(
         index: number,
         gapHeight: number,
@@ -189,8 +192,11 @@ export class Column {
                 y += gapHeight;
                 continue;
             }
-            const tile = others[cursor++];
-            result.set(tile.id, { x: columnRect.x, y, width: columnRect.width, height: tile.height });
+            const tileIndex = cursor++;
+            const tile = others[tileIndex];
+            const isTrailingNeighbor = index === others.length && tileIndex === others.length - 1;
+            const height = isTrailingNeighbor ? Math.max(0, tile.height - gapHeight) : tile.height;
+            result.set(tile.id, { x: columnRect.x, y, width: columnRect.width, height });
             y += tile.height;
         }
         return result;
