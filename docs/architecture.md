@@ -29,7 +29,7 @@ Columns are ordered left to right; a column's virtual `x` is the sum of the widt
 Column height always equals the available screen height (minus any reserved margin).
 A column can hold more than one window stacked vertically — an ordered list of *tiles*, each with its own height, summing to the column's fixed total.
 Absorb (`Meta+I`) pulls the column to the right into the focused column's stack as a new tile; expel (`Meta+O`) pops the focused tile back out into its own column to the right, matching PaperWM's model.
-`focusUp`/`focusDown` (`Meta+Alt+Up`/`Down`) move focus within a stack; `focusLeft`/`focusRight` keep moving between columns and land on whichever tile was last focused there.
+`Meta+Up`/`Meta+Down` move tile focus within a stack when there's an adjacent tile to move to, falling back to paging between rows otherwise (see [Rows](#rows)); `focusLeft`/`focusRight` keep moving between columns and land on whichever tile was last focused there.
 See [`docs/agents/specs/2026-09-03-vertical-tiling-design.md`](agents/specs/2026-09-03-vertical-tiling-design.md).
 Resizing a column's width shifts every column to its right — never resizes them — and grows or shrinks the strip's total virtual width.
 
@@ -60,7 +60,7 @@ Grids always span every screen, so screen is not part of the key.
 Each `StripStack` holds an ordered set of rows, addressed by an integer index that can be positive, negative, or zero — the stack is unbounded in both directions.
 A row is exactly what a `Strip` has always been: its own `Grid` + `Viewport` + `Animator` + `GeometrySync` + `ColumnRegistry`.
 Row `0` is created eagerly as the stack's starting position; every row, in either direction, is created lazily after that (paging past the edge of the existing rows, or moving a window into a new one) and pruned once empty and inactive — including row `0`, which is no longer special-cased once the stack has grown beyond it, the same lazy-create/prune shape `StripManager` already applies to activity/desktop keys.
-`StripStack` tracks an `activeRowIndex` and pages between rows with a second, vertical `Animator`, so a row transition animates as a one-row-height vertical slide rather than a jump — see the `shortcutRowUp`/`shortcutRowDown` and `shortcutMoveWindowToRowAbove`/`shortcutMoveWindowToRowBelow` shortcuts.
+`StripStack` tracks an `activeRowIndex` and pages between rows with a second, vertical `Animator`, so a row transition animates as a one-row-height vertical slide rather than a jump — see the `shortcutNavigateUp`/`shortcutNavigateDown` (falls back to row paging once in-column focus has nowhere left to go) and `shortcutMoveWindowToRowAbove`/`shortcutMoveWindowToRowBelow` shortcuts.
 A window parked in an inactive row is moved off-screen rather than minimized, so the row transition has something to animate, and has `skipTaskbar` toggled while parked so it doesn't clutter the taskbar.
 Activating such a window (from the taskbar, Alt-Tab, a notification) pages `StripStack` to the row that owns it before delegating to that row's `Strip`, extending the "every focus change triggers a reveal" model from [Focus Model](#focus-model) up one level.
 KWin's Alt-Tab switcher and Overview/Present Windows are not affected by `skipTaskbar`, though, so a window parked in an inactive row can still show up there, positioned off-screen — a known, accepted limitation rather than an oversight.

@@ -13,12 +13,10 @@ export interface ShortcutActions {
     cycleAlignRight(): void;
     shiftViewportLeft(): void;
     shiftViewportRight(): void;
-    rowUp(): void;
-    rowDown(): void;
+    navigateUp(): void;
+    navigateDown(): void;
     moveWindowToRowAbove(): void;
     moveWindowToRowBelow(): void;
-    focusUp(): void;
-    focusDown(): void;
     absorbRight(): void;
     expel(): void;
     moveWindowLeft(): void;
@@ -69,8 +67,14 @@ export function registerShortcuts(parent: QmlObject, settings: Settings, actions
         settings.shortcutViewportShiftRight,
         actions.shiftViewportRight,
     );
-    createShortcut(parent, 'DriftRowUp', 'Drift: Page Row Up', settings.shortcutRowUp, actions.rowUp);
-    createShortcut(parent, 'DriftRowDown', 'Drift: Page Row Down', settings.shortcutRowDown, actions.rowDown);
+    createShortcut(parent, 'DriftNavigateUp', 'Drift: Navigate Up', settings.shortcutNavigateUp, actions.navigateUp);
+    createShortcut(
+        parent,
+        'DriftNavigateDown',
+        'Drift: Navigate Down',
+        settings.shortcutNavigateDown,
+        actions.navigateDown,
+    );
     createShortcut(
         parent,
         'DriftMoveWindowToRowAbove',
@@ -85,8 +89,6 @@ export function registerShortcuts(parent: QmlObject, settings: Settings, actions
         settings.shortcutMoveWindowToRowBelow,
         actions.moveWindowToRowBelow,
     );
-    createShortcut(parent, 'DriftFocusUp', 'Drift: Focus Tile Up', settings.shortcutFocusUp, actions.focusUp);
-    createShortcut(parent, 'DriftFocusDown', 'Drift: Focus Tile Down', settings.shortcutFocusDown, actions.focusDown);
     createShortcut(
         parent,
         'DriftAbsorbRight',

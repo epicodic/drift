@@ -1221,14 +1221,29 @@ describe('Strip — focusUp/focusDown', () => {
         left.activate.mockClear();
         right.activate.mockClear();
 
-        strip.focusDown();
+        expect(strip.focusDown()).toBe(true);
         expect(right.activate).toHaveBeenCalledTimes(1);
 
-        strip.focusDown(); // already at the bottom — no-op
+        expect(strip.focusDown()).toBe(false); // already at the bottom — no-op
         expect(right.activate).toHaveBeenCalledTimes(1);
 
-        strip.focusUp();
+        expect(strip.focusUp()).toBe(true);
         expect(left.activate).toHaveBeenCalledTimes(1);
+    });
+
+    it('return false when the focused column has no stack to move within', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        strip.addWindow(fakeWindow('solo').adapter);
+
+        expect(strip.focusUp()).toBe(false);
+        expect(strip.focusDown()).toBe(false);
+    });
+
+    it('return false when there is no focused column', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+
+        expect(strip.focusUp()).toBe(false);
+        expect(strip.focusDown()).toBe(false);
     });
 });
 

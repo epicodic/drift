@@ -53,10 +53,10 @@
         <entry name="shortcutViewportShiftRight" type="String">
             <default>Meta+Alt+Right</default>
         </entry>
-        <entry name="shortcutRowUp" type="String">
+        <entry name="shortcutNavigateUp" type="String">
             <default>Meta+Up</default>
         </entry>
-        <entry name="shortcutRowDown" type="String">
+        <entry name="shortcutNavigateDown" type="String">
             <default>Meta+Down</default>
         </entry>
         <entry name="shortcutMoveWindowToRowAbove" type="String">
@@ -64,12 +64,6 @@
         </entry>
         <entry name="shortcutMoveWindowToRowBelow" type="String">
             <default>Meta+Ctrl+Down</default>
-        </entry>
-        <entry name="shortcutFocusUp" type="String">
-            <default>Meta+Alt+Up</default>
-        </entry>
-        <entry name="shortcutFocusDown" type="String">
-            <default>Meta+Alt+Down</default>
         </entry>
         <entry name="shortcutAbsorbRight" type="String">
             <default>Meta+I</default>

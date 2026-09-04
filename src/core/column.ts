@@ -222,23 +222,26 @@ export class Column {
         return result;
     }
 
-    /** Moves tile focus up (toward the top of the stack). No-op at the top. */
-    focusUp(): void {
-        this.moveTileFocus(-1);
+    /** Moves tile focus up (toward the top of the stack). No-op at the top. Returns
+     * whether focus actually moved. */
+    focusUp(): boolean {
+        return this.moveTileFocus(-1);
     }
 
-    /** Moves tile focus down (toward the bottom of the stack). No-op at the bottom. */
-    focusDown(): void {
-        this.moveTileFocus(1);
+    /** Moves tile focus down (toward the bottom of the stack). No-op at the bottom.
+     * Returns whether focus actually moved. */
+    focusDown(): boolean {
+        return this.moveTileFocus(1);
     }
 
-    private moveTileFocus(step: number): void {
+    private moveTileFocus(step: number): boolean {
         const index = this.stack.findIndex((tile) => tile.id === this.focusedTile);
         const target = index + step;
         if (target < 0 || target >= this.stack.length) {
-            return;
+            return false;
         }
         this.focusedTile = this.stack[target].id;
+        return true;
     }
 
     private requireTileIndex(id: number): number {

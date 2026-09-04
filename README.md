@@ -85,6 +85,7 @@ That separation — a pure layout model on one side, a "camera" that only knows 
 
 Curious how the pieces fit together?
 Start with [docs/architecture.md](docs/architecture.md) for the big picture, then [docs/algorithms.md](docs/algorithms.md) for the coordinate math and animation details.
+See [docs/glossary.md](docs/glossary.md) for a quick reference to the terms used throughout.
 
 ## Status
 
