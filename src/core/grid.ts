@@ -171,6 +171,30 @@ export class Grid {
         return index;
     }
 
+    /** Drag-to-stack's equivalent of `insertionIndexForEdges` for a stacked tile dragged
+     * toward open space rather than toward a real neighbor: whether `columnId`'s own
+     * dragged edge has crossed past its own outer boundary on a side where it has no
+     * visible neighbor to reorder against at all. There is no neighbor center to cross
+     * on that side, so the column's own edge is the threshold instead. Checked right
+     * side first, then left, mirroring `insertionIndexForEdges`'s own priority. Returns
+     * null when a visible neighbor exists on both sides, or neither edge has crossed. */
+    expelDirectionForEdges(
+        columnId: number,
+        leftEdgeVirtualX: number,
+        rightEdgeVirtualX: number,
+    ): 'left' | 'right' | null {
+        const index = this.requireIndex(columnId);
+        const offsets = this.layoutOffsets();
+        const widths = this.layoutWidths();
+        if (this.visibleNeighborIndex(index, 1) === null && rightEdgeVirtualX > offsets[index] + widths[index]) {
+            return 'right';
+        }
+        if (this.visibleNeighborIndex(index, -1) === null && leftEdgeVirtualX < offsets[index]) {
+            return 'left';
+        }
+        return null;
+    }
+
     indexOf(id: number): number {
         return this.ordered.findIndex((column) => column.id === id);
     }
