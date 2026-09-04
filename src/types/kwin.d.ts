@@ -60,11 +60,16 @@ interface Window {
     readonly maxSize: QSize;
     readonly move: boolean;
     readonly resize: boolean;
+    readonly resizeable: boolean;
     readonly minimized: boolean;
     readonly icon: QIcon;
     readonly activities: string[];
     readonly desktops: KwinDesktop[];
     readonly output: Output;
+    readonly modal: boolean;
+    readonly managed: boolean;
+    readonly pid: number;
+    readonly resourceClass: string;
     readonly frameGeometryChanged: Signal<(oldGeometry: QRect) => void>;
     readonly minimizedChanged: Signal<() => void>;
     readonly fullScreenChanged: Signal<() => void>;

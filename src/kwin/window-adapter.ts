@@ -34,6 +34,10 @@ export class WindowAdapter {
         return (
             this.window.normalWindow &&
             !this.window.transient &&
+            !this.window.modal &&
+            this.window.managed &&
+            this.window.pid > -1 &&
+            this.window.resizeable &&
             !this.window.fullScreen &&
             !this.window.skipTaskbar &&
             !this.window.onScreenDisplay &&
