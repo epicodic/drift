@@ -30,6 +30,7 @@ package: build
 
 clean:
 	rm -f ./drift/contents/code/main.js
+	rm -f ./drift/contents/shaders/*.qsb
 	rm -f ./drift_*.tar.gz
 
 enable:

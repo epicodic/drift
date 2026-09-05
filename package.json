@@ -5,7 +5,8 @@
     "type": "module",
     "private": true,
     "scripts": {
-        "build": "rollup -c",
+        "build": "rollup -c && npm run build:shaders",
+        "build:shaders": "scripts/compile-shaders.sh",
         "typecheck": "tsc --noEmit",
         "test": "vitest run",
         "test:watch": "vitest",
