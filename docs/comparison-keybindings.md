@@ -34,21 +34,21 @@ Empty cells mean the project has no equivalent (by design, or not yet built).
 | Focus column/window right | `Mod+L` / `Mod+→` | `Super+Right` | `Meta+D` | `Meta+Right` | Meta+Right |
 | Focus window above (in-column) | `Mod+K` / `Mod+↑` | `Super+Up` | `Meta+W` | `Meta+Up` ✓ | Meta+Up |
 | Focus window below (in-column) | `Mod+J` / `Mod+↓` | `Super+Down` | `Meta+S` | `Meta+Down` ✓ | Meta+Down |
-| Focus first/last column | — | `Super+Home` / `Super+End` | `Meta+Home` / `Meta+End` | — | Meta+Home / Meta+End |
+| Focus first/last column | — | `Super+Home` / `Super+End` | `Meta+Home` / `Meta+End` | `Meta+Home` / `Meta+End` ✓ | Meta+Home / Meta+End |
 | Cycle recently-focused windows | — | `Super+Tab` / `Alt+Tab` (+`Shift` reverse) | — | — |  |
 | Move column left | `Mod+Ctrl+H` / `Mod+Ctrl+←` | `Super+Ctrl+Left` (or `Shift+Super+,`) | `Meta+Ctrl+Shift+A` | `Meta+Ctrl+Left` ✓ | Meta+Ctrl+Left |
 | Move column right | `Mod+Ctrl+L` / `Mod+Ctrl+→` | `Super+Ctrl+Right` (or `Shift+Super+.`) | `Meta+Ctrl+Shift+D` | `Meta+Ctrl+Right` ✓ | Meta+Ctrl+Right |
 | Move window up/down (in-column) | `Mod+Ctrl+K` / `Mod+Ctrl+J` | `Super+Ctrl+Up` / `Super+Ctrl+Down` | `Meta+Shift+W` / `Meta+Shift+S` | `Meta+Ctrl+Up` / `Meta+Ctrl+Down` ✓ | Meta+Ctrl+Up / Meta+Ctrl+Down |
-| Move column/window to start/end | — | — | `Meta+Ctrl+Shift+Home` / `End` (column), `Meta+Shift+Home` / `End` (window) | — | Meta+Ctrl+Home / Meta+Ctrl+End |
+| Move column/window to start/end | — | — | `Meta+Ctrl+Shift+Home` / `End` (column), `Meta+Shift+Home` / `End` (window) | `Meta+Ctrl+Home` / `Meta+Ctrl+End` ✓ | Meta+Ctrl+Home / Meta+Ctrl+End |
 | Cycle column width presets | `Mod+R` (+`Shift` reverse) | `Super+R` (+`Alt` reverse) | `Meta+R` (+`Shift` reverse) | — | `Meta+R` (+`Shift` reverse) |
-| Increase/decrease column width | `Mod+=` / `Mod+-` | `Super++` / `Super+-` | `Meta+Ctrl++` / `Meta+Ctrl+-` | — | Meta++` / `Meta+- |
-| Increase/decrease window height | `Mod+Shift+=` / `Mod+Shift+-` | `Shift+Super++` / `Shift+Super+-` | — | — | Meta+Shift++ / Meta+Shift-- |
+| Increase/decrease column width | `Mod+=` / `Mod+-` | `Super++` / `Super+-` | `Meta+Ctrl++` / `Meta+Ctrl+-` | `Meta+Plus` / `Meta+-` ✓ | `Meta+Plus` / `Meta+-` |
+| Increase/decrease window height | `Mod+Shift+=` / `Mod+Shift+-` | `Shift+Super++` / `Shift+Super+-` | — | `Meta+Shift+Plus` / `Meta+Shift+-` ✓ | `Meta+Shift+Plus` / `Meta+Shift+-` |
 | Maximize column width | `Mod+M` | `Super+F` | — | — |  |
 | Center focused column | `Mod+C` | `Super+C` | `Meta+Alt+Return` | — |  |
 | Cycle column align (left/center/right) | — | — | — | `Meta+Shift+Left` / `Meta+Shift+Right` | Meta+Shift+Left / Meta+Shift+Right |
 | Equalize / squeeze column widths | — | — | `Meta+Ctrl+X` (equalize), `Meta+Ctrl+A` / `D` (squeeze) | — |  |
 | Scroll viewport without changing focus | — | — | `Meta+Alt+A` / `D` (one column), `Meta+Alt+PgUp` / `PgDown` (page) | `Meta+Alt+Left` / `Meta+Alt+Right` | `Meta+Alt+Left` / `Meta+Alt+Right` |
-| Scroll viewport to start/end | — | — | `Meta+Alt+Home` / `End` | — | `Meta+Alt+Home` / `End` |
+| Scroll viewport to start/end | — | — | `Meta+Alt+Home` / `End` | `Meta+Alt+Home` / `Meta+Alt+End` ✓ | `Meta+Alt+Home` / `End` |
 | Absorb/expel window (vertical stacking) | `Mod+[` / `Mod+]` (consume/expel) | `Super+I` (absorb) / `Super+O` (expel) | — | `Meta+I (absorb) / Meta+O (expel)` | `Meta+I (absorb) / Meta+O (expel)` |
 | Toggle stacked layout for column | — | — | `Meta+X` | — |  |
 | Toggle floating | `Mod+V` | `Shift+Super+Escape` (scratch layer) | `Meta+Space` | — (no float/undock yet, see roadmap) | Meta+Space |
@@ -73,7 +73,7 @@ Empty cells mean the project has no equivalent (by design, or not yet built).
 - **`Tab` for focus is unique to Drift** and diverges from every peer's directional-key convention; peers reserve `Tab` (where used at all, e.g. PaperWM) for MRU/recency cycling, a different action Drift doesn't have.
 - **Drift's secondary-modifier budget is the smallest of the four** — only `Shift`. Karousel in particular layers `Ctrl`, `Shift`, and `Alt` independently to fit ~25 distinct actions into one letter-based grid; Drift's 11 actions haven't needed that yet, but the roadmap items below will add more.
 - **Column/window reordering by keyboard is a gap.** Every peer binds it (Niri `Mod+Ctrl+H/L`, PaperWM `Super+Ctrl+Left/Right`, Karousel `Meta+Shift+A/D`); Drift only supports it by mouse drag today.
-- **Column width control is a gap.** All three peers bind both a "cycle preset widths" action and an "increment/decrement width" action; Drift has neither yet (no per-column width model currently exists — see roadmap).
+- **Column width control is now keyboard-steppable** (`Meta+Plus`/`Meta+-`), reusing the same `Grid.resizeColumn` mouse-drag already had. Cycling between preset widths (`Meta+R`) is still a gap — it needs an actual preset list, which doesn't exist yet.
 - **Vertical stacking bindings shipped using PaperWM's naming convention** — `Meta+I`/`Meta+O` for absorb/expel, matching `Super+I`/`Super+O`. In-column focus now shares `Meta+Up`/`Meta+Down` with strip paging (`shortcutNavigateUp`/`shortcutNavigateDown`): it moves tile focus within the stack when there's an adjacent tile, falling back to paging strips otherwise — unifying what were briefly two separate bindings (`Meta+Alt+Up`/`Down` for in-column focus, `Meta+Up`/`Meta+Down` for strip paging) into one.
 - **Drift's strip paging already lines up conceptually** with Niri's and PaperWM's workspace-up/down bindings (`Mod+I`/`Mod+U`, `Super+PageUp`/`PageDown`) even though the underlying model differs (see [`comparison-paperwm.md`](comparison-paperwm.md#where-drift-already-differs-by-design-not-by-gap)); Drift already uses `Page_Up`/`Page_Down` for this, matching one of Niri's two accepted key choices and PaperWM's only one.
 - **Cycle-align has no direct peer equivalent** — it's closer to Niri's/Karousel's "center column" (`Mod+C` / `Meta+Alt+Return`) than to their width-cycling actions, but Drift's version cycles between three screen-relative positions (left/center/right) rather than jumping straight to center.
