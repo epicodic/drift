@@ -542,6 +542,33 @@ export class Strip {
         this.revealFocused();
     }
 
+    /** Grows the focused column's width by `columnWidthStep`, without changing focus —
+     * the keyboard equivalent of dragging the column's right edge. No-op with no focused
+     * column. */
+    increaseColumnWidth(): void {
+        const focused = this.grid.focusedColumn();
+        if (focused === null) {
+            return;
+        }
+        this.grid.resizeColumn(focused.id, focused.width + this.settings.columnWidthStep);
+        this.render();
+        this.revealFocused();
+    }
+
+    /** Shrinks the focused column's width by `columnWidthStep`, clamped at
+     * `columnWidthStep` itself so it never reaches zero — see
+     * `increaseColumnWidth`. */
+    decreaseColumnWidth(): void {
+        const focused = this.grid.focusedColumn();
+        if (focused === null) {
+            return;
+        }
+        const target = Math.max(this.settings.columnWidthStep, focused.width - this.settings.columnWidthStep);
+        this.grid.resizeColumn(focused.id, target);
+        this.render();
+        this.revealFocused();
+    }
+
     /** Moves the focused tile up within the focused column's stack, swapping position with
      * its neighbor. No-op if there's no focused column, it's not a stack, or the tile is
      * already at the top. Returns whether it actually moved — callers (e.g. the keyboard
