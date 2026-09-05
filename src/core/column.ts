@@ -109,6 +109,28 @@ export class Column {
         this.stack.splice(newIndex, 0, tile);
     }
 
+    /** Moves the focused tile up (toward the top of the stack), swapping position with its
+     * neighbor. No-op at the top. Returns whether it actually moved. */
+    moveFocusedTileUp(): boolean {
+        return this.moveFocusedTile(-1);
+    }
+
+    /** Moves the focused tile down (toward the bottom of the stack), swapping position with
+     * its neighbor. No-op at the bottom. Returns whether it actually moved. */
+    moveFocusedTileDown(): boolean {
+        return this.moveFocusedTile(1);
+    }
+
+    private moveFocusedTile(step: number): boolean {
+        const index = this.requireTileIndex(this.focusedTile);
+        const target = index + step;
+        if (target < 0 || target >= this.stack.length) {
+            return false;
+        }
+        this.moveTile(this.focusedTile, target);
+        return true;
+    }
+
     /** Removes a tile (expel), redistributing its height proportionally to the rest.
      * Reassigns focus to the nearest remaining tile if the removed one was focused.
      * Throws if `id` is the column's only tile — callers must check `tileCount() > 1`

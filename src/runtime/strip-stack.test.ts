@@ -48,6 +48,7 @@ function fakeWorkspaceAdapter(): FakeWorkspaceAdapter {
 interface FakeStrip {
     strip: Strip;
     addWindow: ReturnType<typeof vi.fn>;
+    addWindowStack: ReturnType<typeof vi.fn>;
     removeWindow: ReturnType<typeof vi.fn>;
     activateWindow: ReturnType<typeof vi.fn>;
     render: ReturnType<typeof vi.fn>;
@@ -57,12 +58,15 @@ interface FakeStrip {
     focusDown: ReturnType<typeof vi.fn>;
     absorbRight: ReturnType<typeof vi.fn>;
     expel: ReturnType<typeof vi.fn>;
+    moveTileUp: ReturnType<typeof vi.fn>;
+    moveTileDown: ReturnType<typeof vi.fn>;
     cycleAlignLeft: ReturnType<typeof vi.fn>;
     cycleAlignRight: ReturnType<typeof vi.fn>;
     shiftViewportLeft: ReturnType<typeof vi.fn>;
     shiftViewportRight: ReturnType<typeof vi.fn>;
     minimapSnapshot: ReturnType<typeof vi.fn>;
     detachFocusedColumn: ReturnType<typeof vi.fn>;
+    detachFocusedTile: ReturnType<typeof vi.fn>;
     isEmpty: ReturnType<typeof vi.fn>;
     setSkipTaskbar: ReturnType<typeof vi.fn>;
 }
@@ -70,6 +74,7 @@ interface FakeStrip {
 function fakeStrip(): FakeStrip {
     const fns = {
         addWindow: vi.fn(),
+        addWindowStack: vi.fn(),
         removeWindow: vi.fn(),
         activateWindow: vi.fn(),
         render: vi.fn(),
@@ -79,6 +84,8 @@ function fakeStrip(): FakeStrip {
         focusDown: vi.fn(),
         absorbRight: vi.fn(),
         expel: vi.fn(),
+        moveTileUp: vi.fn(() => false),
+        moveTileDown: vi.fn(() => false),
         cycleAlignLeft: vi.fn(),
         cycleAlignRight: vi.fn(),
         shiftViewportLeft: vi.fn(),
@@ -89,6 +96,7 @@ function fakeStrip(): FakeStrip {
             gridHeight: AREA.height,
         })),
         detachFocusedColumn: vi.fn(() => []),
+        detachFocusedTile: vi.fn(() => null),
         isEmpty: vi.fn(() => true),
         setSkipTaskbar: vi.fn(),
     };
@@ -379,15 +387,38 @@ describe('StripStack strip paging', () => {
 });
 
 describe('StripStack.moveWindowToStripAbove/Below', () => {
-    it('moveWindowToStripAbove moves the focused window into strip -1 when at strip 0', () => {
+    it('moveWindowToStripAbove moves the tile within the stack instead of changing strips, when it is not at the top', () => {
+        const { stack, created } = makeStack();
+        created[0].moveTileUp.mockReturnValue(true);
+
+        stack.moveWindowToStripAbove();
+
+        expect(created[0].moveTileUp).toHaveBeenCalled();
+        expect(created[0].detachFocusedTile).not.toHaveBeenCalled();
+        expect(created).toHaveLength(1); // no strip change
+    });
+
+    it('moveWindowToStripBelow moves the tile within the stack instead of changing strips, when it is not at the bottom', () => {
+        const { stack, created } = makeStack();
+        created[0].moveTileDown.mockReturnValue(true);
+
+        stack.moveWindowToStripBelow();
+
+        expect(created[0].moveTileDown).toHaveBeenCalled();
+        expect(created[0].detachFocusedTile).not.toHaveBeenCalled();
+        expect(created).toHaveLength(1); // no strip change
+    });
+
+    it('moveWindowToStripAbove expels the focused window into strip -1 when it is already at the top of its stack', () => {
         const { stack, created } = makeStack();
         const win = fakeWin('w1');
-        created[0].detachFocusedColumn.mockReturnValue([win]);
+        created[0].moveTileUp.mockReturnValue(false); // already at the top (or a single-tile column)
+        created[0].detachFocusedTile.mockReturnValue(win);
 
         stack.moveWindowToStripAbove();
         stack.render();
 
-        expect(created[0].detachFocusedColumn).toHaveBeenCalled();
+        expect(created[0].detachFocusedTile).toHaveBeenCalled();
         expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object));
         expect(created[1].render).toHaveBeenCalled(); // strip -1 is now active
     });
@@ -395,7 +426,7 @@ describe('StripStack.moveWindowToStripAbove/Below', () => {
     it('moveWindowToStripAbove is a no-op when the active strip has no focused window', () => {
         const { stack, created } = makeStack();
         stack.stripDown(); // strip 1 active, empty
-        created[1].detachFocusedColumn.mockReturnValue([]);
+        created[1].detachFocusedTile.mockReturnValue(null);
 
         stack.moveWindowToStripAbove();
 
@@ -403,15 +434,15 @@ describe('StripStack.moveWindowToStripAbove/Below', () => {
         expect(created[0].addWindow).not.toHaveBeenCalled();
     });
 
-    it('moveWindowToStripBelow detaches the focused window, adds it to the strip below, and follows it', () => {
+    it('moveWindowToStripBelow expels the focused window, adds it to the strip below, and follows it, when it is already at the bottom of its stack', () => {
         const { stack, created } = makeStack();
         const win = fakeWin('w1');
-        created[0].detachFocusedColumn.mockReturnValue([win]);
+        created[0].detachFocusedTile.mockReturnValue(win);
 
         stack.moveWindowToStripBelow();
         stack.render();
 
-        expect(created[0].detachFocusedColumn).toHaveBeenCalled();
+        expect(created[0].detachFocusedTile).toHaveBeenCalled();
         expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object));
         expect(created[1].render).toHaveBeenCalled(); // strip 1 is now active
     });
@@ -422,7 +453,7 @@ describe('StripStack.moveWindowToStripAbove/Below', () => {
         // internal render() call (which relies on that already-primed offset) ever runs.
         const { stack, created } = makeStack();
         const win = fakeWin('w1');
-        created[0].detachFocusedColumn.mockReturnValue([win]);
+        created[0].detachFocusedTile.mockReturnValue(win);
 
         stack.moveWindowToStripBelow(); // strip 0 -> strip 1; switchToStrip must prime strip 1 before addWindow runs
 
@@ -439,7 +470,7 @@ describe('StripStack.moveWindowToStripAbove/Below', () => {
         created[0].isEmpty.mockReturnValue(false); // has a window, so leaving it won't prune it
         stack.stripDown(); // strip 1 active
         const win = fakeWin('w1');
-        created[1].detachFocusedColumn.mockReturnValue([win]);
+        created[1].detachFocusedTile.mockReturnValue(win);
         created[1].isEmpty.mockReturnValue(true);
 
         stack.moveWindowToStripAbove(); // moves win from strip 1 back to strip 0, strip 1 empties
@@ -451,11 +482,11 @@ describe('StripStack.moveWindowToStripAbove/Below', () => {
     it('moveWindowToStripAbove twice moves a window from strip 0 through strip -1 into strip -2', () => {
         const { stack, created } = makeStack();
         const win = fakeWin('w1');
-        created[0].detachFocusedColumn.mockReturnValue([win]);
+        created[0].detachFocusedTile.mockReturnValue(win);
 
         stack.moveWindowToStripAbove(); // win: strip 0 -> strip -1
         created[1].isEmpty.mockReturnValue(false); // strip -1 now owns a window; don't prune it on the next move
-        created[1].detachFocusedColumn.mockReturnValue([win]);
+        created[1].detachFocusedTile.mockReturnValue(win);
 
         stack.moveWindowToStripAbove(); // win: strip -1 -> strip -2
 
@@ -470,6 +501,67 @@ describe('StripStack.moveWindowToStripAbove/Below', () => {
         stack.stripUp(); // page back toward strip 0 to prove it was pruned and recreated
 
         expect(created).toHaveLength(3); // the original (now-pruned) strip 0, strip 1, and a fresh strip 0
+    });
+});
+
+describe('StripStack.moveColumnToStripAbove/Below', () => {
+    it('moveColumnToStripAbove moves the whole focused column into strip -1 when at strip 0', () => {
+        const { stack, created } = makeStack();
+        const win = fakeWin('w1');
+        created[0].detachFocusedColumn.mockReturnValue([win]);
+
+        stack.moveColumnToStripAbove();
+        stack.render();
+
+        expect(created[0].detachFocusedColumn).toHaveBeenCalled();
+        expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object));
+        expect(created[1].render).toHaveBeenCalled(); // strip -1 is now active
+    });
+
+    it('moveColumnToStripAbove is a no-op when the active strip has no focused column', () => {
+        const { stack, created } = makeStack();
+        stack.stripDown(); // strip 1 active, empty
+        created[1].detachFocusedColumn.mockReturnValue([]);
+
+        stack.moveColumnToStripAbove();
+
+        expect(created).toHaveLength(2); // no new strip created; detach found nothing to move
+        expect(created[0].addWindow).not.toHaveBeenCalled();
+    });
+
+    it('moveColumnToStripBelow detaches the whole focused column, adds it to the strip below, and follows it', () => {
+        const { stack, created } = makeStack();
+        const win = fakeWin('w1');
+        created[0].detachFocusedColumn.mockReturnValue([win]);
+
+        stack.moveColumnToStripBelow();
+        stack.render();
+
+        expect(created[0].detachFocusedColumn).toHaveBeenCalled();
+        expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object));
+        expect(created[1].render).toHaveBeenCalled(); // strip 1 is now active
+    });
+
+    it('does not try a within-stack tile move first (unlike moveWindowToStripAbove/Below)', () => {
+        const { stack, created } = makeStack();
+        const win = fakeWin('w1');
+        created[0].detachFocusedColumn.mockReturnValue([win]);
+
+        stack.moveColumnToStripBelow();
+
+        expect(created[0].moveTileDown).not.toHaveBeenCalled();
+    });
+
+    it('moves every window in a stacked column as one stacked column in the target strip', () => {
+        const { stack, created } = makeStack();
+        const win1 = fakeWin('w1');
+        const win2 = fakeWin('w2');
+        created[0].detachFocusedColumn.mockReturnValue([win1, win2]);
+
+        stack.moveColumnToStripBelow();
+
+        expect(created[1].addWindowStack).toHaveBeenCalledWith([win1, win2], false, expect.anything());
+        expect(created[1].addWindow).not.toHaveBeenCalled();
     });
 });
 
@@ -514,7 +606,7 @@ describe('StripStack cross-strip drag', () => {
     it('keyboard-driven moveWindowToStripBelow still passes initiallyDragging=false and no exclusion (regression)', () => {
         const { stack, created } = makeStack();
         const win = fakeWin('w1');
-        created[0].detachFocusedColumn.mockReturnValue([win]);
+        created[0].detachFocusedTile.mockReturnValue(win);
 
         stack.moveWindowToStripBelow();
 
@@ -775,26 +867,34 @@ describe('StripStack — navigateUp/navigateDown', () => {
     });
 });
 
-describe('StripStack — moveFocusedWindowToStrip with a stacked column', () => {
-    it('re-adds every window detachFocusedColumn returns, each to its own column in the target strip', () => {
-        const { stack, created } = makeStack();
-        const win1 = fakeWin('w1');
-        const win2 = fakeWin('w2');
-        created[0].detachFocusedColumn.mockReturnValue([win1, win2]);
+describe('StripStack — cross-strip drag of a stacked column', () => {
+    // The mouse-drag edge-dwell flip still moves the whole focused column (all its stacked
+    // tiles) as a unit via detachFocusedColumn/addWindowStack — only the keyboard shortcut
+    // (StripStack.moveWindowToStripAbove/Below) was changed to move a single tile at a time.
+    it('re-adds every window detachFocusedColumn returns as one stacked column in the target strip', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const { stack, created, timer, workspaceAdapter } = makeStack({
+                animationDurationMs: 0,
+                stripDragDwellMs: 100,
+            });
+            const win1 = fakeWin('w1');
+            const win2 = fakeWin('w2');
+            stack.addWindow(win1); // lands in strip 0, wires the strip-drag hooks
+            created[0].detachFocusedColumn.mockReturnValue([win1, win2]);
+            const hooks = capturedStripDragHooks(created[0]);
 
-        stack.moveWindowToStripBelow();
+            hooks.onDragStarted?.(win1);
+            workspaceAdapter.cursor = { x: 0, y: 1050 }; // pointer past the bottom edge (area bottom = 1000)
+            hooks.onDragTick?.(win1);
+            vi.setSystemTime(100);
+            timer.fire(); // dwell elapses
 
-        expect(created[1].addWindow).toHaveBeenCalledWith(win1, false, expect.anything());
-        expect(created[1].addWindow).toHaveBeenCalledWith(win2, false, expect.anything());
-    });
-
-    it('is a no-op when detachFocusedColumn returns an empty array', () => {
-        const { stack, created } = makeStack();
-        created[0].detachFocusedColumn.mockReturnValue([]);
-
-        stack.moveWindowToStripBelow();
-
-        expect(created).toHaveLength(1); // no new strip created; detach found nothing to move
-        expect(created[0].addWindow).not.toHaveBeenCalled();
+            expect(created[1].addWindowStack).toHaveBeenCalledWith([win1, win2], true, expect.anything());
+            expect(created[1].addWindow).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });

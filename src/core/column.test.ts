@@ -202,6 +202,43 @@ describe('Column — tile stack', () => {
         expect(() => column.moveTile(999, 0)).toThrow();
     });
 
+    it('moveFocusedTileUp/Down reorder the focused tile within the stack and no-op at the ends', () => {
+        const column = new Column(1, 300, 900);
+        const topId = column.tiles()[0].id;
+        const middleId = column.addTile();
+        const bottomId = column.addTile();
+        column.setFocusedTile(middleId);
+
+        expect(column.moveFocusedTileUp()).toBe(true);
+        expect(column.tiles().map((t) => t.id)).toEqual([middleId, topId, bottomId]);
+        expect(column.focusedTileId).toBe(middleId); // focus follows the moved tile
+
+        expect(column.moveFocusedTileUp()).toBe(false); // already at the top — no-op
+        expect(column.tiles().map((t) => t.id)).toEqual([middleId, topId, bottomId]);
+
+        expect(column.moveFocusedTileDown()).toBe(true);
+        expect(column.tiles().map((t) => t.id)).toEqual([topId, middleId, bottomId]);
+        expect(column.moveFocusedTileDown()).toBe(true);
+        expect(column.tiles().map((t) => t.id)).toEqual([topId, bottomId, middleId]);
+        expect(column.focusedTileId).toBe(middleId);
+
+        expect(column.moveFocusedTileDown()).toBe(false); // already at the bottom — no-op
+        expect(column.tiles().map((t) => t.id)).toEqual([topId, bottomId, middleId]);
+    });
+
+    it('moveFocusedTileUp/Down do not touch any tile heights', () => {
+        const column = new Column(1, 300, 900);
+        const topId = column.tiles()[0].id;
+        const bottomId = column.addTile();
+        column.resizeTile(topId, 200, 'bottom'); // uneven heights: top=200, bottom=700
+        column.setFocusedTile(bottomId);
+
+        column.moveFocusedTileUp();
+
+        expect(column.tiles().map((t) => t.id)).toEqual([bottomId, topId]);
+        expect(column.tiles().map((t) => t.height)).toEqual([700, 200]);
+    });
+
     it("tileRect derives each tile's y/height from the column rect, stacked with no gap", () => {
         const column = new Column(1, 300, 900);
         column.addTile();

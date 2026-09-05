@@ -33,9 +33,13 @@ export interface Settings {
     /** Shortcut sequence for moving tile focus down within the focused column's stack if
      * it can, otherwise paging to the strip below. */
     shortcutNavigateDown: string;
-    /** Shortcut sequence for moving the focused window to the strip above and following it there. */
+    /** Shortcut sequence for moving the focused tile up within its column's stack if it can;
+     * otherwise (already at the top, or a single-tile column) expelling it to the strip
+     * above and following it there. */
     shortcutMoveWindowToStripAbove: string;
-    /** Shortcut sequence for moving the focused window to the strip below and following it there. */
+    /** Shortcut sequence for moving the focused tile down within its column's stack if it
+     * can; otherwise (already at the bottom, or a single-tile column) expelling it to the
+     * strip below and following it there. */
     shortcutMoveWindowToStripBelow: string;
     /** Shortcut sequence for absorbing the column to the right into the focused
      * column's stack, as a new tile. */
@@ -47,6 +51,20 @@ export interface Settings {
     shortcutMoveWindowLeft: string;
     /** Shortcut sequence for moving the focused window's column right within the strip. */
     shortcutMoveWindowRight: string;
+    /** Shortcut sequence for paging to the strip above, without touching tile focus within
+     * the current column's stack — unlike `shortcutNavigateUp`, this always changes strips,
+     * even for a stacked column that isn't focused on its top tile. */
+    shortcutStripUp: string;
+    /** Shortcut sequence for paging to the strip below — see `shortcutStripUp`. */
+    shortcutStripDown: string;
+    /** Shortcut sequence for moving the whole focused column — every tile in its stack, kept
+     * together — to the strip above and following it there. Unlike
+     * `shortcutMoveWindowToStripAbove`, this always changes strips, even when the focused
+     * tile isn't at the top of its stack. */
+    shortcutMoveColumnToStripAbove: string;
+    /** Shortcut sequence for moving the whole focused column to the strip below — see
+     * `shortcutMoveColumnToStripAbove`. */
+    shortcutMoveColumnToStripBelow: string;
     /** Distance the viewport pans per shortcut press, in pixels. */
     viewportShiftStep: number;
     /** How long the pointer must stay at the screen's top/bottom edge before the dragged
@@ -92,6 +110,10 @@ export const DEFAULT_SETTINGS: Settings = {
     shortcutExpel: 'Meta+O',
     shortcutMoveWindowLeft: 'Meta+Ctrl+Left',
     shortcutMoveWindowRight: 'Meta+Ctrl+Right',
+    shortcutStripUp: 'Meta+Page_Up',
+    shortcutStripDown: 'Meta+Page_Down',
+    shortcutMoveColumnToStripAbove: 'Meta+Ctrl+Page_Up',
+    shortcutMoveColumnToStripBelow: 'Meta+Ctrl+Page_Down',
     viewportShiftStep: 400,
     stripDragDwellMs: 400,
     stripDragEdgeBorderPx: 2,
@@ -144,6 +166,16 @@ export function loadSettings(): Settings {
         shortcutExpel: readStringConfig('shortcutExpel', DEFAULT_SETTINGS.shortcutExpel),
         shortcutMoveWindowLeft: readStringConfig('shortcutMoveWindowLeft', DEFAULT_SETTINGS.shortcutMoveWindowLeft),
         shortcutMoveWindowRight: readStringConfig('shortcutMoveWindowRight', DEFAULT_SETTINGS.shortcutMoveWindowRight),
+        shortcutStripUp: readStringConfig('shortcutStripUp', DEFAULT_SETTINGS.shortcutStripUp),
+        shortcutStripDown: readStringConfig('shortcutStripDown', DEFAULT_SETTINGS.shortcutStripDown),
+        shortcutMoveColumnToStripAbove: readStringConfig(
+            'shortcutMoveColumnToStripAbove',
+            DEFAULT_SETTINGS.shortcutMoveColumnToStripAbove,
+        ),
+        shortcutMoveColumnToStripBelow: readStringConfig(
+            'shortcutMoveColumnToStripBelow',
+            DEFAULT_SETTINGS.shortcutMoveColumnToStripBelow,
+        ),
     });
 }
 

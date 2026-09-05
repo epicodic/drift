@@ -167,10 +167,29 @@ export class StripStack {
     }
 
     moveWindowToStripAbove(): void {
-        this.moveFocusedWindowToStrip(this.activeStripIndex - 1);
+        if (this.activeStrip().moveTileUp()) {
+            return;
+        }
+        this.moveFocusedTileToStrip(this.activeStripIndex - 1);
     }
 
     moveWindowToStripBelow(): void {
+        if (this.activeStrip().moveTileDown()) {
+            return;
+        }
+        this.moveFocusedTileToStrip(this.activeStripIndex + 1);
+    }
+
+    /** Moves the whole focused column — every tile in its stack, kept together — to the
+     * strip above and follows it there, regardless of where within the stack focus
+     * currently sits (unlike `moveWindowToStripAbove`, which tries an in-stack tile move
+     * first). For a single-tile column this is identical to `moveWindowToStripAbove`. */
+    moveColumnToStripAbove(): void {
+        this.moveFocusedWindowToStrip(this.activeStripIndex - 1);
+    }
+
+    /** Moves the whole focused column to the strip below — see `moveColumnToStripAbove`. */
+    moveColumnToStripBelow(): void {
         this.moveFocusedWindowToStrip(this.activeStripIndex + 1);
     }
 
@@ -256,8 +275,26 @@ export class StripStack {
         targetIndex: number,
         options: { excludeWindowId?: string; initiallyDragging?: boolean } = {},
     ): void {
-        const sourceIndex = this.activeStripIndex;
-        const windows = this.requireStrip(sourceIndex).detachFocusedColumn();
+        const windows = this.requireStrip(this.activeStripIndex).detachFocusedColumn();
+        this.addWindowsToStrip(windows, targetIndex, options);
+    }
+
+    /** The single-tile counterpart to `moveFocusedWindowToStrip`, used by the keyboard
+     * Meta+Ctrl+Up/Down shortcut: only the one focused window crosses strips — peeled off
+     * the edge of a stack — leaving any stack-mates behind in the source strip. */
+    private moveFocusedTileToStrip(targetIndex: number): void {
+        const win = this.requireStrip(this.activeStripIndex).detachFocusedTile();
+        this.addWindowsToStrip(win === null ? [] : [win], targetIndex);
+    }
+
+    /** Shared tail for both cross-strip moves above: re-adds already-detached `windows` to
+     * `targetIndex`, as one stacked column when there's more than one. No-op for an empty
+     * array (nothing was detached — no focused column, or nothing to peel off). */
+    private addWindowsToStrip(
+        windows: WindowAdapter[],
+        targetIndex: number,
+        options: { excludeWindowId?: string; initiallyDragging?: boolean } = {},
+    ): void {
         if (windows.length === 0) {
             return;
         }
@@ -269,11 +306,15 @@ export class StripStack {
         // offset is primed to its correct resting position before anything renders into it.
         this.switchToStrip(targetIndex, options.excludeWindowId);
         const targetStrip = this.strip(targetIndex);
-        // A stacked column's tiles are NOT kept stacked across strips this pass — each window
-        // becomes its own column in the target strip (docs: 2026-09-03-vertical-tiling-design,
-        // Out of Scope). The overwhelmingly common case is a single window here, unaffected.
+        // A stacked column's tiles stay stacked as one column in the target strip via
+        // addWindowStack; the single-window case keeps using addWindow directly (equivalent,
+        // but matches the far more common call shape 1:1).
+        if (windows.length === 1) {
+            targetStrip.addWindow(windows[0], options.initiallyDragging ?? false, this.stripDragHooks());
+        } else {
+            targetStrip.addWindowStack(windows, options.initiallyDragging ?? false, this.stripDragHooks());
+        }
         for (const win of windows) {
-            targetStrip.addWindow(win, options.initiallyDragging ?? false, this.stripDragHooks());
             this.stripByWindow.set(win.id, targetIndex);
         }
     }

@@ -21,6 +21,10 @@ export interface ShortcutActions {
     expel(): void;
     moveWindowLeft(): void;
     moveWindowRight(): void;
+    stripUp(): void;
+    stripDown(): void;
+    moveColumnToStripAbove(): void;
+    moveColumnToStripBelow(): void;
 }
 
 export function registerShortcuts(parent: QmlObject, settings: Settings, actions: ShortcutActions): void {
@@ -110,6 +114,22 @@ export function registerShortcuts(parent: QmlObject, settings: Settings, actions
         'Drift: Move Window Right',
         settings.shortcutMoveWindowRight,
         actions.moveWindowRight,
+    );
+    createShortcut(parent, 'DriftStripUp', 'Drift: Strip Up', settings.shortcutStripUp, actions.stripUp);
+    createShortcut(parent, 'DriftStripDown', 'Drift: Strip Down', settings.shortcutStripDown, actions.stripDown);
+    createShortcut(
+        parent,
+        'DriftMoveColumnToStripAbove',
+        'Drift: Move Column To Strip Above',
+        settings.shortcutMoveColumnToStripAbove,
+        actions.moveColumnToStripAbove,
+    );
+    createShortcut(
+        parent,
+        'DriftMoveColumnToStripBelow',
+        'Drift: Move Column To Strip Below',
+        settings.shortcutMoveColumnToStripBelow,
+        actions.moveColumnToStripBelow,
     );
 }
 
