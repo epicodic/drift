@@ -318,3 +318,51 @@ describe('Column — tile stack', () => {
         expect(preview.get(bottomId)).toEqual({ x: 0, y: 300, width: 300, height: 300 }); // shifted up
     });
 });
+
+describe('Column — growFocusedTile/shrinkFocusedTile', () => {
+    it('grows the focused (top) tile by taking space from its neighbor below', () => {
+        const column = new Column(1, 400, 1000);
+        column.addTile(); // 500/500; focus stays on the top tile
+
+        expect(column.growFocusedTile(100)).toBe(true);
+
+        expect(column.tiles().map((t) => t.height)).toEqual([600, 400]);
+    });
+
+    it('shrinks the focused (top) tile, giving the space to its neighbor below', () => {
+        const column = new Column(1, 400, 1000);
+        column.addTile();
+
+        expect(column.shrinkFocusedTile(100)).toBe(true);
+
+        expect(column.tiles().map((t) => t.height)).toEqual([400, 600]);
+    });
+
+    it('falls back to the neighbor above when the focused tile is at the bottom of the stack', () => {
+        const column = new Column(1, 400, 1000);
+        column.addTile();
+        column.setFocusedTile(column.tiles()[1].id);
+
+        expect(column.growFocusedTile(100)).toBe(true);
+
+        expect(column.tiles().map((t) => t.height)).toEqual([400, 600]);
+    });
+
+    it('is a no-op on a single-tile column', () => {
+        const column = new Column(1, 400, 1000);
+
+        expect(column.growFocusedTile(100)).toBe(false);
+        expect(column.shrinkFocusedTile(100)).toBe(false);
+        expect(column.tiles()[0].height).toBe(1000);
+    });
+
+    it('clamps growth to the floor when the requested step would go past it', () => {
+        const column = new Column(1, 400, 120);
+        column.addTile(); // 60/60
+        column.resizeTile(column.tiles()[0].id, 90, 'bottom'); // 90/30
+
+        expect(column.growFocusedTile(100)).toBe(true); // requested +100 clamps to the 60/60 floor
+
+        expect(column.tiles().map((t) => t.height)).toEqual([60, 60]);
+    });
+});

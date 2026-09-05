@@ -171,6 +171,47 @@ export class Column {
         neighbor.height = neighborHeight;
     }
 
+    /** Grows the focused tile by `step`, taking the space from its neighbor below in
+     * the stack — or above, if the focused tile is at the bottom — the keyboard
+     * equivalent of drag-resizing via `resizeTile`. No-op (returns `false`) on a
+     * single-tile column. Returns whether the tile's height actually changed (see
+     * `resizeFocusedTile` for the floor that can make a large `step` a no-op when
+     * the stack has little room). */
+    growFocusedTile(step: number): boolean {
+        return this.resizeFocusedTile(step, step);
+    }
+
+    /** Shrinks the focused tile by `step`, giving the space to its neighbor — see
+     * `growFocusedTile`. */
+    shrinkFocusedTile(step: number): boolean {
+        return this.resizeFocusedTile(-step, step);
+    }
+
+    /** Shared implementation for `growFocusedTile`/`shrinkFocusedTile`. Clamps the
+     * target height to `[floor, total - floor]`, where `floor` is
+     * `min(floorCandidate, total / 2)` — normally exactly `floorCandidate` (the
+     * configured step), but capped at half the pair's combined height so the range
+     * is never empty, however small the stack. This is what lets `resizeTile` below
+     * never throw its "pushed to zero or below" error. */
+    private resizeFocusedTile(delta: number, floorCandidate: number): boolean {
+        const index = this.requireTileIndex(this.focusedTile);
+        const edge: VerticalResizeEdge = index < this.stack.length - 1 ? 'bottom' : 'top';
+        const neighborIndex = edge === 'bottom' ? index + 1 : index - 1;
+        const neighbor = this.stack[neighborIndex];
+        if (neighbor === undefined) {
+            return false;
+        }
+        const current = this.stack[index].height;
+        const total = current + neighbor.height;
+        const floor = Math.min(floorCandidate, total / 2);
+        const target = Math.min(total - floor, Math.max(floor, current + delta));
+        if (target === current) {
+            return false;
+        }
+        this.resizeTile(this.focusedTile, target, edge);
+        return true;
+    }
+
     /** Derives a tile's y/height sub-rect from the column's own full rect (from
      * `Grid.columnRect`). Tiles sit back to back with no vertical gap this pass. */
     tileRect(id: number, columnRect: Rect): Rect {
