@@ -32,13 +32,13 @@ Empty cells mean the project has no equivalent (by design, or not yet built).
 |---|---|---|---|---|---|
 | Focus column/window left | `Mod+H` / `Mod+←` | `Super+Left` | `Meta+A` | `Meta+Left` | Meta+Left |
 | Focus column/window right | `Mod+L` / `Mod+→` | `Super+Right` | `Meta+D` | `Meta+Right` | Meta+Right |
-| Focus window above (in-column) | `Mod+K` / `Mod+↑` | `Super+Up` | `Meta+W` | `Meta+Up` | Meta+Up |
-| Focus window below (in-column) | `Mod+J` / `Mod+↓` | `Super+Down` | `Meta+S` | `Meta+Down` | Meta+Down |
+| Focus window above (in-column) | `Mod+K` / `Mod+↑` | `Super+Up` | `Meta+W` | `Meta+Up` ✓ | Meta+Up |
+| Focus window below (in-column) | `Mod+J` / `Mod+↓` | `Super+Down` | `Meta+S` | `Meta+Down` ✓ | Meta+Down |
 | Focus first/last column | — | `Super+Home` / `Super+End` | `Meta+Home` / `Meta+End` | — | Meta+Home / Meta+End |
 | Cycle recently-focused windows | — | `Super+Tab` / `Alt+Tab` (+`Shift` reverse) | — | — |  |
-| Move column left | `Mod+Ctrl+H` / `Mod+Ctrl+←` | `Super+Ctrl+Left` (or `Shift+Super+,`) | `Meta+Ctrl+Shift+A` | — (drag-to-reorder by mouse only) | Meta+Ctrl+Left |
-| Move column right | `Mod+Ctrl+L` / `Mod+Ctrl+→` | `Super+Ctrl+Right` (or `Shift+Super+.`) | `Meta+Ctrl+Shift+D` | — (drag-to-reorder by mouse only) | Meta+Ctrl+Right |
-| Move window up/down (in-column) | `Mod+Ctrl+K` / `Mod+Ctrl+J` | `Super+Ctrl+Up` / `Super+Ctrl+Down` | `Meta+Shift+W` / `Meta+Shift+S` | — (no vertical stacking yet) | Meta+Ctrl+Up / Meta+Ctrl+Down |
+| Move column left | `Mod+Ctrl+H` / `Mod+Ctrl+←` | `Super+Ctrl+Left` (or `Shift+Super+,`) | `Meta+Ctrl+Shift+A` | `Meta+Ctrl+Left` ✓ | Meta+Ctrl+Left |
+| Move column right | `Mod+Ctrl+L` / `Mod+Ctrl+→` | `Super+Ctrl+Right` (or `Shift+Super+.`) | `Meta+Ctrl+Shift+D` | `Meta+Ctrl+Right` ✓ | Meta+Ctrl+Right |
+| Move window up/down (in-column) | `Mod+Ctrl+K` / `Mod+Ctrl+J` | `Super+Ctrl+Up` / `Super+Ctrl+Down` | `Meta+Shift+W` / `Meta+Shift+S` | `Meta+Ctrl+Up` / `Meta+Ctrl+Down` ✓ | Meta+Ctrl+Up / Meta+Ctrl+Down |
 | Move column/window to start/end | — | — | `Meta+Ctrl+Shift+Home` / `End` (column), `Meta+Shift+Home` / `End` (window) | — | Meta+Ctrl+Home / Meta+Ctrl+End |
 | Cycle column width presets | `Mod+R` (+`Shift` reverse) | `Super+R` (+`Alt` reverse) | `Meta+R` (+`Shift` reverse) | — | `Meta+R` (+`Shift` reverse) |
 | Increase/decrease column width | `Mod+=` / `Mod+-` | `Super++` / `Super+-` | `Meta+Ctrl++` / `Meta+Ctrl+-` | — | Meta++` / `Meta+- |
@@ -56,8 +56,8 @@ Empty cells mean the project has no equivalent (by design, or not yet built).
 | Close focused window | `Mod+Q` | `Super+Backspace` | — | — |  |
 | Switch workspace/strip up | `Mod+I` / `Mod+PageUp` | `Super+PageUp` | — (no workspace concept) | `Meta+Page_Up` | `Meta+Page_Up` |
 | Switch workspace/strip down | `Mod+U` / `Mod+PageDown` | `Super+PageDown` | — (no workspace concept) | `Meta+Page_Down` | `Meta+Page_Down` |
-| Move column to workspace/strip above | `Mod+Ctrl+I` / `Mod+Ctrl+PageUp` | `Ctrl+Super+PageUp` | — | `Meta+Shift+Page_Up` | `Meta+Shift+Page_Up` |
-| Move column to workspace/strip below | `Mod+Ctrl+U` / `Mod+Ctrl+PageDown` | `Ctrl+Super+PageDown` | — | `Meta+Shift+Page_Down` | `Meta+Shift+Page_Down` |
+| Move column to workspace/strip above | `Mod+Ctrl+I` / `Mod+Ctrl+PageUp` | `Ctrl+Super+PageUp` | — | `Meta+Ctrl+Page_Up` ✓ | `Meta+Ctrl+Page_Up` |
+| Move column to workspace/strip below | `Mod+Ctrl+U` / `Mod+Ctrl+PageDown` | `Ctrl+Super+PageDown` | — | `Meta+Ctrl+Page_Down` ✓ | `Meta+Ctrl+Page_Down` |
 | Move whole workspace up/down | `Mod+Shift+I` / `Mod+Shift+PageUp` etc. | — | — | — |  |
 | Focus monitor left/right/up/down | `Mod+Shift+H/J/K/L` | `Super+Shift+Left/Right/Up/Down` | — | — |  |
 | Move column to monitor left/right/up/down | `Mod+Ctrl+Shift+H/J/K/L` | `Shift+Ctrl+Super+Left/Right/Up/Down` | — | — |  |
