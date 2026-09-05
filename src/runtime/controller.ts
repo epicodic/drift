@@ -60,6 +60,16 @@ export class Controller {
             stripDown: () => this.focusAndShowMinimap((stack) => stack.stripDown()),
             moveColumnToStripAbove: () => this.focusAndShowMinimap((stack) => stack.moveColumnToStripAbove()),
             moveColumnToStripBelow: () => this.focusAndShowMinimap((stack) => stack.moveColumnToStripBelow()),
+            focusFirst: () => this.focusAndShowMinimap((stack) => stack.focusFirst()),
+            focusLast: () => this.focusAndShowMinimap((stack) => stack.focusLast()),
+            moveWindowToStart: () => this.focusAndShowMinimap((stack) => stack.moveWindowToStart()),
+            moveWindowToEnd: () => this.focusAndShowMinimap((stack) => stack.moveWindowToEnd()),
+            shiftViewportToStart: () => this.stripManager.activeStripStack().shiftViewportToStart(),
+            shiftViewportToEnd: () => this.stripManager.activeStripStack().shiftViewportToEnd(),
+            increaseColumnWidth: () => this.stripManager.activeStripStack().increaseColumnWidth(),
+            decreaseColumnWidth: () => this.stripManager.activeStripStack().decreaseColumnWidth(),
+            increaseWindowHeight: () => this.stripManager.activeStripStack().increaseWindowHeight(),
+            decreaseWindowHeight: () => this.stripManager.activeStripStack().decreaseWindowHeight(),
         });
         void this.scriptUiDirUrl; // only used by the disabled conflict check above
         console.log('Drift: initialized');
