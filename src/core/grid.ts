@@ -109,6 +109,18 @@ export class Grid {
         return this.moveFocus(1);
     }
 
+    /** Jumps focus directly to the first visible column, regardless of current focus —
+     * unlike `focusLeft`, which walks one column at a time. No-op if already there, or if
+     * there is no focused column at all (empty grid). */
+    focusFirst(): Column | null {
+        return this.focusEdge(0, 1);
+    }
+
+    /** Jumps focus directly to the last visible column — see `focusFirst`. */
+    focusLast(): Column | null {
+        return this.focusEdge(this.ordered.length - 1, -1);
+    }
+
     virtualWidth(): number {
         if (this.ordered.length === 0) {
             return 0;
@@ -339,6 +351,22 @@ export class Grid {
             if (!this.ordered[target].hidden) {
                 this.focusedColumnId = this.ordered[target].id;
                 return this.ordered[target];
+            }
+        }
+        return this.columnById(this.focusedColumnId);
+    }
+
+    /** Scans from `start` in direction `step` for the first visible column, skipping
+     * hidden ones, and focuses it. Falls back to the current focus if none is found
+     * (e.g. every column is hidden), or returns null if there's no focus to fall back to. */
+    private focusEdge(start: number, step: number): Column | null {
+        if (this.focusedColumnId === null) {
+            return null;
+        }
+        for (let i = start; i >= 0 && i < this.ordered.length; i += step) {
+            if (!this.ordered[i].hidden) {
+                this.focusedColumnId = this.ordered[i].id;
+                return this.ordered[i];
             }
         }
         return this.columnById(this.focusedColumnId);

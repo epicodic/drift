@@ -467,6 +467,48 @@ describe('Grid — focus navigation skips hidden columns', () => {
     });
 });
 
+describe('Grid — focusFirst/focusLast', () => {
+    it('jumps focus to the first/last column regardless of current focus', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        grid.addColumn(300);
+        const c = grid.addColumn(300);
+        grid.setFocus(c.id);
+
+        expect(grid.focusLast()).toBe(c);
+        expect(grid.focusFirst()).toBe(a);
+    });
+
+    it('is a no-op when already at the reachable edge', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        grid.addColumn(300);
+        grid.setFocus(a.id);
+
+        expect(grid.focusFirst()).toBe(a);
+    });
+
+    it('skips hidden columns at the edges', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(300);
+        const c = grid.addColumn(300);
+        grid.hideColumn(a.id);
+        grid.hideColumn(c.id);
+        grid.setFocus(b.id);
+
+        expect(grid.focusFirst()).toBe(b);
+        expect(grid.focusLast()).toBe(b);
+    });
+
+    it('returns null when there is no focused column', () => {
+        const grid = new Grid(HEIGHT, GAP);
+
+        expect(grid.focusFirst()).toBeNull();
+        expect(grid.focusLast()).toBeNull();
+    });
+});
+
 describe('Grid — reordering', () => {
     it('moves a column to a new index and recomputes positions', () => {
         const grid = new Grid(HEIGHT, GAP);
