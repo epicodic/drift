@@ -65,6 +65,11 @@ FIXTURE_ALL_COMPONENTS='ao 3 "/component/kwin" "/component/kaccess" "/component/
 # is 285212692, which is exactly Meta (268435456) + Right (16777236).
 assert_eq "keyseq_to_int computes Meta+Right" "285212692" "$(keyseq_to_int "Meta+Right")"
 
+# Num maps to Qt::KeypadModifier (qnamespace.h), used for numpad-key alternate bindings.
+assert_eq "modifier_bit computes Num" "536870912" "$(modifier_bit "Num")"
+assert_eq "keyseq_to_int computes Meta+Num+Plus" "805306411" "$(keyseq_to_int "Meta+Num+Plus")"
+assert_eq "keyseq_to_int computes Meta+Shift+Num+Minus" "838860845" "$(keyseq_to_int "Meta+Shift+Num+Minus")"
+
 # key_code falls back to the ASCII code for any single uppercase letter, since
 # Qt::Key_A..Key_Z equal ASCII 'A'..'Z' — cross-checked against qnamespace.h.
 assert_eq "key_code falls back to ASCII for D" "68" "$(key_code "D")"

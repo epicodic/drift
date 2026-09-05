@@ -5,7 +5,18 @@
 # release half.
 #
 # Table-driven: DRIFT_BINDINGS below is the single source of truth. Each line is
-#   drift_action_name|drift_action_text|sequence
+#   drift_action_name | drift_action_text | sequence | alt_sequence
+# alt_sequence is optional (omit both the field and its leading "|" if unused) and
+# registers a second, alternate key sequence for the same action — e.g. a numpad
+# Plus/Minus alongside the main-keyboard one. Unlike sequence, alt_sequence has no
+# counterpart in src/config/settings.ts: Drift's own QML `ShortcutHandler` (see
+# src/input/shortcuts.ts) can only ever hold one sequence per action, so alt_sequence
+# only ever reaches kglobalaccel through this script. It survives every later run of
+# Drift's own registration because that registration uses kglobalaccel's default
+# Autoloading behavior, which restores whatever is already persisted for the action
+# instead of overwriting it with the single sequence baked into the QML side.
+# (padded with spaces for readability; collapsed back to a plain "|" join right after
+# the heredoc, so every field is parsed the same as an unpadded name|text|sequence line).
 # To add or rebind a Drift shortcut, add or edit one line here — no other part of this
 # script needs to change unless the sequence uses a key or modifier not already known
 # to key_code()/modifier_bit() in setup-shortcuts-lib.sh. Which action (if any)
@@ -46,37 +57,41 @@ SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 # shellcheck source=./setup-shortcuts-lib.sh
 . "${SCRIPT_DIR}/setup-shortcuts-lib.sh"
 
+# Action Name               | Text                              | Sequence          | Alt Sequence
 DRIFT_BINDINGS='
-DriftFocusLeft|Drift: Focus Column Left|Meta+Left
-DriftFocusRight|Drift: Focus Column Right|Meta+Right
-DriftToggleDebugConsole|Drift: Toggle Debug Console|Meta+Shift+D
-DriftCycleAlignLeft|Drift: Cycle Column Align Left|Meta+Shift+Left
-DriftCycleAlignRight|Drift: Cycle Column Align Right|Meta+Shift+Right
-DriftViewportShiftLeft|Drift: Shift Viewport Left|Meta+Alt+Left
-DriftViewportShiftRight|Drift: Shift Viewport Right|Meta+Alt+Right
-DriftNavigateUp|Drift: Navigate Up|Meta+Up
-DriftNavigateDown|Drift: Navigate Down|Meta+Down
-DriftMoveWindowToStripAbove|Drift: Move Window To Strip Above|Meta+Ctrl+Up
-DriftMoveWindowToStripBelow|Drift: Move Window To Strip Below|Meta+Ctrl+Down
-DriftAbsorbRight|Drift: Absorb Column Right|Meta+I
-DriftExpel|Drift: Expel Focused Tile|Meta+O
-DriftMoveWindowLeft|Drift: Move Window Left|Meta+Ctrl+Left
-DriftMoveWindowRight|Drift: Move Window Right|Meta+Ctrl+Right
-DriftStripUp|Drift: Strip Up|Meta+Page_Up
-DriftStripDown|Drift: Strip Down|Meta+Page_Down
-DriftMoveColumnToStripAbove|Drift: Move Column To Strip Above|Meta+Ctrl+Page_Up
-DriftMoveColumnToStripBelow|Drift: Move Column To Strip Below|Meta+Ctrl+Page_Down
-DriftFocusFirst|Drift: Focus First Column|Meta+Home
-DriftFocusLast|Drift: Focus Last Column|Meta+End
-DriftMoveWindowToStart|Drift: Move Window To Start|Meta+Ctrl+Home
-DriftMoveWindowToEnd|Drift: Move Window To End|Meta+Ctrl+End
-DriftViewportShiftToStart|Drift: Shift Viewport To Start|Meta+Alt+Home
-DriftViewportShiftToEnd|Drift: Shift Viewport To End|Meta+Alt+End
-DriftIncreaseColumnWidth|Drift: Increase Column Width|Meta+Plus
-DriftDecreaseColumnWidth|Drift: Decrease Column Width|Meta+Minus
-DriftIncreaseWindowHeight|Drift: Increase Window Height|Meta+Shift+Plus
-DriftDecreaseWindowHeight|Drift: Decrease Window Height|Meta+Shift+Minus
+DriftFocusLeft              | Drift: Focus Column Left          | Meta+Left
+DriftFocusRight             | Drift: Focus Column Right         | Meta+Right
+DriftToggleDebugConsole     | Drift: Toggle Debug Console       | Meta+Shift+D
+DriftCycleAlignLeft         | Drift: Cycle Column Align Left    | Meta+Shift+Left
+DriftCycleAlignRight        | Drift: Cycle Column Align Right   | Meta+Shift+Right
+DriftViewportShiftLeft      | Drift: Shift Viewport Left        | Meta+Alt+Left
+DriftViewportShiftRight     | Drift: Shift Viewport Right       | Meta+Alt+Right
+DriftNavigateUp             | Drift: Navigate Up                | Meta+Up
+DriftNavigateDown           | Drift: Navigate Down              | Meta+Down
+DriftMoveWindowToStripAbove | Drift: Move Window To Strip Above | Meta+Ctrl+Up
+DriftMoveWindowToStripBelow | Drift: Move Window To Strip Below | Meta+Ctrl+Down
+DriftAbsorbRight            | Drift: Absorb Column Right        | Meta+I
+DriftExpel                  | Drift: Expel Focused Tile         | Meta+O
+DriftMoveWindowLeft         | Drift: Move Window Left           | Meta+Ctrl+Left
+DriftMoveWindowRight        | Drift: Move Window Right          | Meta+Ctrl+Right
+DriftStripUp                | Drift: Strip Up                   | Meta+Page_Up
+DriftStripDown              | Drift: Strip Down                 | Meta+Page_Down
+DriftMoveColumnToStripAbove | Drift: Move Column To Strip Above | Meta+Ctrl+Page_Up
+DriftMoveColumnToStripBelow | Drift: Move Column To Strip Below | Meta+Ctrl+Page_Down
+DriftFocusFirst             | Drift: Focus First Column         | Meta+Home
+DriftFocusLast              | Drift: Focus Last Column          | Meta+End
+DriftMoveWindowToStart      | Drift: Move Window To Start       | Meta+Ctrl+Home
+DriftMoveWindowToEnd        | Drift: Move Window To End         | Meta+Ctrl+End
+DriftViewportShiftToStart   | Drift: Shift Viewport To Start    | Meta+Alt+Home
+DriftViewportShiftToEnd     | Drift: Shift Viewport To End      | Meta+Alt+End
+DriftIncreaseColumnWidth    | Drift: Increase Column Width      | Meta+Plus        | Meta+Num+Plus
+DriftDecreaseColumnWidth    | Drift: Decrease Column Width      | Meta+Minus       | Meta+Num+Minus
+DriftIncreaseWindowHeight   | Drift: Increase Window Height     | Meta+Shift+Plus  | Meta+Shift+Num+Plus
+DriftDecreaseWindowHeight   | Drift: Decrease Window Height     | Meta+Shift+Minus | Meta+Shift+Num+Minus
 '
+# The padding above is purely cosmetic; collapse " | " back to "|" so every
+# downstream awk/read consumer keeps seeing the original compact field format.
+DRIFT_BINDINGS="$(printf '%s\n' "$DRIFT_BINDINGS" | sed -E 's/[[:space:]]*\|[[:space:]]*/|/g; s/[[:space:]]+$//')"
 
 if ! command -v busctl >/dev/null 2>&1; then
 	echo "setup-shortcuts.sh: busctl not found (part of systemd) — cannot continue" >&2
@@ -107,15 +122,27 @@ ALL_SHORTCUT_INFOS="$(printf '%s\n' "$COMPONENT_PATHS" | while IFS= read -r comp
 	busctl --user call org.kde.kglobalaccel "$component_path" org.kde.kglobalaccel.Component allShortcutInfos
 done)"
 
-printf '%s\n' "$DRIFT_BINDINGS" | while IFS='|' read -r row_action_name row_action_text row_sequence; do
+printf '%s\n' "$DRIFT_BINDINGS" | while IFS='|' read -r row_action_name row_action_text row_sequence row_alt_sequence; do
 	[ -z "$row_action_name" ] && continue
 
-	printf "${CYAN}%s${RESET}\n" "$row_sequence"
+	if [ -n "$row_alt_sequence" ]; then
+		printf "${CYAN}%s${RESET} (alt: ${CYAN}%s${RESET})\n" "$row_sequence" "$row_alt_sequence"
+	else
+		printf "${CYAN}%s${RESET}\n" "$row_sequence"
+	fi
 
-	target_code="$(keyseq_to_int "$row_sequence")"
+	primary_code="$(keyseq_to_int "$row_sequence")"
+	alt_code=""
+	[ -n "$row_alt_sequence" ] && alt_code="$(keyseq_to_int "$row_alt_sequence")"
+
 	conflicts="$(printf '%s\n' "$ALL_SHORTCUT_INFOS" | while IFS= read -r component_dump; do
 		[ -z "$component_dump" ] && continue
-		find_conflicting_actions "$component_dump" "$target_code" "$DRIFT_ACTION_NAMES"
+		find_conflicting_actions "$component_dump" "$primary_code" "$DRIFT_ACTION_NAMES"
+		# Not "[ -n ... ] && find...": as the last statement in this loop body, a false
+		# guard's own exit status would become the loop's exit status under set -e.
+		if [ -n "$alt_code" ]; then
+			find_conflicting_actions "$component_dump" "$alt_code" "$DRIFT_ACTION_NAMES"
+		fi
 	done)"
 	if [ -n "$conflicts" ]; then
 		printf '%s\n' "$conflicts" | while IFS='|' read -r conflict_name conflict_text conflict_component conflict_component_friendly; do
@@ -125,10 +152,14 @@ printf '%s\n' "$DRIFT_BINDINGS" | while IFS='|' read -r row_action_name row_acti
 		done
 	fi
 
-	code="$(keyseq_to_int "$row_sequence")"
 	printf "  ${GREEN}✓${RESET} Setting up \"${row_action_text}\"...\n"
-	busctl --user call org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel setShortcut asaiu \
-		4 kwin "${row_action_name}" KWin "${row_action_text}" 1 "${code}" 4 >/dev/null
+	if [ -n "$alt_code" ]; then
+		busctl --user call org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel setShortcut asaiu \
+			4 kwin "${row_action_name}" KWin "${row_action_text}" 2 "${primary_code}" "${alt_code}" 4 >/dev/null
+	else
+		busctl --user call org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel setShortcut asaiu \
+			4 kwin "${row_action_name}" KWin "${row_action_text}" 1 "${primary_code}" 4 >/dev/null
+	fi
 done
 
 printf "\n${GREEN}Done.${RESET} If a shortcut still doesn't respond, log out and back in.\n"
