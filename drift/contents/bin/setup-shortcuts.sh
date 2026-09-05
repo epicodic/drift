@@ -76,23 +76,11 @@ fi
 # conflict with itself (e.g. on a second run, after Drift already holds the key).
 DRIFT_ACTION_NAMES="$(printf '%s\n' "$DRIFT_BINDINGS" | awk -F'|' 'NF > 1 { print $1 }')"
 
-release() {
-	action_name="$1"
-	action_text="$2"
-	echo "Releasing \"${action_text}\"..."
-	busctl --user call org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel setShortcut asaiu \
-		4 kwin "${action_name}" KWin "${action_text}" 0 4 >/dev/null
-}
-
-register() {
-	action_name="$1"
-	action_text="$2"
-	sequence="$3"
-	code="$(keyseq_to_int "$sequence")"
-	echo "Registering \"${action_text}\" as ${sequence}..."
-	busctl --user call org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel setShortcut asaiu \
-		4 kwin "${action_name}" KWin "${action_text}" 1 "${code}" 4 >/dev/null
-}
+# Color codes for output
+CYAN='\033[36m'
+YELLOW='\033[33m'
+GREEN='\033[32m'
+RESET='\033[0m'
 
 # Snapshot of every kwin-component shortcut and its current active/default keys, taken
 # once up front so every binding below is checked against the same pre-run state.
@@ -100,14 +88,23 @@ ALL_SHORTCUT_INFOS="$(busctl --user call org.kde.kglobalaccel /component/kwin or
 
 printf '%s\n' "$DRIFT_BINDINGS" | while IFS='|' read -r row_action_name row_action_text row_sequence; do
 	[ -z "$row_action_name" ] && continue
+
+	printf "${CYAN}%s${RESET}\n" "$row_sequence"
+
 	target_code="$(keyseq_to_int "$row_sequence")"
 	conflicts="$(find_conflicting_actions "$ALL_SHORTCUT_INFOS" "$target_code" "$DRIFT_ACTION_NAMES")"
 	if [ -n "$conflicts" ]; then
 		printf '%s\n' "$conflicts" | while IFS='|' read -r conflict_name conflict_text; do
-			release "$conflict_name" "$conflict_text"
+			printf "  ${YELLOW}⎯${RESET} Releasing \"${conflict_text}\"...\n"
+			busctl --user call org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel setShortcut asaiu \
+				4 kwin "${conflict_name}" KWin "${conflict_text}" 0 4 >/dev/null
 		done
 	fi
-	register "$row_action_name" "$row_action_text" "$row_sequence"
+
+	code="$(keyseq_to_int "$row_sequence")"
+	printf "  ${GREEN}✓${RESET} Setting up \"${row_action_text}\"...\n"
+	busctl --user call org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel setShortcut asaiu \
+		4 kwin "${row_action_name}" KWin "${row_action_text}" 1 "${code}" 4 >/dev/null
 done
 
-echo "Done. If a shortcut still doesn't respond, log out and back in."
+printf "\n${GREEN}Done.${RESET} If a shortcut still doesn't respond, log out and back in.\n"
