@@ -663,9 +663,16 @@ export class Strip {
         this.cycleAlign('right');
     }
 
+    private animateViewportTo(target: number): void {
+        this.animator.animate(this.viewport.offset(), target, this.settings.animationDurationMs);
+    }
+
+    private shiftViewport(delta: number): void {
+        this.animateViewportTo(this.viewport.offset() + delta);
+    }
+
     /** Pans the camera without touching focus — unlike focusLeft/Right and cycleAlign,
-     * the focused column never changes. Deliberately unclamped: the user can keep
-     * panning past either end of the content. */
+     * which both move or reposition the focused column itself. */
     shiftViewportLeft(): void {
         this.shiftViewport(this.settings.viewportShiftStep);
     }
@@ -674,9 +681,20 @@ export class Strip {
         this.shiftViewport(-this.settings.viewportShiftStep);
     }
 
-    private shiftViewport(delta: number): void {
-        const target = this.viewport.offset() + delta;
-        this.animator.animate(this.viewport.offset(), target, this.settings.animationDurationMs);
+    /** Pans directly to the strip's leftmost content edge, without changing focus —
+     * the "jump" form of `shiftViewportLeft`, which pans by a fixed step. */
+    shiftViewportToStart(): void {
+        this.animateViewportTo(this.viewport.contentLeft());
+    }
+
+    /** Pans directly to the strip's rightmost content edge — see `shiftViewportToStart`.
+     * Falls back to `contentLeft()` when the content is narrower than the viewport (there
+     * is no further edge to reveal), the same floor `Viewport`'s own private `maxOffset()`
+     * uses internally. */
+    shiftViewportToEnd(): void {
+        const start = this.viewport.contentLeft();
+        const end = start + this.viewport.contentWidth() - this.viewport.viewportWidth();
+        this.animateViewportTo(Math.max(start, end));
     }
 
     /** Cycles the focused column through left/center/right of whichever physical screen

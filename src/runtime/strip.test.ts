@@ -1502,3 +1502,48 @@ describe('Strip — moveWindowToStart/moveWindowToEnd', () => {
         expect(() => strip.moveWindowToEnd()).not.toThrow();
     });
 });
+
+describe('Strip — shiftViewportToStart/shiftViewportToEnd', () => {
+    function twoColumnStrip(): { strip: Strip; win1: FakeWindow; win2: FakeWindow } {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win1 = fakeWindow('w1');
+        const win2 = fakeWindow('w2');
+        strip.addWindow(win1.adapter);
+        strip.addWindow(win2.adapter); // col2 focused; revealFocused already scrolled right
+        strip.focusLeft(); // back to col1, offset 0
+        win1.setFrameGeometry.mockClear();
+        win2.setFrameGeometry.mockClear();
+        win1.activate.mockClear();
+        win2.activate.mockClear();
+        return { strip, win1, win2 };
+    }
+
+    it('shiftViewportToEnd pans to contentWidth-minus-viewportWidth (1608 - 1280 = 328)', () => {
+        const { strip, win2 } = twoColumnStrip();
+
+        strip.shiftViewportToEnd();
+
+        // col2's virtual x is 808 (800 + gap 8); real x = virtual x - offset
+        expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 808 - 328 }));
+    });
+
+    it('shiftViewportToStart pans back to offset 0', () => {
+        const { strip, win1 } = twoColumnStrip();
+        strip.shiftViewportToEnd();
+        win1.setFrameGeometry.mockClear();
+
+        strip.shiftViewportToStart();
+
+        expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 0 }));
+    });
+
+    it('does not change which column is focused', () => {
+        const { strip, win1, win2 } = twoColumnStrip();
+
+        strip.shiftViewportToEnd();
+        strip.shiftViewportToStart();
+
+        expect(win1.activate).not.toHaveBeenCalled();
+        expect(win2.activate).not.toHaveBeenCalled();
+    });
+});
