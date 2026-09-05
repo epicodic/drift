@@ -1,17 +1,19 @@
 #!/bin/sh
-# Sets up Drift's global shortcuts end to end: frees any KWin action currently holding
-# an active grant on one of Drift's target keys, then explicitly registers each Drift
-# binding with kglobalaccel. Replaces release-shortcuts.sh, which only did the release
-# half.
+# Sets up Drift's global shortcuts end to end: frees any kglobalaccel action currently
+# holding an active grant on one of Drift's target keys, then explicitly registers each
+# Drift binding with kglobalaccel. Replaces release-shortcuts.sh, which only did the
+# release half.
 #
 # Table-driven: DRIFT_BINDINGS below is the single source of truth. Each line is
 #   drift_action_name|drift_action_text|sequence
 # To add or rebind a Drift shortcut, add or edit one line here — no other part of this
 # script needs to change unless the sequence uses a key or modifier not already known
-# to key_code()/modifier_bit() in setup-shortcuts-lib.sh. Which KWin action (if any)
+# to key_code()/modifier_bit() in setup-shortcuts-lib.sh. Which action (if any)
 # currently collides with a given sequence is discovered at run time via
-# kglobalaccel's allShortcutInfos, rather than hardcoded here — see
-# find_conflicting_actions() in setup-shortcuts-lib.sh.
+# kglobalaccel's allShortcutInfos, queried across *every* registered component (not
+# just kwin) — a conflict isn't always a core KWin action; e.g. Meta+I's default
+# conflict is systemsettings.desktop's own "launch application" shortcut, a completely
+# separate component. See find_conflicting_actions() in setup-shortcuts-lib.sh.
 #
 # This intentionally duplicates each shortcut's default sequence, which also lives in
 # src/config/settings.ts (DEFAULT_SETTINGS) — that duplication is unavoidable: this
@@ -92,9 +94,18 @@ YELLOW='\033[33m'
 GREEN='\033[32m'
 RESET='\033[0m'
 
-# Snapshot of every kwin-component shortcut and its current active/default keys, taken
-# once up front so every binding below is checked against the same pre-run state.
-ALL_SHORTCUT_INFOS="$(busctl --user call org.kde.kglobalaccel /component/kwin org.kde.kglobalaccel.Component allShortcutInfos)"
+# Every registered kglobalaccel component (kwin, systemsettings.desktop, kaccess,
+# etc.) — a conflicting shortcut can be owned by any of these, not only kwin.
+COMPONENT_PATHS="$(parse_component_paths "$(busctl --user call org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel allComponents)")"
+
+# Snapshot of every component's shortcuts and their current active/default keys, taken
+# once up front so every binding below is checked against the same pre-run state. One
+# allShortcutInfos reply per line, since each reply is itself a self-contained struct
+# array that find_conflicting_actions parses independently.
+ALL_SHORTCUT_INFOS="$(printf '%s\n' "$COMPONENT_PATHS" | while IFS= read -r component_path; do
+	[ -z "$component_path" ] && continue
+	busctl --user call org.kde.kglobalaccel "$component_path" org.kde.kglobalaccel.Component allShortcutInfos
+done)"
 
 printf '%s\n' "$DRIFT_BINDINGS" | while IFS='|' read -r row_action_name row_action_text row_sequence; do
 	[ -z "$row_action_name" ] && continue
@@ -102,12 +113,15 @@ printf '%s\n' "$DRIFT_BINDINGS" | while IFS='|' read -r row_action_name row_acti
 	printf "${CYAN}%s${RESET}\n" "$row_sequence"
 
 	target_code="$(keyseq_to_int "$row_sequence")"
-	conflicts="$(find_conflicting_actions "$ALL_SHORTCUT_INFOS" "$target_code" "$DRIFT_ACTION_NAMES")"
+	conflicts="$(printf '%s\n' "$ALL_SHORTCUT_INFOS" | while IFS= read -r component_dump; do
+		[ -z "$component_dump" ] && continue
+		find_conflicting_actions "$component_dump" "$target_code" "$DRIFT_ACTION_NAMES"
+	done)"
 	if [ -n "$conflicts" ]; then
-		printf '%s\n' "$conflicts" | while IFS='|' read -r conflict_name conflict_text; do
-			printf "  ${YELLOW}⎯${RESET} Releasing \"${conflict_text}\"...\n"
+		printf '%s\n' "$conflicts" | while IFS='|' read -r conflict_name conflict_text conflict_component conflict_component_friendly; do
+			printf "  ${YELLOW}⎯${RESET} Releasing \"${conflict_text}\" (${conflict_component_friendly})...\n"
 			busctl --user call org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel setShortcut asaiu \
-				4 kwin "${conflict_name}" KWin "${conflict_text}" 0 4 >/dev/null
+				4 "${conflict_component}" "${conflict_name}" "${conflict_component_friendly}" "${conflict_text}" 0 4 >/dev/null
 		done
 	fi
 
