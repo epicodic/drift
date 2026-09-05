@@ -68,14 +68,30 @@ keyseq_to_int() {
 	echo "$total"
 }
 
-# Tokenizes one `busctl call ... allShortcutInfos` reply line (a(ssssssaiai) signature)
-# into one token per output line: a quoted segment becomes its unquoted content
-# (which may itself contain spaces), everything else splits on runs of spaces. This
-# mirrors POSIX shell word-splitting closely enough that `set -- $(tokenize... )` under
-# IFS=newline turns the reply into positional parameters without needing `eval` on
-# D-Bus-sourced text.
-tokenize_shortcut_info() {
-	awk '
+# Tokenizes one `busctl call ...` reply line (any signature, e.g. allShortcutInfos'
+# a(ssssssaiai) or allComponents' ao) into one token per output line: a quoted segment
+# becomes its unquoted content (which may itself contain spaces), everything else
+# splits on runs of spaces. This mirrors POSIX shell word-splitting closely enough
+# that `set -- $(tokenize... )` under IFS=newline turns the reply into positional
+# parameters without needing `eval` on D-Bus-sourced text.
+#
+# busctl backslash-escapes any quote embedded in a string value (confirmed live, e.g.
+# ActivityManager's action friendly text `Switch to activity \"Browsing\"`) — such an
+# escaped quote must not be treated as ending the token, or every field after it
+# desyncs from its expected fixed-width position.
+#
+# A quoted segment that is genuinely empty (e.g. some actions have an empty
+# actionFriendly, confirmed live for KDE_Keyboard_Layout_Switcher's actions) is
+# emitted as EMPTY_FIELD_SENTINEL rather than a blank line: `set -- $(...)` under
+# IFS=newline treats newline as an IFS whitespace character, so consecutive
+# delimiters collapse and a truly-blank line vanishes instead of becoming an empty
+# positional parameter — silently desyncing every fixed-width field read after it.
+# Callers must restore the sentinel back to "" after capturing each field (see
+# find_conflicting_actions).
+EMPTY_FIELD_SENTINEL='@@DRIFT_EMPTY_FIELD@@'
+
+tokenize_busctl_reply() {
+	awk -v empty_sentinel="$EMPTY_FIELD_SENTINEL" '
 	{
 		n = length($0)
 		token = ""
@@ -83,7 +99,16 @@ tokenize_shortcut_info() {
 		for (i = 1; i <= n; i++) {
 			c = substr($0, i, 1)
 			if (inq) {
-				if (c == "\"") { print token; token = ""; inq = 0 }
+				if (c == "\\" && substr($0, i + 1, 1) == "\"") {
+					token = token "\""
+					i++
+					continue
+				}
+				if (c == "\"") {
+					print (token == "" ? empty_sentinel : token)
+					token = ""
+					inq = 0
+				}
 				else token = token c
 			} else if (c == "\"") {
 				inq = 1
@@ -100,10 +125,14 @@ tokenize_shortcut_info() {
 # Parses a raw allShortcutInfos reply (a(ssssssaiai): per action, 6 strings —
 # actionUnique, actionFriendly, componentUnique, componentFriendly, contextUnique,
 # contextFriendly — then activeKeys (ai) then defaultKeys (ai)) and prints
-# "actionUnique|actionFriendly" for each action, other than one listed in
-# exclude_actions (newline-separated, exact match), currently holding an *active*
-# grant on target_code. A key appearing only in an action's defaultKeys (already
-# released, or never granted) is not a conflict.
+# "actionUnique|actionFriendly|componentUnique|componentFriendly" for each action,
+# other than one listed in exclude_actions (newline-separated, exact match), currently
+# holding an *active* grant on target_code. A key appearing only in an action's
+# defaultKeys (already released, or never granted) is not a conflict. componentUnique
+# and componentFriendly are included because the conflict may not belong to the
+# component whose reply this is (see find_conflicting_actions callers, which run this
+# once per component) — the caller needs them to release the shortcut from its actual
+# owning component rather than assuming kwin.
 find_conflicting_actions() {
 	raw_output="$1"
 	target_code="$2"
@@ -113,8 +142,8 @@ find_conflicting_actions() {
 
 	old_ifs="$IFS"
 	IFS="$nl"
-	# shellcheck disable=SC2046 # tokenize_shortcut_info emits one token per line
-	set -- $(printf '%s\n' "$raw_output" | tokenize_shortcut_info)
+	# shellcheck disable=SC2046 # tokenize_busctl_reply emits one token per line
+	set -- $(printf '%s\n' "$raw_output" | tokenize_busctl_reply)
 	IFS="$old_ifs"
 
 	shift 1 # signature token, e.g. "a(ssssssaiai)"
@@ -125,7 +154,13 @@ find_conflicting_actions() {
 	while [ "$count" -lt "$struct_count" ]; do
 		action_unique="$1"
 		action_friendly="$2"
+		component_unique="$3"
+		component_friendly="$4"
 		shift 6 # the 6 string fields
+		[ "$action_unique" = "$EMPTY_FIELD_SENTINEL" ] && action_unique=""
+		[ "$action_friendly" = "$EMPTY_FIELD_SENTINEL" ] && action_friendly=""
+		[ "$component_unique" = "$EMPTY_FIELD_SENTINEL" ] && component_unique=""
+		[ "$component_friendly" = "$EMPTY_FIELD_SENTINEL" ] && component_friendly=""
 
 		active_count="$1"
 		shift 1
@@ -148,10 +183,33 @@ find_conflicting_actions() {
 		if [ "$matched" -eq 1 ]; then
 			case "${nl}${exclude_actions}${nl}" in
 				*"${nl}${action_unique}${nl}"*) : ;;
-				*) printf '%s|%s\n' "$action_unique" "$action_friendly" ;;
+				*) printf '%s|%s|%s|%s\n' "$action_unique" "$action_friendly" "$component_unique" "$component_friendly" ;;
 			esac
 		fi
 
 		count=$((count + 1))
+	done
+}
+
+# Parses a raw allComponents reply (ao: an array of "/component/<id>" object paths)
+# and prints one object path per line. Used to discover every kglobalaccel component
+# up front, since a conflicting shortcut is not necessarily owned by the "kwin"
+# component (e.g. a global "launch application" shortcut owned by a desktop file's own
+# component) — see setup-shortcuts.sh, which queries allShortcutInfos on each path
+# this returns rather than assuming kwin is the only component worth checking.
+parse_component_paths() {
+	raw_output="$1"
+	nl='
+'
+
+	old_ifs="$IFS"
+	IFS="$nl"
+	# shellcheck disable=SC2046 # tokenize_busctl_reply emits one token per line
+	set -- $(printf '%s\n' "$raw_output" | tokenize_busctl_reply)
+	IFS="$old_ifs"
+
+	shift 2 # signature token "ao", then the element count
+	for path in "$@"; do
+		printf '%s\n' "$path"
 	done
 }
