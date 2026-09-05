@@ -40,7 +40,9 @@ function parseSetupShortcutsBindings(): Map<string, string> {
     const bindings = new Map<string, string>();
     for (const line of tableMatch[1].split('\n')) {
         if (!line.trim()) continue;
-        const [actionName, , sequence] = line.split('|');
+        // Table columns are padded for readability; a trailing 4th column (alt
+        // sequence, e.g. a numpad alternate) is optional and ignored here.
+        const [actionName, , sequence] = line.split('|').map((field) => field.trim());
         bindings.set(actionName, sequence);
     }
     return bindings;

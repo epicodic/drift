@@ -39,6 +39,7 @@ modifier_bit() {
 		Ctrl) echo 67108864 ;;
 		Alt) echo 134217728 ;;
 		Meta) echo 268435456 ;;
+		Num) echo 536870912 ;; # Qt::KeypadModifier — distinguishes numpad keys from their main-keyboard counterparts
 		*)
 			echo "setup-shortcuts-lib.sh: unknown modifier \"$1\" — add it to modifier_bit()" >&2
 			exit 1
