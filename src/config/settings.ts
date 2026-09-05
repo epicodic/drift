@@ -87,9 +87,11 @@ export interface Settings {
     shortcutDecreaseWindowHeight: string;
     /** Distance the viewport pans per shortcut press, in pixels. */
     viewportShiftStep: number;
-    /** Distance a column's width changes per `shortcutIncreaseColumnWidth`/`shortcutDecreaseColumnWidth` press, in pixels. */
+    /** Distance a column's width changes per `shortcutIncreaseColumnWidth`/`shortcutDecreaseColumnWidth`
+     * press, in pixels. */
     columnWidthStep: number;
-    /** Distance a stacked tile's height changes per `shortcutIncreaseWindowHeight`/`shortcutDecreaseWindowHeight` press, in pixels. */
+    /** Distance a stacked tile's height changes per `shortcutIncreaseWindowHeight`/`shortcutDecreaseWindowHeight`
+     * press, in pixels. */
     windowHeightStep: number;
     /** How long the pointer must stay at the screen's top/bottom edge before the dragged
      * window flips into the strip above/below, in milliseconds (docs:
