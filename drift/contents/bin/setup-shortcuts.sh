@@ -1,54 +1,46 @@
 #!/bin/sh
 # Sets up Drift's global shortcuts end to end: frees any kglobalaccel action currently
 # holding an active grant on one of Drift's target keys, then explicitly registers each
-# Drift binding with kglobalaccel. Replaces release-shortcuts.sh, which only did the
-# release half.
+# Drift binding with kglobalaccel.
 #
-# Table-driven: DRIFT_BINDINGS below is the single source of truth. Each line is
-#   drift_action_name | drift_action_text | sequence | alt_sequence
-# alt_sequence is optional (omit both the field and its leading "|" if unused) and
-# registers a second, alternate key sequence for the same action — e.g. a numpad
-# Plus/Minus alongside the main-keyboard one. Unlike sequence, alt_sequence has no
-# counterpart in src/config/settings.ts: Drift's own QML `ShortcutHandler` (see
-# src/input/shortcuts.ts) can only ever hold one sequence per action, so alt_sequence
-# only ever reaches kglobalaccel through this script. It survives every later run of
-# Drift's own registration because that registration uses kglobalaccel's default
-# Autoloading behavior, which restores whatever is already persisted for the action
-# instead of overwriting it with the single sequence baked into the QML side.
-# (padded with spaces for readability; collapsed back to a plain "|" join right after
-# the heredoc, so every field is parsed the same as an unpadded name|text|sequence line).
-# To add or rebind a Drift shortcut, add or edit one line here — no other part of this
-# script needs to change unless the sequence uses a key or modifier not already known
-# to key_code()/modifier_bit() in setup-shortcuts-lib.sh. Which action (if any)
-# currently collides with a given sequence is discovered at run time via
-# kglobalaccel's allShortcutInfos, queried across *every* registered component (not
-# just kwin) — a conflict isn't always a core KWin action; e.g. Meta+I's default
-# conflict is systemsettings.desktop's own "launch application" shortcut, a completely
-# separate component. See find_conflicting_actions() in setup-shortcuts-lib.sh.
-#
-# This intentionally duplicates each shortcut's default sequence, which also lives in
-# src/config/settings.ts (DEFAULT_SETTINGS) — that duplication is unavoidable: this
-# script runs standalone, outside the KWin script process, before Drift has a chance to
-# self-register anything.
-#
-# Registering here does not replace Drift's own QML `ShortcutHandler` elements
-# (src/input/shortcuts.ts) — those remain required, since they are what actually
-# receives KWin's "shortcut activated" signal and calls into Drift's logic. This script
-# only ensures kglobalaccel's declared/active shortcut for each Drift action already
-# matches Drift's default before Drift's own registration runs, and frees whatever KWin
-# default would otherwise block it.
-#
-# Uses busctl (part of systemd) rather than qdbus6: qdbus6's own argument-type
-# inference can't guess the type of an empty array literal (needed for the "clear the
-# keys" `ai` argument when releasing), confirmed live — busctl's explicit type
-# signature sidesteps that entirely (see the retired release-shortcuts.sh history for
-# where this was first confirmed).
-#
-# Freeing a KWin core action's shortcut only clears the *declared* assignment in
-# kglobalaccel; if that action's process already holds a live grab on the key (as KWin
-# does for its own compiled-in core actions), the grab itself is only released after a
-# logout/login. If a shortcut still doesn't respond after running this script, log out
-# and back in.
+# - Table-driven: DRIFT_BINDINGS below is the single source of truth, one line per
+#   action: `drift_action_name | drift_action_text | sequence | alt_sequence`.
+#   To add or rebind a shortcut, edit a line here — nothing else needs to change
+#   unless the sequence uses a key/modifier not already known to key_code()/
+#   modifier_bit() in setup-shortcuts-lib.sh. Fields are padded with spaces for
+#   readability and collapsed back to a plain "|" join right after the heredoc.
+# - alt_sequence is optional (omit the field and its leading "|" if unused) and
+#   registers a second key sequence for the same action, e.g. a numpad Plus/Minus
+#   alongside the main-keyboard one. It has no counterpart in src/config/settings.ts:
+#   Drift's own QML `ShortcutHandler` (src/input/shortcuts.ts) can only hold one
+#   sequence per action, so alt_sequence only ever reaches kglobalaccel through this
+#   script. It survives later runs of Drift's own registration because that
+#   registration relies on kglobalaccel's default Autoloading behavior, which restores
+#   whatever is already persisted instead of overwriting it with the QML side's single
+#   sequence.
+# - Conflict detection is dynamic: which action (if any) collides with a given sequence
+#   is discovered at run time via kglobalaccel's allShortcutInfos, queried across
+#   *every* registered component (not just kwin) — e.g. Meta+I's default conflict is
+#   systemsettings.desktop's "launch application" shortcut, a separate component. See
+#   find_conflicting_actions() in setup-shortcuts-lib.sh.
+# - Default sequences are intentionally duplicated from src/config/settings.ts
+#   (DEFAULT_SETTINGS); unavoidable since this script runs standalone, outside the
+#   KWin script process, before Drift has a chance to self-register anything.
+# - This script doesn't replace Drift's own QML `ShortcutHandler` elements
+#   (src/input/shortcuts.ts) — those remain required, since they actually receive
+#   KWin's "shortcut activated" signal and call into Drift's logic. This script only
+#   ensures kglobalaccel's declared/active shortcut for each action already matches
+#   Drift's default before Drift's own registration runs, freeing whatever KWin
+#   default would otherwise block it.
+# - Uses busctl (part of systemd) rather than qdbus6: qdbus6 can't infer the type of an
+#   empty array literal (needed for the "clear the keys" `ai` argument when releasing),
+#   confirmed live — busctl's explicit type signature sidesteps that entirely (see the
+#   retired release-shortcuts.sh history for where this was first confirmed).
+# - Freeing a KWin core action's shortcut only clears the *declared* assignment in
+#   kglobalaccel; if that action's process already holds a live grab on the key (as
+#   KWin does for its own compiled-in core actions), the grab is only released after a
+#   logout/login. If a shortcut still doesn't respond after running this script, log
+#   out and back in.
 
 set -eu
 
