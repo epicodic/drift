@@ -271,6 +271,97 @@
                                     </property>
                                 </widget>
                             </item>
+                            <item row="7" column="1">
+                                <widget class="QCheckBox" name="kcfg_focusFlashEnabled">
+                                    <property name="toolTip">
+                                        <string>Flash a blurred border around a window whenever Drift handles its focus change</string>
+                                    </property>
+                                    <property name="text">
+                                        <string>Flash the focused window's border</string>
+                                    </property>
+                                    <property name="checked">
+                                        <bool>true</bool>
+                                    </property>
+                                </widget>
+                            </item>
+                            <item row="8" column="0">
+                                <widget class="QLabel" name="label_focusFlashBorderWidth">
+                                    <property name="text">
+                                        <string>Focus flash border width:</string>
+                                    </property>
+                                </widget>
+                            </item>
+                            <item row="8" column="1">
+                                <widget class="QSpinBox" name="kcfg_focusFlashBorderWidth">
+                                    <property name="toolTip">
+                                        <string>Width of the focus-flash highlight's border</string>
+                                    </property>
+                                    <property name="suffix">
+                                        <string> px</string>
+                                    </property>
+                                    <property name="minimum">
+                                        <number>1</number>
+                                    </property>
+                                    <property name="maximum">
+                                        <number>50</number>
+                                    </property>
+                                    <property name="value">
+                                        <number>4</number>
+                                    </property>
+                                </widget>
+                            </item>
+                            <item row="9" column="0">
+                                <widget class="QLabel" name="label_focusFlashBlurRadius">
+                                    <property name="text">
+                                        <string>Focus flash blur radius:</string>
+                                    </property>
+                                </widget>
+                            </item>
+                            <item row="9" column="1">
+                                <widget class="QSpinBox" name="kcfg_focusFlashBlurRadius">
+                                    <property name="toolTip">
+                                        <string>Blur radius of the focus-flash highlight</string>
+                                    </property>
+                                    <property name="suffix">
+                                        <string> px</string>
+                                    </property>
+                                    <property name="minimum">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="maximum">
+                                        <number>100</number>
+                                    </property>
+                                    <property name="value">
+                                        <number>24</number>
+                                    </property>
+                                </widget>
+                            </item>
+                            <item row="10" column="0">
+                                <widget class="QLabel" name="label_focusFlashDurationMs">
+                                    <property name="text">
+                                        <string>Focus flash duration:</string>
+                                    </property>
+                                </widget>
+                            </item>
+                            <item row="10" column="1">
+                                <widget class="QSpinBox" name="kcfg_focusFlashDurationMs">
+                                    <property name="toolTip">
+                                        <string>Total duration of the focus-flash fade-in-then-fade-out</string>
+                                    </property>
+                                    <property name="suffix">
+                                        <string> ms</string>
+                                    </property>
+                                    <property name="minimum">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="maximum">
+                                        <number>5000</number>
+                                    </property>
+                                    <property name="value">
+                                        <number>300</number>
+                                    </property>
+                                </widget>
+                            </item>
                         </layout>
                     </widget>
                     <widget class="QWidget" name="tab_shortcuts">

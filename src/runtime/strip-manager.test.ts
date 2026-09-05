@@ -115,14 +115,24 @@ describe('StripManager', () => {
         expect(created).toHaveLength(0);
     });
 
-    it('routes activation to the owning strip stack', () => {
+    it('routes activation to the owning strip stack and reports it as managed', () => {
         const { manager, created } = makeManager();
         const w1 = fakeWin('w1');
         manager.addTo('a', 'd1', w1);
 
-        manager.activate(w1);
+        const result = manager.activate(w1);
 
         expect(created[0].activateWindow).toHaveBeenCalledWith(w1);
+        expect(result).toBe(true);
+    });
+
+    it('reports an unmanaged window activation as not managed', () => {
+        const { manager, created } = makeManager();
+
+        const result = manager.activate(fakeWin('ghost'));
+
+        expect(created).toHaveLength(0);
+        expect(result).toBe(false);
     });
 
     it('prunes strip stacks whose activity or desktop disappeared and clears their ownership', () => {

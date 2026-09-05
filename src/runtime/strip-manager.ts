@@ -61,12 +61,16 @@ export class StripManager {
         this.ownerByWindow.delete(win.id);
     }
 
-    activate(win: WindowAdapter): void {
+    /** Routes activation to the strip stack that owns `win`, if any. Returns whether `win`
+     * was actually managed by Drift — used to gate the focus-flash highlight to managed
+     * windows only (docs: 2026-09-05-focus-flash-highlight-design). */
+    activate(win: WindowAdapter): boolean {
         const key = this.ownerByWindow.get(win.id);
         if (key === undefined) {
-            return;
+            return false;
         }
         this.stacks.get(key)?.activateWindow(win);
+        return true;
     }
 
     renderActive(): void {

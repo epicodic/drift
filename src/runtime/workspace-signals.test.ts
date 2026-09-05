@@ -1,15 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import type { StripManager } from './strip-manager';
 import type { WindowManager } from './window-manager';
 import { initWorkspaceSignals } from './workspace-signals';
 
 function fakeWorkspaceAdapter() {
-    const handlers: Record<string, () => void> = {};
+    const handlers: Record<string, (win?: WindowAdapter | null) => void> = {};
     const adapter = {
         onWindowAdded: (h: () => void) => (handlers.windowAdded = h),
         onWindowRemoved: (h: () => void) => (handlers.windowRemoved = h),
-        onWindowActivated: (h: () => void) => (handlers.windowActivated = h),
+        onWindowActivated: (h: (win?: WindowAdapter | null) => void) => (handlers.windowActivated = h),
         onCurrentActivityChanged: (h: () => void) => (handlers.currentActivity = h),
         onCurrentDesktopChanged: (h: () => void) => (handlers.currentDesktop = h),
         onActivitiesChanged: (h: () => void) => (handlers.activities = h),
@@ -67,5 +68,57 @@ describe('initWorkspaceSignals', () => {
         handlers.windowAdded();
 
         expect(addWindow).toHaveBeenCalledTimes(1);
+    });
+
+    it('forwards activated windows to the window manager', () => {
+        const activateWindow = vi.fn(() => true);
+        const stripManager = { renderActive: vi.fn(), prune: vi.fn() } as unknown as StripManager;
+        const windowManager = { addWindow: vi.fn(), activateWindow } as unknown as WindowManager;
+        const { adapter, handlers } = fakeWorkspaceAdapter();
+        const win = {} as WindowAdapter;
+
+        initWorkspaceSignals(windowManager, stripManager, adapter);
+        handlers.windowActivated(win);
+
+        expect(activateWindow).toHaveBeenCalledWith(win);
+    });
+
+    it('invokes onManagedWindowActivated when the activation was managed', () => {
+        const activateWindow = vi.fn(() => true);
+        const stripManager = { renderActive: vi.fn(), prune: vi.fn() } as unknown as StripManager;
+        const windowManager = { addWindow: vi.fn(), activateWindow } as unknown as WindowManager;
+        const { adapter, handlers } = fakeWorkspaceAdapter();
+        const onManagedWindowActivated = vi.fn();
+        const win = {} as WindowAdapter;
+
+        initWorkspaceSignals(windowManager, stripManager, adapter, onManagedWindowActivated);
+        handlers.windowActivated(win);
+
+        expect(onManagedWindowActivated).toHaveBeenCalledWith(win);
+    });
+
+    it('does not invoke onManagedWindowActivated when the activation was not managed', () => {
+        const activateWindow = vi.fn(() => false);
+        const stripManager = { renderActive: vi.fn(), prune: vi.fn() } as unknown as StripManager;
+        const windowManager = { addWindow: vi.fn(), activateWindow } as unknown as WindowManager;
+        const { adapter, handlers } = fakeWorkspaceAdapter();
+        const onManagedWindowActivated = vi.fn();
+
+        initWorkspaceSignals(windowManager, stripManager, adapter, onManagedWindowActivated);
+        handlers.windowActivated({} as WindowAdapter);
+
+        expect(onManagedWindowActivated).not.toHaveBeenCalled();
+    });
+
+    it('does not throw for a null activated window or an omitted callback', () => {
+        const activateWindow = vi.fn(() => true);
+        const stripManager = { renderActive: vi.fn(), prune: vi.fn() } as unknown as StripManager;
+        const windowManager = { addWindow: vi.fn(), activateWindow } as unknown as WindowManager;
+        const { adapter, handlers } = fakeWorkspaceAdapter();
+
+        initWorkspaceSignals(windowManager, stripManager, adapter);
+
+        expect(() => handlers.windowActivated(null)).not.toThrow();
+        expect(activateWindow).toHaveBeenCalledWith(null);
     });
 });

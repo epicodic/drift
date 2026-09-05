@@ -113,6 +113,15 @@ export interface Settings {
     /** Whether the minimap's column boxes show a live preview of each window's content
      * (docs: 2026-09-01-minimap-thumbnails-design). Off falls back to icon-only, as before. */
     minimapShowThumbnails: boolean;
+    /** Whether the focus-flash highlight is shown at all (docs:
+     * 2026-09-05-focus-flash-highlight-design). */
+    focusFlashEnabled: boolean;
+    /** Width of the focus-flash highlight's border, in pixels. */
+    focusFlashBorderWidth: number;
+    /** Blur radius of the focus-flash highlight, in pixels. */
+    focusFlashBlurRadius: number;
+    /** Total duration of the focus-flash fade-in-then-fade-out, in milliseconds. */
+    focusFlashDurationMs: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -158,6 +167,10 @@ export const DEFAULT_SETTINGS: Settings = {
     columnDragDwellMs: 400,
     minimapAutoHideMs: 1200,
     minimapShowThumbnails: true,
+    focusFlashEnabled: true,
+    focusFlashBorderWidth: 4,
+    focusFlashBlurRadius: 24,
+    focusFlashDurationMs: 300,
 };
 
 /** Reads user-configurable settings from kwinrc (docs §5). Untestable glue (docs §8). */
@@ -176,6 +189,10 @@ export function loadSettings(): Settings {
         columnDragDwellMs: readNumberConfig('columnDragDwellMs', DEFAULT_SETTINGS.columnDragDwellMs),
         minimapAutoHideMs: readNumberConfig('minimapAutoHideMs', DEFAULT_SETTINGS.minimapAutoHideMs),
         minimapShowThumbnails: readBooleanConfig('minimapShowThumbnails', DEFAULT_SETTINGS.minimapShowThumbnails),
+        focusFlashEnabled: readBooleanConfig('focusFlashEnabled', DEFAULT_SETTINGS.focusFlashEnabled),
+        focusFlashBorderWidth: readNumberConfig('focusFlashBorderWidth', DEFAULT_SETTINGS.focusFlashBorderWidth),
+        focusFlashBlurRadius: readNumberConfig('focusFlashBlurRadius', DEFAULT_SETTINGS.focusFlashBlurRadius),
+        focusFlashDurationMs: readNumberConfig('focusFlashDurationMs', DEFAULT_SETTINGS.focusFlashDurationMs),
         shortcutFocusLeft: readStringConfig('shortcutFocusLeft', DEFAULT_SETTINGS.shortcutFocusLeft),
         shortcutFocusRight: readStringConfig('shortcutFocusRight', DEFAULT_SETTINGS.shortcutFocusRight),
         shortcutToggleDebugConsole: readStringConfig(
