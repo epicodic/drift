@@ -585,6 +585,19 @@ export class Strip {
         return this.moveTile((column) => column.moveFocusedTileDown());
     }
 
+    /** Grows the focused tile's height by `windowHeightStep`, taking the space from a
+     * neighbor in the same stack — the keyboard equivalent of drag-resizing a tile
+     * boundary. No-op on a single-tile column or with no focused column. Returns whether
+     * it actually grew. */
+    increaseWindowHeight(): boolean {
+        return this.moveTile((column) => column.growFocusedTile(this.settings.windowHeightStep));
+    }
+
+    /** Shrinks the focused tile's height by `windowHeightStep` — see `increaseWindowHeight`. */
+    decreaseWindowHeight(): boolean {
+        return this.moveTile((column) => column.shrinkFocusedTile(this.settings.windowHeightStep));
+    }
+
     private moveTile(move: (column: Column) => boolean): boolean {
         const column = this.grid.focusedColumn();
         if (column === null) {

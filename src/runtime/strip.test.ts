@@ -1592,3 +1592,49 @@ describe('Strip — increaseColumnWidth/decreaseColumnWidth', () => {
         expect(() => strip.decreaseColumnWidth()).not.toThrow();
     });
 });
+
+describe('Strip — increaseWindowHeight/decreaseWindowHeight', () => {
+    const STEP_SETTINGS = { ...INSTANT_SETTINGS, windowHeightStep: 50 };
+
+    it('grows the focused (top) tile, taking space from its neighbor below', () => {
+        const strip = new Strip(AREA, STEP_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win1 = fakeWindow('w1');
+        const win2 = fakeWindow('w2');
+        strip.addWindowStack([win1.adapter, win2.adapter]); // stacked column: 500/500 (AREA.height 1000)
+        win1.setFrameGeometry.mockClear();
+        win2.setFrameGeometry.mockClear();
+
+        expect(strip.increaseWindowHeight()).toBe(true);
+
+        expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ height: 550 }));
+        expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ height: 450 }));
+    });
+
+    it('shrinks the focused (top) tile, giving space to its neighbor below', () => {
+        const strip = new Strip(AREA, STEP_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win1 = fakeWindow('w1');
+        const win2 = fakeWindow('w2');
+        strip.addWindowStack([win1.adapter, win2.adapter]);
+        win1.setFrameGeometry.mockClear();
+        win2.setFrameGeometry.mockClear();
+
+        expect(strip.decreaseWindowHeight()).toBe(true);
+
+        expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ height: 450 }));
+        expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ height: 550 }));
+    });
+
+    it('is a no-op on a single-tile column', () => {
+        const strip = new Strip(AREA, STEP_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        strip.addWindow(fakeWindow('w1').adapter);
+
+        expect(strip.increaseWindowHeight()).toBe(false);
+        expect(strip.decreaseWindowHeight()).toBe(false);
+    });
+
+    it('is a no-op with no focused column', () => {
+        const strip = new Strip(AREA, STEP_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+
+        expect(strip.increaseWindowHeight()).toBe(false);
+    });
+});
