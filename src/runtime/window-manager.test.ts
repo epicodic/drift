@@ -149,3 +149,32 @@ describe('WindowManager', () => {
         expect(sm.remove).toHaveBeenCalledWith(win.win);
     });
 });
+
+describe('WindowManager.activateWindow', () => {
+    it('returns true when the strip manager reports the window as managed', () => {
+        const sm = fakeStripManager();
+        sm.activate.mockReturnValue(true);
+        const manager = new WindowManager(sm.manager);
+        const win = fakeWin('w1');
+
+        expect(manager.activateWindow(win.win)).toBe(true);
+        expect(sm.activate).toHaveBeenCalledWith(win.win);
+    });
+
+    it('returns false when the strip manager reports the window as unmanaged', () => {
+        const sm = fakeStripManager();
+        sm.activate.mockReturnValue(false);
+        const manager = new WindowManager(sm.manager);
+        const win = fakeWin('w1');
+
+        expect(manager.activateWindow(win.win)).toBe(false);
+    });
+
+    it('returns false for a null window without calling the strip manager', () => {
+        const sm = fakeStripManager();
+        const manager = new WindowManager(sm.manager);
+
+        expect(manager.activateWindow(null)).toBe(false);
+        expect(sm.activate).not.toHaveBeenCalled();
+    });
+});

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEBUG_CONSOLE_WINDOW_TITLE } from './debug-console';
+import { FOCUS_FLASH_OVERLAY_WINDOW_TITLE } from './focus-flash-overlay';
 import { MINIMAP_OVERLAY_WINDOW_TITLE } from './minimap-overlay';
 import { WindowAdapter } from './window-adapter';
 
@@ -66,6 +67,12 @@ describe('WindowAdapter.isTileable', () => {
 
     it('rejects the minimap overlay window by title', () => {
         const window = createWindow({ caption: MINIMAP_OVERLAY_WINDOW_TITLE });
+
+        expect(new WindowAdapter(window).isTileable()).toBe(false);
+    });
+
+    it('rejects the focus flash overlay window by title', () => {
+        const window = createWindow({ caption: FOCUS_FLASH_OVERLAY_WINDOW_TITLE });
 
         expect(new WindowAdapter(window).isTileable()).toBe(false);
     });

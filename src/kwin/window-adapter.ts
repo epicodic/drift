@@ -4,6 +4,7 @@
 
 import { Rect } from '../core/coordinates';
 import { DEBUG_CONSOLE_WINDOW_TITLE } from './debug-console';
+import { FOCUS_FLASH_OVERLAY_WINDOW_TITLE } from './focus-flash-overlay';
 import { MINIMAP_OVERLAY_WINDOW_TITLE } from './minimap-overlay';
 
 export class WindowAdapter {
@@ -43,7 +44,8 @@ export class WindowAdapter {
             !this.window.onScreenDisplay &&
             !this.window.deleted &&
             this.window.caption !== DEBUG_CONSOLE_WINDOW_TITLE &&
-            this.window.caption !== MINIMAP_OVERLAY_WINDOW_TITLE
+            this.window.caption !== MINIMAP_OVERLAY_WINDOW_TITLE &&
+            this.window.caption !== FOCUS_FLASH_OVERLAY_WINDOW_TITLE
         );
     }
 

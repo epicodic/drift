@@ -4,6 +4,7 @@
 
 import type { Settings } from '../config/settings';
 import { createDebugConsole, type DebugConsole } from '../kwin/debug-console';
+import { createFocusFlashOverlay, type FocusFlashOverlay } from '../kwin/focus-flash-overlay';
 import { createMinimapOverlay, type MinimapOverlay } from '../kwin/minimap-overlay';
 import { createQmlTimer } from '../kwin/qml-timer';
 import { WorkspaceAdapter } from '../kwin/workspace-adapter';
@@ -24,6 +25,7 @@ export class Controller {
     private readonly windowManager: WindowManager;
     private readonly debugConsole: DebugConsole;
     private readonly minimapOverlay: MinimapOverlay;
+    private readonly focusFlashOverlay: FocusFlashOverlay;
 
     constructor(
         private readonly root: QmlObject,
@@ -34,12 +36,22 @@ export class Controller {
         // Create the debug console before the animation timer, matching the original init() order.
         this.debugConsole = createDebugConsole(root);
         this.minimapOverlay = createMinimapOverlay(root, settings.minimapAutoHideMs, settings.minimapShowThumbnails);
+        this.focusFlashOverlay = createFocusFlashOverlay(
+            root,
+            settings.animationTickMs,
+            settings.focusFlashBorderWidth,
+            settings.focusFlashBlurRadius,
+            settings.focusFlashDurationMs,
+            settings.focusFlashEnabled,
+        );
         this.stripManager = new StripManager(area, settings, createQmlTimer(root), this.workspaceAdapter);
         this.windowManager = new WindowManager(this.stripManager);
     }
 
     start(): void {
-        initWorkspaceSignals(this.windowManager, this.stripManager, this.workspaceAdapter);
+        initWorkspaceSignals(this.windowManager, this.stripManager, this.workspaceAdapter, (win) =>
+            this.focusFlashOverlay.show(win),
+        );
         registerShortcuts(this.root, this.settings, {
             focusLeft: () => this.focusAndShowMinimap((stack) => stack.focusLeft()),
             focusRight: () => this.focusAndShowMinimap((stack) => stack.focusRight()),

@@ -34,11 +34,14 @@ export class WindowManager {
         this.stripManager.remove(win);
     }
 
-    activateWindow(win: WindowAdapter | null): void {
+    /** Returns whether `win` was actually a Drift-managed window — used to gate the
+     * focus-flash highlight to managed windows only (docs:
+     * 2026-09-05-focus-flash-highlight-design). */
+    activateWindow(win: WindowAdapter | null): boolean {
         if (win === null) {
-            return;
+            return false;
         }
-        this.stripManager.activate(win);
+        return this.stripManager.activate(win);
     }
 
     private place(win: WindowAdapter): void {
