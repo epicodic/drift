@@ -36,4 +36,31 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.shortcutMoveColumnToStripAbove).toBe('Meta+Ctrl+Page_Up');
         expect(DEFAULT_SETTINGS.shortcutMoveColumnToStripBelow).toBe('Meta+Ctrl+Page_Down');
     });
+
+    it('uses Meta+Home and Meta+End to focus the first/last column', () => {
+        expect(DEFAULT_SETTINGS.shortcutFocusFirst).toBe('Meta+Home');
+        expect(DEFAULT_SETTINGS.shortcutFocusLast).toBe('Meta+End');
+    });
+
+    it('uses Meta+Ctrl+Home and Meta+Ctrl+End to move the focused column to the start/end', () => {
+        expect(DEFAULT_SETTINGS.shortcutMoveWindowToStart).toBe('Meta+Ctrl+Home');
+        expect(DEFAULT_SETTINGS.shortcutMoveWindowToEnd).toBe('Meta+Ctrl+End');
+    });
+
+    it('uses Meta+Alt+Home and Meta+Alt+End to pan the viewport to the start/end', () => {
+        expect(DEFAULT_SETTINGS.shortcutViewportShiftToStart).toBe('Meta+Alt+Home');
+        expect(DEFAULT_SETTINGS.shortcutViewportShiftToEnd).toBe('Meta+Alt+End');
+    });
+
+    it('uses Meta+Plus and Meta+- to step the focused column width, defaulting the step to 80px', () => {
+        expect(DEFAULT_SETTINGS.shortcutIncreaseColumnWidth).toBe('Meta+Plus');
+        expect(DEFAULT_SETTINGS.shortcutDecreaseColumnWidth).toBe('Meta+-');
+        expect(DEFAULT_SETTINGS.columnWidthStep).toBe(80);
+    });
+
+    it('uses Meta+Shift+Plus and Meta+Shift+- to step the focused tile height, defaulting the step to 80px', () => {
+        expect(DEFAULT_SETTINGS.shortcutIncreaseWindowHeight).toBe('Meta+Shift+Plus');
+        expect(DEFAULT_SETTINGS.shortcutDecreaseWindowHeight).toBe('Meta+Shift+-');
+        expect(DEFAULT_SETTINGS.windowHeightStep).toBe(80);
+    });
 });

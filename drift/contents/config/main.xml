@@ -17,6 +17,12 @@
         <entry name="viewportShiftStep" type="UInt">
             <default>400</default>
         </entry>
+        <entry name="columnWidthStep" type="UInt">
+            <default>80</default>
+        </entry>
+        <entry name="windowHeightStep" type="UInt">
+            <default>80</default>
+        </entry>
         <entry name="stripDragDwellMs" type="UInt">
             <default>400</default>
         </entry>
@@ -88,6 +94,36 @@
         </entry>
         <entry name="shortcutMoveColumnToStripBelow" type="String">
             <default>Meta+Ctrl+Page_Down</default>
+        </entry>
+        <entry name="shortcutFocusFirst" type="String">
+            <default>Meta+Home</default>
+        </entry>
+        <entry name="shortcutFocusLast" type="String">
+            <default>Meta+End</default>
+        </entry>
+        <entry name="shortcutMoveWindowToStart" type="String">
+            <default>Meta+Ctrl+Home</default>
+        </entry>
+        <entry name="shortcutMoveWindowToEnd" type="String">
+            <default>Meta+Ctrl+End</default>
+        </entry>
+        <entry name="shortcutViewportShiftToStart" type="String">
+            <default>Meta+Alt+Home</default>
+        </entry>
+        <entry name="shortcutViewportShiftToEnd" type="String">
+            <default>Meta+Alt+End</default>
+        </entry>
+        <entry name="shortcutIncreaseColumnWidth" type="String">
+            <default>Meta+Plus</default>
+        </entry>
+        <entry name="shortcutDecreaseColumnWidth" type="String">
+            <default>Meta+-</default>
+        </entry>
+        <entry name="shortcutIncreaseWindowHeight" type="String">
+            <default>Meta+Shift+Plus</default>
+        </entry>
+        <entry name="shortcutDecreaseWindowHeight" type="String">
+            <default>Meta+Shift+-</default>
         </entry>
     </group>
 </kcfg>
