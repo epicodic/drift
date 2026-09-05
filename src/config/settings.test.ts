@@ -26,4 +26,14 @@ describe('DEFAULT_SETTINGS', () => {
     it('defaults the strip-drag edge border to 2px', () => {
         expect(DEFAULT_SETTINGS.stripDragEdgeBorderPx).toBe(2);
     });
+
+    it('uses Meta+Page_Up and Meta+Page_Down to page to the strip above/below', () => {
+        expect(DEFAULT_SETTINGS.shortcutStripUp).toBe('Meta+Page_Up');
+        expect(DEFAULT_SETTINGS.shortcutStripDown).toBe('Meta+Page_Down');
+    });
+
+    it('uses Meta+Ctrl+Page_Up and Meta+Ctrl+Page_Down to move the whole focused column to the strip above/below', () => {
+        expect(DEFAULT_SETTINGS.shortcutMoveColumnToStripAbove).toBe('Meta+Ctrl+Page_Up');
+        expect(DEFAULT_SETTINGS.shortcutMoveColumnToStripBelow).toBe('Meta+Ctrl+Page_Down');
+    });
 });

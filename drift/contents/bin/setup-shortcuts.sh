@@ -60,6 +60,10 @@ DriftAbsorbRight|Drift: Absorb Column Right|Meta+I
 DriftExpel|Drift: Expel Focused Tile|Meta+O
 DriftMoveWindowLeft|Drift: Move Window Left|Meta+Ctrl+Left
 DriftMoveWindowRight|Drift: Move Window Right|Meta+Ctrl+Right
+DriftStripUp|Drift: Strip Up|Meta+Page_Up
+DriftStripDown|Drift: Strip Down|Meta+Page_Down
+DriftMoveColumnToStripAbove|Drift: Move Column To Strip Above|Meta+Ctrl+Page_Up
+DriftMoveColumnToStripBelow|Drift: Move Column To Strip Below|Meta+Ctrl+Page_Down
 '
 
 if ! command -v busctl >/dev/null 2>&1; then

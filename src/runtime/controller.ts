@@ -56,6 +56,10 @@ export class Controller {
             expel: () => this.focusAndShowMinimap((stack) => stack.expel()),
             moveWindowLeft: () => this.focusAndShowMinimap((stack) => stack.moveWindowLeft()),
             moveWindowRight: () => this.focusAndShowMinimap((stack) => stack.moveWindowRight()),
+            stripUp: () => this.focusAndShowMinimap((stack) => stack.stripUp()),
+            stripDown: () => this.focusAndShowMinimap((stack) => stack.stripDown()),
+            moveColumnToStripAbove: () => this.focusAndShowMinimap((stack) => stack.moveColumnToStripAbove()),
+            moveColumnToStripBelow: () => this.focusAndShowMinimap((stack) => stack.moveColumnToStripBelow()),
         });
         void this.scriptUiDirUrl; // only used by the disabled conflict check above
         console.log('Drift: initialized');

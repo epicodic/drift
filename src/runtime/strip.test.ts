@@ -1247,6 +1247,132 @@ describe('Strip — focusUp/focusDown', () => {
     });
 });
 
+describe('Strip — moveTileUp/moveTileDown', () => {
+    it("reorder the focused tile within its column's stack without changing which tile is focused", () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const top = fakeWindow('top');
+        const bottom = fakeWindow('bottom');
+        strip.addWindow(top.adapter);
+        strip.addWindow(bottom.adapter);
+        strip.focusLeft();
+        strip.absorbRight(); // column: [top (focused), bottom]
+        top.setFrameGeometry.mockClear();
+        bottom.setFrameGeometry.mockClear();
+
+        expect(strip.moveTileDown()).toBe(true); // column: [bottom, top (focused)]
+
+        const topCallsAfterDown = top.setFrameGeometry.mock.calls;
+        const bottomCallsAfterDown = bottom.setFrameGeometry.mock.calls;
+        expect(topCallsAfterDown[topCallsAfterDown.length - 1][0]).toEqual(expect.objectContaining({ y: 500 }));
+        expect(bottomCallsAfterDown[bottomCallsAfterDown.length - 1][0]).toEqual(expect.objectContaining({ y: 0 }));
+
+        top.setFrameGeometry.mockClear();
+        bottom.setFrameGeometry.mockClear();
+        expect(strip.moveTileUp()).toBe(true); // column: [top (focused), bottom]
+
+        const topCallsAfterUp = top.setFrameGeometry.mock.calls;
+        expect(topCallsAfterUp[topCallsAfterUp.length - 1][0]).toEqual(expect.objectContaining({ y: 0 }));
+    });
+
+    it('return false and no-op at the top/bottom of the stack, on a single-tile column, and with no focused column', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        expect(strip.moveTileUp()).toBe(false);
+        expect(strip.moveTileDown()).toBe(false);
+
+        strip.addWindow(fakeWindow('solo').adapter);
+        expect(strip.moveTileUp()).toBe(false);
+        expect(strip.moveTileDown()).toBe(false);
+
+        const top = fakeWindow('top2');
+        const bottom = fakeWindow('bottom2');
+        strip.addWindow(top.adapter);
+        strip.addWindow(bottom.adapter);
+        strip.focusLeft();
+        strip.absorbRight(); // column: [top (focused), bottom]
+        expect(strip.moveTileUp()).toBe(false); // already at the top
+    });
+});
+
+describe('Strip — detachFocusedTile', () => {
+    it('detaches just the focused tile, leaving the rest of a stacked column behind', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const top = fakeWindow('top');
+        const bottom = fakeWindow('bottom');
+        strip.addWindow(top.adapter);
+        strip.addWindow(bottom.adapter);
+        strip.focusLeft();
+        strip.absorbRight(); // column: [top (focused), bottom]
+
+        const detached = strip.detachFocusedTile();
+
+        expect(detached?.id).toBe('top');
+        expect(strip.detachFocusedColumn().map((w) => w.id)).toEqual(['bottom']);
+    });
+
+    it('detaches the whole column when it only had one tile', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const only = fakeWindow('only');
+        strip.addWindow(only.adapter);
+
+        const detached = strip.detachFocusedTile();
+
+        expect(detached?.id).toBe('only');
+        expect(strip.isEmpty()).toBe(true);
+    });
+
+    it('returns null when there is no focused column', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        expect(strip.detachFocusedTile()).toBeNull();
+    });
+});
+
+describe('Strip — addWindowStack', () => {
+    it('adds every window as tiles of a single stacked column, preserving order', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const top = fakeWindow('top');
+        const middle = fakeWindow('middle');
+        const bottom = fakeWindow('bottom');
+
+        strip.addWindowStack([top.adapter, middle.adapter, bottom.adapter]);
+
+        const detached = strip.detachFocusedColumn();
+        expect(detached.map((w) => w.id)).toEqual(['top', 'middle', 'bottom']);
+        expect(strip.isEmpty()).toBe(true); // detaching the only column emptied the strip
+    });
+
+    it('splits height evenly across the stacked tiles, top to bottom', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const top = fakeWindow('top');
+        const bottom = fakeWindow('bottom');
+
+        strip.addWindowStack([top.adapter, bottom.adapter]);
+
+        const topCalls = top.setFrameGeometry.mock.calls;
+        const bottomCalls = bottom.setFrameGeometry.mock.calls;
+        expect(topCalls[topCalls.length - 1][0]).toEqual(expect.objectContaining({ y: 0, height: 500 }));
+        expect(bottomCalls[bottomCalls.length - 1][0]).toEqual(expect.objectContaining({ y: 500, height: 500 }));
+    });
+
+    it('focuses the first window, and focusDown moves through the rest of the stack', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const top = fakeWindow('top');
+        const bottom = fakeWindow('bottom');
+
+        strip.addWindowStack([top.adapter, bottom.adapter]);
+        top.activate.mockClear();
+        bottom.activate.mockClear();
+
+        expect(strip.focusDown()).toBe(true);
+        expect(bottom.activate).toHaveBeenCalledTimes(1);
+    });
+
+    it('is a no-op for an empty array', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        expect(() => strip.addWindowStack([])).not.toThrow();
+        expect(strip.isEmpty()).toBe(true);
+    });
+});
+
 describe('Strip — removeWindow on a stacked column', () => {
     it('removes just that tile, redistributing height, when siblings remain', () => {
         const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());

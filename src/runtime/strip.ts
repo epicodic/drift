@@ -261,13 +261,59 @@ export class Strip {
     addWindow(win: WindowAdapter, initiallyDragging = false, stripDragHooks?: StripDragHooks): void {
         const width = Math.round(win.frameGeometry().width) || this.settings.defaultColumnWidth;
         const column = this.grid.addColumn(width);
+        this.wireTile(win, column, column.focusedTileId, initiallyDragging, stripDragHooks);
+        this.render(initiallyDragging ? win.id : undefined);
+        // A mid-drag add skips revealFocused(): Grid.addColumn always focuses the new column,
+        // and if this strip's content already overflows the viewport, revealFocused() would kick
+        // off a real Animator pan whose tick callback calls render() with NO excludeWindowId —
+        // fighting the live KWin interactive move on the x-axis. registerDragReorder's own
+        // interactiveMoveResizeFinished handler (src/input/drag.ts) calls revealFocused() too,
+        // but only there, after dragging is fully done — never mid-drag, for the same reason.
+        if (!initiallyDragging) {
+            this.revealFocused();
+        }
+    }
+
+    /** Adds `windows` as tiles of a single new stacked column, in order — the counterpart to
+     * `addWindow` for re-adding an already-stacked column elsewhere (e.g. a cross-strip move),
+     * so the stack survives intact instead of splitting into separate columns. No-op for an
+     * empty array. */
+    addWindowStack(windows: WindowAdapter[], initiallyDragging = false, stripDragHooks?: StripDragHooks): void {
+        const [first, ...rest] = windows;
+        if (first === undefined) {
+            return;
+        }
+        const width = Math.round(first.frameGeometry().width) || this.settings.defaultColumnWidth;
+        const column = this.grid.addColumn(width);
+        this.wireTile(first, column, column.focusedTileId, initiallyDragging, stripDragHooks);
+        for (const win of rest) {
+            const tileId = column.addTile();
+            this.wireTile(win, column, tileId, initiallyDragging, stripDragHooks);
+        }
+        this.render(initiallyDragging ? first.id : undefined);
+        // See addWindow's comment above — same rationale for skipping revealFocused() mid-drag.
+        if (!initiallyDragging) {
+            this.revealFocused();
+        }
+    }
+
+    /** Registers `win` as `tileId` within `column`: registry bookkeeping, minimize/fullscreen
+     * state, and the geometry/minimize/fullscreen/drag-reorder signal wiring every tile needs
+     * regardless of whether it landed via `addWindow` or `addWindowStack`. */
+    private wireTile(
+        win: WindowAdapter,
+        column: Column,
+        tileId: number,
+        initiallyDragging: boolean,
+        stripDragHooks?: StripDragHooks,
+    ): void {
         const signals = new SignalManager();
-        this.registry.set(column.id, column.focusedTileId, win, signals);
+        this.registry.set(column.id, tileId, win, signals);
         if (win.isMinimized()) {
             this.grid.hideColumn(column.id);
         }
         if (win.isFullScreen()) {
-            this.fullScreenTiles.add(this.tileKey(column.id, column.focusedTileId));
+            this.fullScreenTiles.add(this.tileKey(column.id, tileId));
         }
         signals.add(win.onFrameGeometryChanged((oldReal) => onWindowGeometryChanged(win, oldReal, this.eventDeps())));
         signals.add(win.onMinimizedChanged(() => onMinimizedChanged(win, this.eventDeps())));
@@ -310,16 +356,6 @@ export class Strip {
                 initiallyDragging,
             ),
         );
-        this.render(initiallyDragging ? win.id : undefined);
-        // A mid-drag add skips revealFocused(): Grid.addColumn always focuses the new column,
-        // and if this strip's content already overflows the viewport, revealFocused() would kick
-        // off a real Animator pan whose tick callback calls render() with NO excludeWindowId —
-        // fighting the live KWin interactive move on the x-axis. registerDragReorder's own
-        // interactiveMoveResizeFinished handler (src/input/drag.ts) calls revealFocused() too,
-        // but only there, after dragging is fully done — never mid-drag, for the same reason.
-        if (!initiallyDragging) {
-            this.revealFocused();
-        }
     }
 
     removeWindow(win: WindowAdapter): void {
@@ -343,10 +379,8 @@ export class Strip {
 
     /** Detaches the whole focused column — every tile's window, as a unit — from this
      * strip, returning them so a caller (StripStack's cross-strip move) can re-add them
-     * elsewhere. A stacked column's tiles are NOT preserved as a stack in the target
-     * strip this pass — each is re-added via addWindow as its own column there (docs:
-     * 2026-09-03-vertical-tiling-design, Out of Scope). Empty array if there's nothing
-     * to detach. */
+     * elsewhere via `addWindowStack`, which keeps a stacked column's tiles together as one
+     * column in the target strip. Empty array if there's nothing to detach. */
     detachFocusedColumn(): WindowAdapter[] {
         const focused = this.grid.focusedColumn();
         if (focused === null) {
@@ -358,6 +392,24 @@ export class Strip {
         }
         this.detachColumn(focused.id, windows);
         return windows;
+    }
+
+    /** Detaches just the focused tile's window, leaving the rest of a stacked column's tiles
+     * in place — the single-window counterpart to `detachFocusedColumn`, used to peel a
+     * window off the edge of a stack and hand it to a caller (e.g. moving it to an adjacent
+     * strip) without disturbing its former stack-mates. Detaches the whole column, same as
+     * `detachFocusedColumn`, when it only had that one tile. Null if there's no focused column. */
+    detachFocusedTile(): WindowAdapter | null {
+        const focused = this.grid.focusedColumn();
+        if (focused === null) {
+            return null;
+        }
+        const win = this.registry.get(focused.id, focused.focusedTileId);
+        if (win === undefined) {
+            return null;
+        }
+        this.removeWindow(win);
+        return win;
     }
 
     /** Shared teardown for `removeWindow` (single-tile column case) and
@@ -445,6 +497,35 @@ export class Strip {
         this.snapColumn(focused.id);
         this.render();
         this.revealFocused();
+    }
+
+    /** Moves the focused tile up within the focused column's stack, swapping position with
+     * its neighbor. No-op if there's no focused column, it's not a stack, or the tile is
+     * already at the top. Returns whether it actually moved — callers (e.g. the keyboard
+     * Meta+Ctrl+Up shortcut) use `false` as the signal to fall back to expelling the tile
+     * to the strip above instead. */
+    moveTileUp(): boolean {
+        return this.moveTile((column) => column.moveFocusedTileUp());
+    }
+
+    /** Moves the focused tile down within the focused column's stack, swapping position with
+     * its neighbor. No-op if there's no focused column, it's not a stack, or the tile is
+     * already at the bottom. Returns whether it actually moved — see `moveTileUp`. */
+    moveTileDown(): boolean {
+        return this.moveTile((column) => column.moveFocusedTileDown());
+    }
+
+    private moveTile(move: (column: Column) => boolean): boolean {
+        const column = this.grid.focusedColumn();
+        if (column === null) {
+            return false;
+        }
+        if (!move(column)) {
+            return false;
+        }
+        this.render();
+        this.revealFocused();
+        return true;
     }
 
     /** Moves tile focus up within the focused column's stack and activates the newly
