@@ -158,6 +158,46 @@ export class StripStack {
         this.activeStrip().shiftViewportRight();
     }
 
+    focusFirst(): void {
+        this.activeStrip().focusFirst();
+    }
+
+    focusLast(): void {
+        this.activeStrip().focusLast();
+    }
+
+    moveWindowToStart(): void {
+        this.activeStrip().moveWindowToStart();
+    }
+
+    moveWindowToEnd(): void {
+        this.activeStrip().moveWindowToEnd();
+    }
+
+    shiftViewportToStart(): void {
+        this.activeStrip().shiftViewportToStart();
+    }
+
+    shiftViewportToEnd(): void {
+        this.activeStrip().shiftViewportToEnd();
+    }
+
+    increaseColumnWidth(): void {
+        this.activeStrip().increaseColumnWidth();
+    }
+
+    decreaseColumnWidth(): void {
+        this.activeStrip().decreaseColumnWidth();
+    }
+
+    increaseWindowHeight(): boolean {
+        return this.activeStrip().increaseWindowHeight();
+    }
+
+    decreaseWindowHeight(): boolean {
+        return this.activeStrip().decreaseWindowHeight();
+    }
+
     stripUp(): void {
         this.switchToStrip(this.activeStripIndex - 1);
     }

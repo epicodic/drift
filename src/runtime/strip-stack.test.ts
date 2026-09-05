@@ -64,6 +64,16 @@ interface FakeStrip {
     cycleAlignRight: ReturnType<typeof vi.fn>;
     shiftViewportLeft: ReturnType<typeof vi.fn>;
     shiftViewportRight: ReturnType<typeof vi.fn>;
+    focusFirst: ReturnType<typeof vi.fn>;
+    focusLast: ReturnType<typeof vi.fn>;
+    moveWindowToStart: ReturnType<typeof vi.fn>;
+    moveWindowToEnd: ReturnType<typeof vi.fn>;
+    shiftViewportToStart: ReturnType<typeof vi.fn>;
+    shiftViewportToEnd: ReturnType<typeof vi.fn>;
+    increaseColumnWidth: ReturnType<typeof vi.fn>;
+    decreaseColumnWidth: ReturnType<typeof vi.fn>;
+    increaseWindowHeight: ReturnType<typeof vi.fn>;
+    decreaseWindowHeight: ReturnType<typeof vi.fn>;
     minimapSnapshot: ReturnType<typeof vi.fn>;
     detachFocusedColumn: ReturnType<typeof vi.fn>;
     detachFocusedTile: ReturnType<typeof vi.fn>;
@@ -90,6 +100,16 @@ function fakeStrip(): FakeStrip {
         cycleAlignRight: vi.fn(),
         shiftViewportLeft: vi.fn(),
         shiftViewportRight: vi.fn(),
+        focusFirst: vi.fn(),
+        focusLast: vi.fn(),
+        moveWindowToStart: vi.fn(),
+        moveWindowToEnd: vi.fn(),
+        shiftViewportToStart: vi.fn(),
+        shiftViewportToEnd: vi.fn(),
+        increaseColumnWidth: vi.fn(),
+        decreaseColumnWidth: vi.fn(),
+        increaseWindowHeight: vi.fn(() => false),
+        decreaseWindowHeight: vi.fn(() => false),
         minimapSnapshot: vi.fn(() => ({
             columns: [],
             viewport: { offset: 0, width: AREA.width, contentLeft: 0, contentWidth: 0 },
@@ -221,6 +241,32 @@ describe('StripStack', () => {
             contentWidth: 0,
         });
         expect(snapshot.stripPitch).toBe(AREA.height);
+    });
+
+    it('delegates focusFirst/Last, moveWindowToStart/End, shiftViewportToStart/End to the active strip', () => {
+        const { stack, created } = makeStack();
+
+        stack.focusFirst();
+        stack.focusLast();
+        stack.moveWindowToStart();
+        stack.moveWindowToEnd();
+        stack.shiftViewportToStart();
+        stack.shiftViewportToEnd();
+        stack.increaseColumnWidth();
+        stack.decreaseColumnWidth();
+        stack.increaseWindowHeight();
+        stack.decreaseWindowHeight();
+
+        expect(created[0].focusFirst).toHaveBeenCalled();
+        expect(created[0].focusLast).toHaveBeenCalled();
+        expect(created[0].moveWindowToStart).toHaveBeenCalled();
+        expect(created[0].moveWindowToEnd).toHaveBeenCalled();
+        expect(created[0].shiftViewportToStart).toHaveBeenCalled();
+        expect(created[0].shiftViewportToEnd).toHaveBeenCalled();
+        expect(created[0].increaseColumnWidth).toHaveBeenCalled();
+        expect(created[0].decreaseColumnWidth).toHaveBeenCalled();
+        expect(created[0].increaseWindowHeight).toHaveBeenCalled();
+        expect(created[0].decreaseWindowHeight).toHaveBeenCalled();
     });
 });
 
