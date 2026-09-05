@@ -25,6 +25,16 @@ export interface ShortcutActions {
     stripDown(): void;
     moveColumnToStripAbove(): void;
     moveColumnToStripBelow(): void;
+    focusFirst(): void;
+    focusLast(): void;
+    moveWindowToStart(): void;
+    moveWindowToEnd(): void;
+    shiftViewportToStart(): void;
+    shiftViewportToEnd(): void;
+    increaseColumnWidth(): void;
+    decreaseColumnWidth(): void;
+    increaseWindowHeight(): void;
+    decreaseWindowHeight(): void;
 }
 
 export function registerShortcuts(parent: QmlObject, settings: Settings, actions: ShortcutActions): void {
@@ -130,6 +140,70 @@ export function registerShortcuts(parent: QmlObject, settings: Settings, actions
         'Drift: Move Column To Strip Below',
         settings.shortcutMoveColumnToStripBelow,
         actions.moveColumnToStripBelow,
+    );
+    createShortcut(
+        parent,
+        'DriftFocusFirst',
+        'Drift: Focus First Column',
+        settings.shortcutFocusFirst,
+        actions.focusFirst,
+    );
+    createShortcut(parent, 'DriftFocusLast', 'Drift: Focus Last Column', settings.shortcutFocusLast, actions.focusLast);
+    createShortcut(
+        parent,
+        'DriftMoveWindowToStart',
+        'Drift: Move Window To Start',
+        settings.shortcutMoveWindowToStart,
+        actions.moveWindowToStart,
+    );
+    createShortcut(
+        parent,
+        'DriftMoveWindowToEnd',
+        'Drift: Move Window To End',
+        settings.shortcutMoveWindowToEnd,
+        actions.moveWindowToEnd,
+    );
+    createShortcut(
+        parent,
+        'DriftViewportShiftToStart',
+        'Drift: Shift Viewport To Start',
+        settings.shortcutViewportShiftToStart,
+        actions.shiftViewportToStart,
+    );
+    createShortcut(
+        parent,
+        'DriftViewportShiftToEnd',
+        'Drift: Shift Viewport To End',
+        settings.shortcutViewportShiftToEnd,
+        actions.shiftViewportToEnd,
+    );
+    createShortcut(
+        parent,
+        'DriftIncreaseColumnWidth',
+        'Drift: Increase Column Width',
+        settings.shortcutIncreaseColumnWidth,
+        actions.increaseColumnWidth,
+    );
+    createShortcut(
+        parent,
+        'DriftDecreaseColumnWidth',
+        'Drift: Decrease Column Width',
+        settings.shortcutDecreaseColumnWidth,
+        actions.decreaseColumnWidth,
+    );
+    createShortcut(
+        parent,
+        'DriftIncreaseWindowHeight',
+        'Drift: Increase Window Height',
+        settings.shortcutIncreaseWindowHeight,
+        actions.increaseWindowHeight,
+    );
+    createShortcut(
+        parent,
+        'DriftDecreaseWindowHeight',
+        'Drift: Decrease Window Height',
+        settings.shortcutDecreaseWindowHeight,
+        actions.decreaseWindowHeight,
     );
 }
 
