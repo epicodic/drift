@@ -1547,3 +1547,48 @@ describe('Strip — shiftViewportToStart/shiftViewportToEnd', () => {
         expect(win2.activate).not.toHaveBeenCalled();
     });
 });
+
+describe('Strip — increaseColumnWidth/decreaseColumnWidth', () => {
+    const STEP_SETTINGS = { ...INSTANT_SETTINGS, columnWidthStep: 50 };
+
+    it('grows the focused column by columnWidthStep', () => {
+        const strip = new Strip(AREA, STEP_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win1 = fakeWindow('w1'); // defaultColumnWidth 800
+        strip.addWindow(win1.adapter);
+        win1.setFrameGeometry.mockClear();
+
+        strip.increaseColumnWidth();
+
+        expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ width: 850 }));
+    });
+
+    it('shrinks the focused column by columnWidthStep', () => {
+        const strip = new Strip(AREA, STEP_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win1 = fakeWindow('w1');
+        strip.addWindow(win1.adapter);
+        win1.setFrameGeometry.mockClear();
+
+        strip.decreaseColumnWidth();
+
+        expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ width: 750 }));
+    });
+
+    it('clamps shrinking at columnWidthStep, never reaching zero or below', () => {
+        const strip = new Strip(AREA, STEP_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win1 = fakeWindow('w1');
+        strip.addWindow(win1.adapter);
+
+        for (let i = 0; i < 20; i++) {
+            strip.decreaseColumnWidth();
+        }
+
+        expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ width: 50 }));
+    });
+
+    it('is a no-op with no focused column', () => {
+        const strip = new Strip(AREA, STEP_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+
+        expect(() => strip.increaseColumnWidth()).not.toThrow();
+        expect(() => strip.decreaseColumnWidth()).not.toThrow();
+    });
+});
