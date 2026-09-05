@@ -1,11 +1,12 @@
 # shellcheck shell=sh
-# Pure helper functions for setup-shortcuts.sh: turning a "Meta+Shift+Left"-style
-# sequence into the packed Qt key+modifier int kglobalaccel expects, and finding which
-# currently-active KWin shortcuts collide with a target key so they can be released.
-# No D-Bus calls happen here — this file is meant to be sourced both by
-# setup-shortcuts.sh (which supplies the live `busctl` reply) and by
-# setup-shortcuts-lib.test.sh (which supplies a canned one), so the parsing/matching
-# logic can be regression-tested without a live KWin session.
+# Pure helper functions for setup-shortcuts.sh:
+# - turn a "Meta+Shift+Left"-style sequence into the packed Qt key+modifier int
+#   kglobalaccel expects
+# - find which currently-active KWin shortcuts collide with a target key so they can
+#   be released
+# No D-Bus calls happen here — sourced both by setup-shortcuts.sh (live `busctl`
+# reply) and setup-shortcuts-lib.test.sh (canned reply), so parsing/matching logic is
+# regression-testable without a live KWin session.
 
 # Qt::Key values (qnamespace.h) for the keys Drift's bindings use. Stable public API.
 key_code() {
@@ -71,24 +72,20 @@ keyseq_to_int() {
 
 # Tokenizes one `busctl call ...` reply line (any signature, e.g. allShortcutInfos'
 # a(ssssssaiai) or allComponents' ao) into one token per output line: a quoted segment
-# becomes its unquoted content (which may itself contain spaces), everything else
-# splits on runs of spaces. This mirrors POSIX shell word-splitting closely enough
-# that `set -- $(tokenize... )` under IFS=newline turns the reply into positional
-# parameters without needing `eval` on D-Bus-sourced text.
+# becomes its unquoted content (may itself contain spaces), everything else splits on
+# runs of spaces. Mirrors POSIX word-splitting closely enough that
+# `set -- $(tokenize...)` under IFS=newline turns the reply into positional
+# parameters without `eval` on D-Bus-sourced text.
 #
-# busctl backslash-escapes any quote embedded in a string value (confirmed live, e.g.
-# ActivityManager's action friendly text `Switch to activity \"Browsing\"`) — such an
-# escaped quote must not be treated as ending the token, or every field after it
-# desyncs from its expected fixed-width position.
-#
-# A quoted segment that is genuinely empty (e.g. some actions have an empty
-# actionFriendly, confirmed live for KDE_Keyboard_Layout_Switcher's actions) is
-# emitted as EMPTY_FIELD_SENTINEL rather than a blank line: `set -- $(...)` under
-# IFS=newline treats newline as an IFS whitespace character, so consecutive
-# delimiters collapse and a truly-blank line vanishes instead of becoming an empty
-# positional parameter — silently desyncing every fixed-width field read after it.
-# Callers must restore the sentinel back to "" after capturing each field (see
-# find_conflicting_actions).
+# - busctl backslash-escapes quotes embedded in a string value (confirmed live, e.g.
+#   ActivityManager's `Switch to activity \"Browsing\"`) — such an escaped quote must
+#   not end the token, or every later field desyncs from its fixed-width position.
+# - A genuinely-empty quoted segment (e.g. KDE_Keyboard_Layout_Switcher's empty
+#   actionFriendly, confirmed live) is emitted as EMPTY_FIELD_SENTINEL rather than a
+#   blank line: under IFS=newline, `set -- $(...)` collapses consecutive delimiters,
+#   so a blank line would vanish instead of becoming an empty positional parameter,
+#   desyncing every fixed-width field after it. Callers must restore the sentinel back
+#   to "" after capturing each field (see find_conflicting_actions).
 EMPTY_FIELD_SENTINEL='@@DRIFT_EMPTY_FIELD@@'
 
 tokenize_busctl_reply() {
@@ -125,15 +122,16 @@ tokenize_busctl_reply() {
 
 # Parses a raw allShortcutInfos reply (a(ssssssaiai): per action, 6 strings —
 # actionUnique, actionFriendly, componentUnique, componentFriendly, contextUnique,
-# contextFriendly — then activeKeys (ai) then defaultKeys (ai)) and prints
-# "actionUnique|actionFriendly|componentUnique|componentFriendly" for each action,
-# other than one listed in exclude_actions (newline-separated, exact match), currently
-# holding an *active* grant on target_code. A key appearing only in an action's
-# defaultKeys (already released, or never granted) is not a conflict. componentUnique
-# and componentFriendly are included because the conflict may not belong to the
-# component whose reply this is (see find_conflicting_actions callers, which run this
-# once per component) — the caller needs them to release the shortcut from its actual
-# owning component rather than assuming kwin.
+# contextFriendly — then activeKeys (ai) then defaultKeys (ai)).
+# - Prints "actionUnique|actionFriendly|componentUnique|componentFriendly" for each
+#   action, other than ones listed in exclude_actions (newline-separated, exact
+#   match), currently holding an *active* grant on target_code.
+# - A key appearing only in defaultKeys (already released, or never granted) is not a
+#   conflict.
+# - componentUnique/componentFriendly are included because the conflict may not
+#   belong to the component whose reply this is (callers run this once per
+#   component) — needed to release the shortcut from its actual owning component
+#   rather than assuming kwin.
 find_conflicting_actions() {
 	raw_output="$1"
 	target_code="$2"
@@ -192,12 +190,12 @@ find_conflicting_actions() {
 	done
 }
 
-# Parses a raw allComponents reply (ao: an array of "/component/<id>" object paths)
-# and prints one object path per line. Used to discover every kglobalaccel component
-# up front, since a conflicting shortcut is not necessarily owned by the "kwin"
-# component (e.g. a global "launch application" shortcut owned by a desktop file's own
-# component) — see setup-shortcuts.sh, which queries allShortcutInfos on each path
-# this returns rather than assuming kwin is the only component worth checking.
+# Parses a raw allComponents reply (ao: array of "/component/<id>" object paths) and
+# prints one object path per line. Used to discover every kglobalaccel component up
+# front, since a conflicting shortcut isn't necessarily owned by "kwin" (e.g. a global
+# "launch application" shortcut owned by a desktop file's own component) —
+# setup-shortcuts.sh queries allShortcutInfos on each returned path rather than
+# assuming kwin is the only component worth checking.
 parse_component_paths() {
 	raw_output="$1"
 	nl='
