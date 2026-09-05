@@ -41,8 +41,8 @@ Empty cells mean the project has no equivalent (by design, or not yet built).
 | Move window up/down (in-column) | `Mod+Ctrl+K` / `Mod+Ctrl+J` | `Super+Ctrl+Up` / `Super+Ctrl+Down` | `Meta+Shift+W` / `Meta+Shift+S` | `Meta+Ctrl+Up` / `Meta+Ctrl+Down` ✓ | Meta+Ctrl+Up / Meta+Ctrl+Down |
 | Move column/window to start/end | — | — | `Meta+Ctrl+Shift+Home` / `End` (column), `Meta+Shift+Home` / `End` (window) | `Meta+Ctrl+Home` / `Meta+Ctrl+End` ✓ | Meta+Ctrl+Home / Meta+Ctrl+End |
 | Cycle column width presets | `Mod+R` (+`Shift` reverse) | `Super+R` (+`Alt` reverse) | `Meta+R` (+`Shift` reverse) | — | `Meta+R` (+`Shift` reverse) |
-| Increase/decrease column width | `Mod+=` / `Mod+-` | `Super++` / `Super+-` | `Meta+Ctrl++` / `Meta+Ctrl+-` | `Meta+Plus` / `Meta+-` ✓ | `Meta+Plus` / `Meta+-` |
-| Increase/decrease window height | `Mod+Shift+=` / `Mod+Shift+-` | `Shift+Super++` / `Shift+Super+-` | — | `Meta+Shift+Plus` / `Meta+Shift+-` ✓ | `Meta+Shift+Plus` / `Meta+Shift+-` |
+| Increase/decrease column width | `Mod+=` / `Mod+-` | `Super++` / `Super+-` | `Meta+Ctrl++` / `Meta+Ctrl+-` | `Meta+Plus` / `Meta+Minus` ✓ | `Meta+Plus` / `Meta+Minus` |
+| Increase/decrease window height | `Mod+Shift+=` / `Mod+Shift+-` | `Shift+Super++` / `Shift+Super+-` | — | `Meta+Shift+Plus` / `Meta+Shift+Minus` ✓ | `Meta+Shift+Plus` / `Meta+Shift+Minus` |
 | Maximize column width | `Mod+M` | `Super+F` | — | — |  |
 | Center focused column | `Mod+C` | `Super+C` | `Meta+Alt+Return` | — |  |
 | Cycle column align (left/center/right) | — | — | — | `Meta+Shift+Left` / `Meta+Shift+Right` | Meta+Shift+Left / Meta+Shift+Right |

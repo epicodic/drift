@@ -46,7 +46,7 @@ End's target is `Math.max(viewport.contentLeft(), viewport.contentLeft() + viewp
 `Column.setWidth` throws on a non-positive width, so `decreaseColumnWidth` clamps its target to `columnWidthStep` as a floor rather than letting the resize go non-positive.
 
 - New setting: `columnWidthStep` (default `80`, pixels — open to adjustment, same tuning knob as `viewportShiftStep`).
-- Settings: `shortcutIncreaseColumnWidth` (default `Meta+Plus`), `shortcutDecreaseColumnWidth` (default `Meta+-`).
+- Settings: `shortcutIncreaseColumnWidth` (default `Meta+Plus`), `shortcutDecreaseColumnWidth` (default `Meta+Minus`).
 
 ## Window Height Step
 
@@ -55,7 +55,7 @@ Add `Column.growFocusedTile(step)`/`shrinkFocusedTile(step)`: each resolves the 
 `Strip.increaseWindowHeight()`/`decreaseWindowHeight()` reuse the existing private `moveTile(move: (column: Column) => boolean)` helper — the same one `moveTileUp`/`moveTileDown` already use — so `render`/`revealFocused` come for free: `increaseWindowHeight(): boolean { return this.moveTile((column) => column.growFocusedTile(this.settings.windowHeightStep)); }`.
 
 - New setting: `windowHeightStep` (default `80`, pixels).
-- Settings: `shortcutIncreaseWindowHeight` (default `Meta+Shift+Plus`), `shortcutDecreaseWindowHeight` (default `Meta+Shift+-`).
+- Settings: `shortcutIncreaseWindowHeight` (default `Meta+Shift+Plus`), `shortcutDecreaseWindowHeight` (default `Meta+Shift+Minus`).
 
 ## Config Key Naming Note
 
