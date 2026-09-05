@@ -48,7 +48,7 @@ Empty cells mean the project has no equivalent (by design, or not yet built).
 | Cycle column align (left/center/right) | — | — | — | `Meta+Shift+Left` / `Meta+Shift+Right` | Meta+Shift+Left / Meta+Shift+Right |
 | Equalize / squeeze column widths | — | — | `Meta+Ctrl+X` (equalize), `Meta+Ctrl+A` / `D` (squeeze) | — |  |
 | Scroll viewport without changing focus | — | — | `Meta+Alt+A` / `D` (one column), `Meta+Alt+PgUp` / `PgDown` (page) | `Meta+Alt+Left` / `Meta+Alt+Right` | `Meta+Alt+Left` / `Meta+Alt+Right` |
-| Scroll viewport to start/end | — | — | `Meta+Alt+Home` / `End` | `Meta+Alt+Home` / `Meta+Alt+End` ✓ | `Meta+Alt+Home` / `End` |
+| Scroll viewport to start/end | — | — | `Meta+Alt+Home` / `End` | `Meta+Alt+Home` / `Meta+Alt+End` ✓ | `Meta+Alt+Home` / `Meta+Alt+End` |
 | Absorb/expel window (vertical stacking) | `Mod+[` / `Mod+]` (consume/expel) | `Super+I` (absorb) / `Super+O` (expel) | — | `Meta+I (absorb) / Meta+O (expel)` | `Meta+I (absorb) / Meta+O (expel)` |
 | Toggle stacked layout for column | — | — | `Meta+X` | — |  |
 | Toggle floating | `Mod+V` | `Shift+Super+Escape` (scratch layer) | `Meta+Space` | — (no float/undock yet, see roadmap) | Meta+Space |
