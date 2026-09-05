@@ -469,6 +469,14 @@ export class Strip {
         this.activateColumn(this.grid.focusRight());
     }
 
+    focusFirst(): void {
+        this.activateColumn(this.grid.focusFirst());
+    }
+
+    focusLast(): void {
+        this.activateColumn(this.grid.focusLast());
+    }
+
     moveWindowLeft(): void {
         const focused = this.grid.focusedColumn();
         if (focused === null) {

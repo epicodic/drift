@@ -1423,3 +1423,42 @@ describe("Strip — detachFocusedColumn returns every tile's window", () => {
         expect(strip.detachFocusedColumn()).toEqual([]);
     });
 });
+
+describe('Strip — focusFirst/focusLast', () => {
+    function threeColumnStrip(): {
+        strip: Strip;
+        win1: FakeWindow;
+        win2: FakeWindow;
+        win3: FakeWindow;
+    } {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win1 = fakeWindow('w1');
+        const win2 = fakeWindow('w2');
+        const win3 = fakeWindow('w3');
+        strip.addWindow(win1.adapter);
+        strip.addWindow(win2.adapter);
+        strip.addWindow(win3.adapter); // col3 focused
+        win1.activate.mockClear();
+        win2.activate.mockClear();
+        win3.activate.mockClear();
+        return { strip, win1, win2, win3 };
+    }
+
+    it('focusFirst activates the first column from anywhere in the strip', () => {
+        const { strip, win1 } = threeColumnStrip();
+
+        strip.focusFirst();
+
+        expect(win1.activate).toHaveBeenCalled();
+    });
+
+    it('focusLast activates the last column from anywhere in the strip', () => {
+        const { strip, win3 } = threeColumnStrip();
+        strip.focusFirst();
+        win3.activate.mockClear();
+
+        strip.focusLast();
+
+        expect(win3.activate).toHaveBeenCalled();
+    });
+});
