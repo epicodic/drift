@@ -71,9 +71,9 @@ DriftMoveWindowToEnd|Drift: Move Window To End|Meta+Ctrl+End
 DriftViewportShiftToStart|Drift: Shift Viewport To Start|Meta+Alt+Home
 DriftViewportShiftToEnd|Drift: Shift Viewport To End|Meta+Alt+End
 DriftIncreaseColumnWidth|Drift: Increase Column Width|Meta+Plus
-DriftDecreaseColumnWidth|Drift: Decrease Column Width|Meta+-
+DriftDecreaseColumnWidth|Drift: Decrease Column Width|Meta+Minus
 DriftIncreaseWindowHeight|Drift: Increase Window Height|Meta+Shift+Plus
-DriftDecreaseWindowHeight|Drift: Decrease Window Height|Meta+Shift+-
+DriftDecreaseWindowHeight|Drift: Decrease Window Height|Meta+Shift+Minus
 '
 
 if ! command -v busctl >/dev/null 2>&1; then

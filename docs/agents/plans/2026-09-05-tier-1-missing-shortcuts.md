@@ -41,13 +41,13 @@ Append to the existing `describe('DEFAULT_SETTINGS', ...)` block in `src/config/
 
     it('uses Meta+Plus and Meta+- to step the focused column width, defaulting the step to 80px', () => {
         expect(DEFAULT_SETTINGS.shortcutIncreaseColumnWidth).toBe('Meta+Plus');
-        expect(DEFAULT_SETTINGS.shortcutDecreaseColumnWidth).toBe('Meta+-');
+        expect(DEFAULT_SETTINGS.shortcutDecreaseColumnWidth).toBe('Meta+Minus');
         expect(DEFAULT_SETTINGS.columnWidthStep).toBe(80);
     });
 
-    it('uses Meta+Shift+Plus and Meta+Shift+- to step the focused tile height, defaulting the step to 80px', () => {
+    it('uses Meta+Shift+Plus and Meta+Shift+Minus to step the focused tile height, defaulting the step to 80px', () => {
         expect(DEFAULT_SETTINGS.shortcutIncreaseWindowHeight).toBe('Meta+Shift+Plus');
-        expect(DEFAULT_SETTINGS.shortcutDecreaseWindowHeight).toBe('Meta+Shift+-');
+        expect(DEFAULT_SETTINGS.shortcutDecreaseWindowHeight).toBe('Meta+Shift+Minus');
         expect(DEFAULT_SETTINGS.windowHeightStep).toBe(80);
     });
 ```
@@ -105,9 +105,9 @@ Insert immediately after the existing `shortcutMoveColumnToStripBelow: 'Meta+Ctr
     shortcutViewportShiftToStart: 'Meta+Alt+Home',
     shortcutViewportShiftToEnd: 'Meta+Alt+End',
     shortcutIncreaseColumnWidth: 'Meta+Plus',
-    shortcutDecreaseColumnWidth: 'Meta+-',
+    shortcutDecreaseColumnWidth: 'Meta+Minus',
     shortcutIncreaseWindowHeight: 'Meta+Shift+Plus',
-    shortcutDecreaseWindowHeight: 'Meta+Shift+-',
+    shortcutDecreaseWindowHeight: 'Meta+Shift+Minus',
 ```
 
 Insert immediately after the existing `viewportShiftStep: 400,` line:
@@ -206,7 +206,7 @@ Insert immediately before the closing `</group>` tag:
             <default>Meta+Shift+Plus</default>
         </entry>
         <entry name="shortcutDecreaseWindowHeight" type="String">
-            <default>Meta+Shift+-</default>
+            <default>Meta+Shift+Minus</default>
         </entry>
 ```
 
@@ -1274,7 +1274,7 @@ Replace the `—` in the "Drift" column with the matching "Drift Target" value (
 
 ```markdown
 | Increase/decrease column width | `Mod+=` / `Mod+-` | `Super++` / `Super+-` | `Meta+Ctrl++` / `Meta+Ctrl+-` | `Meta+Plus` / `Meta+-` | `Meta+Plus` / `Meta+-` |
-| Increase/decrease window height | `Mod+Shift+=` / `Mod+Shift+-` | `Shift+Super++` / `Shift+Super+-` | — | `Meta+Shift+Plus` / `Meta+Shift+-` | `Meta+Shift+Plus` / `Meta+Shift+-` |
+| Increase/decrease window height | `Mod+Shift+=` / `Mod+Shift+-` | `Shift+Super++` / `Shift+Super+-` | — | `Meta+Shift+Plus` / `Meta+Shift+Minus` | `Meta+Shift+Plus` / `Meta+Shift+Minus` |
 ```
 
 - [ ] **Step 2: Update the "Observations" section**

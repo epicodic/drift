@@ -52,15 +52,15 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.shortcutViewportShiftToEnd).toBe('Meta+Alt+End');
     });
 
-    it('uses Meta+Plus and Meta+- to step the focused column width, defaulting the step to 80px', () => {
+    it('uses Meta+Plus and Meta+Minus to step the focused column width, defaulting the step to 80px', () => {
         expect(DEFAULT_SETTINGS.shortcutIncreaseColumnWidth).toBe('Meta+Plus');
-        expect(DEFAULT_SETTINGS.shortcutDecreaseColumnWidth).toBe('Meta+-');
+        expect(DEFAULT_SETTINGS.shortcutDecreaseColumnWidth).toBe('Meta+Minus');
         expect(DEFAULT_SETTINGS.columnWidthStep).toBe(80);
     });
 
-    it('uses Meta+Shift+Plus and Meta+Shift+- to step the focused tile height, defaulting the step to 80px', () => {
+    it('uses Meta+Shift+Plus and Meta+Shift+Minus to step the focused tile height, defaulting the step to 80px', () => {
         expect(DEFAULT_SETTINGS.shortcutIncreaseWindowHeight).toBe('Meta+Shift+Plus');
-        expect(DEFAULT_SETTINGS.shortcutDecreaseWindowHeight).toBe('Meta+Shift+-');
+        expect(DEFAULT_SETTINGS.shortcutDecreaseWindowHeight).toBe('Meta+Shift+Minus');
         expect(DEFAULT_SETTINGS.windowHeightStep).toBe(80);
     });
 });

@@ -117,13 +117,13 @@
             <default>Meta+Plus</default>
         </entry>
         <entry name="shortcutDecreaseColumnWidth" type="String">
-            <default>Meta+-</default>
+            <default>Meta+Minus</default>
         </entry>
         <entry name="shortcutIncreaseWindowHeight" type="String">
             <default>Meta+Shift+Plus</default>
         </entry>
         <entry name="shortcutDecreaseWindowHeight" type="String">
-            <default>Meta+Shift+-</default>
+            <default>Meta+Shift+Minus</default>
         </entry>
     </group>
 </kcfg>
