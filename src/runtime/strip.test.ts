@@ -1462,3 +1462,43 @@ describe('Strip — focusFirst/focusLast', () => {
         expect(win3.activate).toHaveBeenCalled();
     });
 });
+
+describe('Strip — moveWindowToStart/moveWindowToEnd', () => {
+    it('moves the focused column to index 0', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        strip.addWindow(fakeWindow('w1').adapter);
+        strip.addWindow(fakeWindow('w2').adapter);
+        strip.addWindow(fakeWindow('w3').adapter); // col3 focused, at index 2
+
+        strip.moveWindowToStart();
+
+        const focusedFlags = strip.minimapSnapshot().columns.map((c) => c.tiles[0].focused);
+        expect(focusedFlags).toEqual([true, false, false]);
+    });
+
+    it('moves the focused column to the last index', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        strip.addWindow(fakeWindow('w1').adapter);
+        strip.addWindow(fakeWindow('w2').adapter);
+        strip.addWindow(fakeWindow('w3').adapter);
+        strip.focusLeft();
+        strip.focusLeft(); // back to col1, focused, at index 0
+
+        strip.moveWindowToEnd();
+
+        const focusedFlags = strip.minimapSnapshot().columns.map((c) => c.tiles[0].focused);
+        expect(focusedFlags).toEqual([false, false, true]);
+    });
+
+    it('is a no-op with zero or one column', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+
+        expect(() => strip.moveWindowToStart()).not.toThrow();
+        expect(() => strip.moveWindowToEnd()).not.toThrow();
+
+        strip.addWindow(fakeWindow('w1').adapter);
+
+        expect(() => strip.moveWindowToStart()).not.toThrow();
+        expect(() => strip.moveWindowToEnd()).not.toThrow();
+    });
+});

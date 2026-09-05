@@ -507,6 +507,41 @@ export class Strip {
         this.revealFocused();
     }
 
+    /** Moves the focused column directly to index 0 within the strip — the "jump" form of
+     * `moveWindowLeft`, which moves one slot at a time. No-op with no focused column or
+     * already at the start. */
+    moveWindowToStart(): void {
+        const focused = this.grid.focusedColumn();
+        if (focused === null) {
+            return;
+        }
+        const currentIndex = this.grid.indexOf(focused.id);
+        if (currentIndex <= 0) {
+            return;
+        }
+        this.grid.moveColumn(focused.id, 0);
+        this.snapColumn(focused.id);
+        this.render();
+        this.revealFocused();
+    }
+
+    /** Moves the focused column directly to the last index — see `moveWindowToStart`. */
+    moveWindowToEnd(): void {
+        const focused = this.grid.focusedColumn();
+        if (focused === null) {
+            return;
+        }
+        const lastIndex = this.grid.columns().length - 1;
+        const currentIndex = this.grid.indexOf(focused.id);
+        if (currentIndex >= lastIndex) {
+            return;
+        }
+        this.grid.moveColumn(focused.id, lastIndex);
+        this.snapColumn(focused.id);
+        this.render();
+        this.revealFocused();
+    }
+
     /** Moves the focused tile up within the focused column's stack, swapping position with
      * its neighbor. No-op if there's no focused column, it's not a stack, or the tile is
      * already at the top. Returns whether it actually moved — callers (e.g. the keyboard
