@@ -64,6 +64,16 @@ DriftStripUp|Drift: Strip Up|Meta+Page_Up
 DriftStripDown|Drift: Strip Down|Meta+Page_Down
 DriftMoveColumnToStripAbove|Drift: Move Column To Strip Above|Meta+Ctrl+Page_Up
 DriftMoveColumnToStripBelow|Drift: Move Column To Strip Below|Meta+Ctrl+Page_Down
+DriftFocusFirst|Drift: Focus First Column|Meta+Home
+DriftFocusLast|Drift: Focus Last Column|Meta+End
+DriftMoveWindowToStart|Drift: Move Window To Start|Meta+Ctrl+Home
+DriftMoveWindowToEnd|Drift: Move Window To End|Meta+Ctrl+End
+DriftViewportShiftToStart|Drift: Shift Viewport To Start|Meta+Alt+Home
+DriftViewportShiftToEnd|Drift: Shift Viewport To End|Meta+Alt+End
+DriftIncreaseColumnWidth|Drift: Increase Column Width|Meta+Plus
+DriftDecreaseColumnWidth|Drift: Decrease Column Width|Meta+-
+DriftIncreaseWindowHeight|Drift: Increase Window Height|Meta+Shift+Plus
+DriftDecreaseWindowHeight|Drift: Decrease Window Height|Meta+Shift+-
 '
 
 if ! command -v busctl >/dev/null 2>&1; then

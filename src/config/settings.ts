@@ -65,8 +65,32 @@ export interface Settings {
     /** Shortcut sequence for moving the whole focused column to the strip below — see
      * `shortcutMoveColumnToStripAbove`. */
     shortcutMoveColumnToStripBelow: string;
+    /** Shortcut sequence for focusing the first column in the strip. */
+    shortcutFocusFirst: string;
+    /** Shortcut sequence for focusing the last column in the strip. */
+    shortcutFocusLast: string;
+    /** Shortcut sequence for moving the focused column to the start of the strip. */
+    shortcutMoveWindowToStart: string;
+    /** Shortcut sequence for moving the focused column to the end of the strip. */
+    shortcutMoveWindowToEnd: string;
+    /** Shortcut sequence for panning the viewport to the strip's start without changing focus. */
+    shortcutViewportShiftToStart: string;
+    /** Shortcut sequence for panning the viewport to the strip's end without changing focus. */
+    shortcutViewportShiftToEnd: string;
+    /** Shortcut sequence for growing the focused column's width by `columnWidthStep`. */
+    shortcutIncreaseColumnWidth: string;
+    /** Shortcut sequence for shrinking the focused column's width by `columnWidthStep`. */
+    shortcutDecreaseColumnWidth: string;
+    /** Shortcut sequence for growing the focused tile's height by `windowHeightStep` (stacked columns only). */
+    shortcutIncreaseWindowHeight: string;
+    /** Shortcut sequence for shrinking the focused tile's height by `windowHeightStep` (stacked columns only). */
+    shortcutDecreaseWindowHeight: string;
     /** Distance the viewport pans per shortcut press, in pixels. */
     viewportShiftStep: number;
+    /** Distance a column's width changes per `shortcutIncreaseColumnWidth`/`shortcutDecreaseColumnWidth` press, in pixels. */
+    columnWidthStep: number;
+    /** Distance a stacked tile's height changes per `shortcutIncreaseWindowHeight`/`shortcutDecreaseWindowHeight` press, in pixels. */
+    windowHeightStep: number;
     /** How long the pointer must stay at the screen's top/bottom edge before the dragged
      * window flips into the strip above/below, in milliseconds (docs:
      * 2026-09-02-cross-row-drag-design). */
@@ -114,7 +138,19 @@ export const DEFAULT_SETTINGS: Settings = {
     shortcutStripDown: 'Meta+Page_Down',
     shortcutMoveColumnToStripAbove: 'Meta+Ctrl+Page_Up',
     shortcutMoveColumnToStripBelow: 'Meta+Ctrl+Page_Down',
+    shortcutFocusFirst: 'Meta+Home',
+    shortcutFocusLast: 'Meta+End',
+    shortcutMoveWindowToStart: 'Meta+Ctrl+Home',
+    shortcutMoveWindowToEnd: 'Meta+Ctrl+End',
+    shortcutViewportShiftToStart: 'Meta+Alt+Home',
+    shortcutViewportShiftToEnd: 'Meta+Alt+End',
+    shortcutIncreaseColumnWidth: 'Meta+Plus',
+    shortcutDecreaseColumnWidth: 'Meta+-',
+    shortcutIncreaseWindowHeight: 'Meta+Shift+Plus',
+    shortcutDecreaseWindowHeight: 'Meta+Shift+-',
     viewportShiftStep: 400,
+    columnWidthStep: 80,
+    windowHeightStep: 80,
     stripDragDwellMs: 400,
     stripDragEdgeBorderPx: 2,
     columnDragDwellMs: 400,
@@ -131,6 +167,8 @@ export function loadSettings(): Settings {
         defaultColumnWidth: readNumberConfig('defaultColumnWidth', DEFAULT_SETTINGS.defaultColumnWidth),
         animationDurationMs: readNumberConfig('animationDurationMs', DEFAULT_SETTINGS.animationDurationMs),
         viewportShiftStep: readNumberConfig('viewportShiftStep', DEFAULT_SETTINGS.viewportShiftStep),
+        columnWidthStep: readNumberConfig('columnWidthStep', DEFAULT_SETTINGS.columnWidthStep),
+        windowHeightStep: readNumberConfig('windowHeightStep', DEFAULT_SETTINGS.windowHeightStep),
         stripDragDwellMs: readNumberConfig('stripDragDwellMs', DEFAULT_SETTINGS.stripDragDwellMs),
         stripDragEdgeBorderPx: readNumberConfig('stripDragEdgeBorderPx', DEFAULT_SETTINGS.stripDragEdgeBorderPx),
         columnDragDwellMs: readNumberConfig('columnDragDwellMs', DEFAULT_SETTINGS.columnDragDwellMs),
@@ -175,6 +213,37 @@ export function loadSettings(): Settings {
         shortcutMoveColumnToStripBelow: readStringConfig(
             'shortcutMoveColumnToStripBelow',
             DEFAULT_SETTINGS.shortcutMoveColumnToStripBelow,
+        ),
+        shortcutFocusFirst: readStringConfig('shortcutFocusFirst', DEFAULT_SETTINGS.shortcutFocusFirst),
+        shortcutFocusLast: readStringConfig('shortcutFocusLast', DEFAULT_SETTINGS.shortcutFocusLast),
+        shortcutMoveWindowToStart: readStringConfig(
+            'shortcutMoveWindowToStart',
+            DEFAULT_SETTINGS.shortcutMoveWindowToStart,
+        ),
+        shortcutMoveWindowToEnd: readStringConfig('shortcutMoveWindowToEnd', DEFAULT_SETTINGS.shortcutMoveWindowToEnd),
+        shortcutViewportShiftToStart: readStringConfig(
+            'shortcutViewportShiftToStart',
+            DEFAULT_SETTINGS.shortcutViewportShiftToStart,
+        ),
+        shortcutViewportShiftToEnd: readStringConfig(
+            'shortcutViewportShiftToEnd',
+            DEFAULT_SETTINGS.shortcutViewportShiftToEnd,
+        ),
+        shortcutIncreaseColumnWidth: readStringConfig(
+            'shortcutIncreaseColumnWidth',
+            DEFAULT_SETTINGS.shortcutIncreaseColumnWidth,
+        ),
+        shortcutDecreaseColumnWidth: readStringConfig(
+            'shortcutDecreaseColumnWidth',
+            DEFAULT_SETTINGS.shortcutDecreaseColumnWidth,
+        ),
+        shortcutIncreaseWindowHeight: readStringConfig(
+            'shortcutIncreaseWindowHeight',
+            DEFAULT_SETTINGS.shortcutIncreaseWindowHeight,
+        ),
+        shortcutDecreaseWindowHeight: readStringConfig(
+            'shortcutDecreaseWindowHeight',
+            DEFAULT_SETTINGS.shortcutDecreaseWindowHeight,
         ),
     });
 }
