@@ -2,3 +2,4 @@
 _playground/
 node_modules/
 drift/contents/code/main.js
+drift/contents/shaders/*.qsb

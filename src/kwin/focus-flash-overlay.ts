@@ -10,7 +10,6 @@ import type { WindowAdapter } from './window-adapter';
 export const FOCUS_FLASH_OVERLAY_WINDOW_TITLE = 'Drift Focus Flash';
 
 const FOCUS_FLASH_QML = `import QtQuick 6.0
-import Qt5Compat.GraphicalEffects
 import org.kde.plasma.core as PlasmaCore
 import org.kde.kirigami as Kirigami
 PlasmaCore.Dialog {
@@ -23,49 +22,22 @@ PlasmaCore.Dialog {
     flags: Qt.BypassWindowManagerHint | Qt.FramelessWindowHint | Qt.Popup
     outputOnly: true
     visible: false
-    mainItem: Item {
+    mainItem: ShaderEffect {
         id: root
         width: dialog.width
         height: dialog.height
         implicitWidth: dialog.width
         implicitHeight: dialog.height
-        // Mask that is opaque only in the outer blurRadius-wide band (its border) and
-        // transparent in the center, so OpacityMask keeps the glow as a ring and lets the
-        // window show through the middle.
-        Rectangle {
-            id: ringMask
-            anchors.fill: parent
-            color: "transparent"
-            border.color: "black"
-            border.width: dialog.blurRadius
-            visible: false
-            layer.enabled: true
-        }
-        // Filled highlight glow around the window-edge box. RectangularGlow always fills its
-        // rectangle, so OpacityMask clips it to the outer band, leaving the center see-through.
-        Item {
-            anchors.fill: parent
-            layer.enabled: true
-            layer.effect: OpacityMask {
-                maskSource: ringMask
-            }
-            RectangularGlow {
-                anchors.fill: parent
-                anchors.margins: dialog.blurRadius
-                cornerRadius: dialog.blurRadius
-                color: Kirigami.Theme.highlightColor
-                glowRadius: dialog.blurRadius
-                spread: 0
-            }
-        }
-        // Crisp border at the window edge (inset by the halo margin).
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: dialog.blurRadius
-            color: "transparent"
-            border.color: Kirigami.Theme.highlightColor
-            border.width: dialog.borderWidth
-        }
+        // Solid highlight color; the shader turns it into a symmetric glow around the
+        // window edge (see drift/contents/shaders/focus_glow.frag), so the hue can never
+        // fringe toward black the way a blurred-then-masked stroke did.
+        property color glowColor: Kirigami.Theme.highlightColor
+        property vector2d itemSize: Qt.vector2d(width, height)
+        property real margin: dialog.blurRadius
+        property real coreHalf: dialog.borderWidth * 0.5
+        property real glow: dialog.blurRadius
+        property real radius: 0
+        fragmentShader: Qt.resolvedUrl("../shaders/focus_glow.frag.qsb")
     }
 }`;
 
