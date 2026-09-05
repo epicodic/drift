@@ -174,9 +174,11 @@ export class Column {
     /** Grows the focused tile by `step`, taking the space from its neighbor below in
      * the stack — or above, if the focused tile is at the bottom — the keyboard
      * equivalent of drag-resizing via `resizeTile`. No-op (returns `false`) on a
-     * single-tile column. Returns whether the tile's height actually changed (see
-     * `resizeFocusedTile` for the floor that can make a large `step` a no-op when
-     * the stack has little room). */
+     * single-tile column. Returns whether the tile's height actually changed. If the
+     * pair is already further from balance than `step`'s own floor allows (e.g. from a
+     * prior mouse drag-resize), this can move the focused tile's height *down* toward
+     * the midpoint instead of up — see `resizeFocusedTile`'s floor clamp, which always
+     * wins over the requested direction. */
     growFocusedTile(step: number): boolean {
         return this.resizeFocusedTile(step, step);
     }
@@ -189,10 +191,11 @@ export class Column {
 
     /** Shared implementation for `growFocusedTile`/`shrinkFocusedTile`. Clamps the
      * target height to `[floor, total - floor]`, where `floor` is
-     * `min(floorCandidate, total / 2)` — normally exactly `floorCandidate` (the
-     * configured step), but capped at half the pair's combined height so the range
-     * is never empty, however small the stack. This is what lets `resizeTile` below
-     * never throw its "pushed to zero or below" error. */
+     * `min(abs(floorCandidate), total / 2)` — normally exactly `floorCandidate` (the
+     * configured step; `abs` guards against a caller passing a negative step), but
+     * capped at half the pair's combined height so the range is never empty, however
+     * small the stack. This is what lets `resizeTile` below never throw its "pushed
+     * to zero or below" error. */
     private resizeFocusedTile(delta: number, floorCandidate: number): boolean {
         const index = this.requireTileIndex(this.focusedTile);
         const edge: VerticalResizeEdge = index < this.stack.length - 1 ? 'bottom' : 'top';
@@ -203,7 +206,7 @@ export class Column {
         }
         const current = this.stack[index].height;
         const total = current + neighbor.height;
-        const floor = Math.min(floorCandidate, total / 2);
+        const floor = Math.min(Math.abs(floorCandidate), total / 2);
         const target = Math.min(total - floor, Math.max(floor, current + delta));
         if (target === current) {
             return false;
