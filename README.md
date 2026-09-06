@@ -39,6 +39,9 @@ Scrollable tiling keeps every column at the width *you* gave it and never resize
 New windows get their own column at the end of the strip; the camera just pans over to bring the focused one into view.
 Your spatial memory of "that window is two to the left" stays valid, tick after tick.
 
+It's a natural fit for an ultrawide monitor — instead of stretching two or three windows to fill all that horizontal space, you keep them at a comfortable width and scroll between them.
+But Drift isn't built only for that case: multi-monitor support is a first-class part of the design, not an afterthought, so the same strip scrolls seamlessly across two or more regular screens just as well.
+
 ```mermaid
 flowchart LR
     subgraph Strip["the strip (virtual, unbounded)"]
