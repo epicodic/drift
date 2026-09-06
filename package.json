@@ -2,6 +2,7 @@
     "name": "drift",
     "version": "0.1.0",
     "description": "Scrollable tiling for KDE Plasma / KWin",
+    "license": "MIT",
     "type": "module",
     "private": true,
     "scripts": {

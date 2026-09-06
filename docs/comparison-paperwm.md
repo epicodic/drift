@@ -19,10 +19,10 @@ Columns can hold more than one window, stacked vertically (`Super+I` absorbs the
 | Host environment | KDE Plasma / KWin script | GNOME Shell extension |
 | Multi-monitor model | One strip spans every screen | One workspace (one strip) per monitor, drawn from a shared workspace stack |
 | Vertical (in-column) stacking | Yes — `Meta+I`/`Meta+O` absorb/expel, resizable tile heights | Yes — absorb/expel windows into a column, resize stacked heights |
-| Strip / stacked navigation | Yes — `StripStack` strips nested inside each activity/desktop strip, paged with `Meta+Page_Up`/`Meta+Page_Down` (`Meta+Shift+Page_Up`/`Down` moves a window along) | Yes — a "workspace stack" you page through (`Super+PageUp/PageDown`, `Super+`` `) |
-| Window rules | Not yet, see [roadmap](roadmap.md) | Yes — "winprops": per `wm_class`/`title` rules (`preferredWidth`, force-floating via `scratch_layer`) |
-| Minimap / position indicator | Not yet, see [roadmap](roadmap.md) | Yes — both a `minimap.js` overlay and a persistent "window position bar" in the top bar |
-| Floating escape hatch (Drift's "undock/redock") | Not yet, see [roadmap](roadmap.md) | Yes — the "scratch layer": toggle a window between tiled and always-on-top floating |
+| Strip / stacked navigation | Yes — `StripStack` strips nested inside each activity/desktop strip, paged with `Meta+Page_Up`/`Meta+Page_Down` (`Meta+Ctrl+Up`/`Down` moves the focused window along, `Meta+Ctrl+Page_Up`/`Down` moves the whole column) | Yes — a "workspace stack" you page through (`Super+PageUp/PageDown`, `Super+`` `) |
+| Window rules | Not yet — design drafted, see [roadmap](roadmap.md) | Yes — "winprops": per `wm_class`/`title` rules (`preferredWidth`, force-floating via `scratch_layer`) |
+| Minimap / position indicator | Yes — a spatial overlay (columns, thumbnails, viewport rect), auto-shown on column-step and auto-hidden after `minimapAutoHideMs` | Yes — both a `minimap.js` overlay and a persistent "window position bar" in the top bar |
+| Floating escape hatch (Drift's "undock/redock") | Yes — `Meta+Space` toggles docked/floating, with optional `keepAbove` | Yes — the "scratch layer": toggle a window between tiled and always-on-top floating |
 | Mouse/touch navigation | Click-to-activate only | Click-to-activate, mouse wheel on the top bar, and 3-finger touchpad swipes (Wayland) |
 | Column/window reordering | Live mouse drag-to-reorder | Primarily keybindings (`Super+Ctrl+Left/Right`, take/drop mode); no continuous drag-to-reorder |
 | Focus-scroll behavior | One fixed "reveal" behavior | Switchable "focus modes" (`DEFAULT` free-scroll, `CENTER` always-centered, `EDGE` snap-to-edge) |
@@ -34,9 +34,9 @@ Columns can hold more than one window, stacked vertically (`Super+I` absorbs the
 
 A few PaperWM features suggest additional roadmap items or refinements of the existing ones — not commitments, just leads for a future brainstorming pass:
 
-- **Window rules** (already on the roadmap) could follow PaperWM's `winprops` shape directly: match by window class/title, set a preferred width and/or force-floating, with a wildcard `*` fallback rule.
-- **Minimap** (already on the roadmap) has two independent precedents in PaperWM worth choosing between: a full spatial overlay (`minimap.js`) versus a lightweight always-visible position bar. The latter is far cheaper to build and may cover most of the value.
-- **Undock/redock** (already on the roadmap) maps closely to PaperWM's scratch layer — a dedicated toggle between tiled and floating-always-on-top, rather than a one-off drag-out gesture.
+- **Window rules** (already on the roadmap, design drafted in [`docs/agents/specs/2026-09-06-window-rules-design.md`](agents/specs/2026-09-06-window-rules-design.md)) could still take a look at PaperWM's `winprops` shape — match by window class/title, set a preferred width and/or force-floating, with a wildcard `*` fallback rule — when implementation starts.
+- **Minimap** — done. Drift went with the full spatial overlay (`minimap.js` precedent) rather than PaperWM's lightweight position bar; a position-bar-style always-visible variant remains a possible future refinement, not a gap.
+- **Undock/redock** — done, and maps closely to PaperWM's scratch layer as anticipated: a dedicated `Meta+Space` toggle between tiled and floating-always-on-top (`keepAbove`), rather than a one-off drag-out gesture.
 - **Focus modes** — not currently on Drift's roadmap at all. PaperWM's switchable `CENTER`/`EDGE`/free-scroll focus behavior is a different axis from Drift's one-shot `cycleAlign` shortcut (a persistent mode vs. a manual step) and might be worth a dedicated roadmap entry rather than folding into "configurable navigation feel."
 
 ## Where Drift already differs by design, not by gap
