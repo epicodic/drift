@@ -137,5 +137,11 @@
         <entry name="shortcutDecreaseWindowHeight" type="String">
             <default>Meta+Shift+Minus</default>
         </entry>
+        <entry name="undockKeepAbove" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="shortcutToggleFloating" type="String">
+            <default>Meta+Space</default>
+        </entry>
     </group>
 </kcfg>

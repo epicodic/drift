@@ -80,6 +80,7 @@ DriftIncreaseColumnWidth    | Drift: Increase Column Width      | Meta+Plus     
 DriftDecreaseColumnWidth    | Drift: Decrease Column Width      | Meta+Minus       | Meta+Num+Minus
 DriftIncreaseWindowHeight   | Drift: Increase Window Height     | Meta+Shift+Plus  | Meta+Shift+Num+Plus
 DriftDecreaseWindowHeight   | Drift: Decrease Window Height     | Meta+Shift+Minus | Meta+Shift+Num+Minus
+DriftToggleFloating         | Drift: Toggle Floating            | Meta+Space
 '
 # The padding above is purely cosmetic; collapse " | " back to "|" so every
 # downstream awk/read consumer keeps seeing the original compact field format.

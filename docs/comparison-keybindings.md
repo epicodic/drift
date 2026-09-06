@@ -51,7 +51,7 @@ Empty cells mean the project has no equivalent (by design, or not yet built).
 | Scroll viewport to start/end | — | — | `Meta+Alt+Home` / `End` | `Meta+Alt+Home` / `Meta+Alt+End` ✓ | `Meta+Alt+Home` / `Meta+Alt+End` |
 | Absorb/expel window (vertical stacking) | `Mod+[` / `Mod+]` (consume/expel) | `Super+I` (absorb) / `Super+O` (expel) | — | `Meta+I (absorb) / Meta+O (expel)` | `Meta+I (absorb) / Meta+O (expel)` |
 | Toggle stacked layout for column | — | — | `Meta+X` | — |  |
-| Toggle floating | `Mod+V` | `Shift+Super+Escape` (scratch layer) | `Meta+Space` | — (no float/undock yet, see roadmap) | Meta+Space |
+| Toggle floating | `Mod+V` | `Shift+Super+Escape` (scratch layer) | `Meta+Space` | `Meta+Space` | Meta+Space |
 | Toggle fullscreen | `Mod+Shift+F` | `Shift+Super+F` | — | — |  |
 | Close focused window | `Mod+Q` | `Super+Backspace` | — | — |  |
 | Switch workspace/strip up | `Mod+I` / `Mod+PageUp` | `Super+PageUp` | — (no workspace concept) | `Meta+Page_Up` | `Meta+Page_Up` |

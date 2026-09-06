@@ -11,6 +11,7 @@ function createWindow(overrides: Partial<Window> = {}): Window {
         caption: 'Window',
         normalWindow: true,
         skipTaskbar: false,
+        keepAbove: false,
         onScreenDisplay: false,
         deleted: false,
         minSize: { width: 0, height: 0 },
@@ -134,6 +135,17 @@ describe('WindowAdapter.setSkipTaskbar', () => {
         // manages. That's a property of window-manager.ts's existing, untouched code, not
         // something this plan adds a new test for; this test only proves skipTaskbar itself
         // round-trips through the adapter correctly.
+    });
+});
+
+describe('WindowAdapter.setKeepAbove', () => {
+    it('writes keepAbove on the underlying window', () => {
+        const window = createWindow({ keepAbove: false });
+        const adapter = new WindowAdapter(window);
+
+        adapter.setKeepAbove(true);
+
+        expect(window.keepAbove).toBe(true);
     });
 });
 

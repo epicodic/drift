@@ -45,7 +45,7 @@ export class Controller {
             settings.focusFlashEnabled,
         );
         this.stripManager = new StripManager(area, settings, createQmlTimer(root), this.workspaceAdapter);
-        this.windowManager = new WindowManager(this.stripManager);
+        this.windowManager = new WindowManager(this.stripManager, settings);
     }
 
     start(): void {
@@ -82,6 +82,7 @@ export class Controller {
             decreaseColumnWidth: () => this.stripManager.activeStripStack().decreaseColumnWidth(),
             increaseWindowHeight: () => this.stripManager.activeStripStack().increaseWindowHeight(),
             decreaseWindowHeight: () => this.stripManager.activeStripStack().decreaseWindowHeight(),
+            toggleFloating: () => this.windowManager.toggleFloating(this.workspaceAdapter.activeWindow()),
         });
         void this.scriptUiDirUrl; // only used by the disabled conflict check above
         console.log('Drift: initialized');

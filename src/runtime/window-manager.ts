@@ -4,13 +4,18 @@
 // Per-window activity/desktop subscriptions live here because an unmanaged window belongs
 // to no strip; strip ownership itself is tracked by StripManager.
 
+import type { Settings } from '../config/settings';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { StripManager } from './strip-manager';
 
 export class WindowManager {
     private readonly unsubscribeByWindow = new Map<string, () => void>();
+    private readonly undocked = new Set<string>();
 
-    constructor(private readonly stripManager: StripManager) {}
+    constructor(
+        private readonly stripManager: StripManager,
+        private readonly settings: Settings,
+    ) {}
 
     addWindow(win: WindowAdapter): void {
         if (!win.isTileable() || this.unsubscribeByWindow.has(win.id)) {
@@ -31,6 +36,7 @@ export class WindowManager {
             unsubscribe();
             this.unsubscribeByWindow.delete(win.id);
         }
+        this.undocked.delete(win.id);
         this.stripManager.remove(win);
     }
 
@@ -44,6 +50,28 @@ export class WindowManager {
         return this.stripManager.activate(win);
     }
 
+    /** Toggles `win` between docked (managed by its strip) and floating/undocked (normal
+     * KWin floating behavior, outside any strip) — docs: 2026-09-06-manual-undock-redock-design. */
+    toggleFloating(win: WindowAdapter | null): void {
+        if (win === null) {
+            return;
+        }
+        if (this.undocked.has(win.id)) {
+            this.undocked.delete(win.id);
+            win.setKeepAbove(false);
+            this.place(win);
+            return;
+        }
+        if (this.stripManager.ownerOf(win.id) === null) {
+            return;
+        }
+        this.stripManager.remove(win);
+        this.undocked.add(win.id);
+        if (this.settings.undockKeepAbove) {
+            win.setKeepAbove(true);
+        }
+    }
+
     private place(win: WindowAdapter): void {
         const assignment = win.singleAssignment();
         if (assignment !== null) {
@@ -52,6 +80,9 @@ export class WindowManager {
     }
 
     private reassign(win: WindowAdapter): void {
+        if (this.undocked.has(win.id)) {
+            return;
+        }
         const currentKey = this.stripManager.ownerOf(win.id);
         const assignment = win.singleAssignment();
         const newKey = assignment === null ? null : this.stripManager.keyOf(assignment.activity, assignment.desktop);

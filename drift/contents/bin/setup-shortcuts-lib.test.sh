@@ -78,6 +78,9 @@ assert_eq "key_code falls back to ASCII for O" "79" "$(key_code "O")"
 assert_eq "key_code falls back to ASCII for A" "65" "$(key_code "A")"
 assert_eq "key_code falls back to ASCII for Z" "90" "$(key_code "Z")"
 
+# Qt::Key_Space (qnamespace.h) equals ASCII 32, same as the Plus/Minus punctuation keys.
+assert_eq "key_code computes Space" "32" "$(key_code "Space")"
+
 # DriftFocusRight already holds the target key, but it's in the exclude list (it's one
 # of Drift's own actions) — must not be reported as a conflict to release.
 assert_eq "own action holding the key is not reported as a conflict" "" \
