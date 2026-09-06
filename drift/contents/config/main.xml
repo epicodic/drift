@@ -144,7 +144,7 @@
             <default>Meta+Space</default>
         </entry>
         <entry name="windowRules" type="String">
-            <default>[{"class":"/^(org\\.kde\\.)?plasmashell$/","float":true},{"class":"/^(org\\.kde\\.)?polkit-kde-authentication-agent-1$/","float":true},{"class":"/^(org\\.kde\\.)?kded6$/","float":true},{"class":"/^(org\\.kde\\.)?kcalc$/","float":true},{"class":"/^(org\\.kde\\.)?kruler$/","float":true},{"class":"/^(org\\.kde\\.)?krunner$/","float":true},{"class":"/^(org\\.kde\\.)?yakuake$/","float":true},{"class":"/^(wl-copy|wl-paste)$/","caption":"/^wl-clipboard$/","float":true},{"class":"/^steam$/","caption":"/^Steam Big Picture Mode$/","float":true},{"class":"/^zoom$/","caption":"/^(Zoom Cloud Meetings|zoom|zoom &lt;2&gt;)$/","float":true},{"class":"/^jetbrains-.*$/","caption":"/^splash$/","float":true}]</default>
+            <default>[{"class":"/^(org\\.kde\\.)?plasmashell$/","float":true},{"class":"/^(org\\.kde\\.)?polkit-kde-authentication-agent-1$/","float":true},{"class":"/^(org\\.kde\\.)?kded6$/","float":true},{"class":"/^(org\\.kde\\.)?kcalc$/","float":true},{"class":"/^(org\\.kde\\.)?kruler$/","float":true},{"class":"/^(org\\.kde\\.)?krunner$/","float":true},{"class":"/^(org\\.kde\\.)?yakuake$/","float":true},{"class":"/^(wl-copy|wl-paste)$/","caption":"/^wl-clipboard$/","float":true},{"class":"/^steam$/","caption":"/^Steam Big Picture Mode$/","float":true},{"class":"/^zoom$/","caption":"/^(Zoom Cloud Meetings|zoom|zoom &lt;2&gt;)$/","float":true}]</default>
         </entry>
     </group>
 </kcfg>
