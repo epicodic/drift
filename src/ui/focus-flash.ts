@@ -3,15 +3,12 @@
 // KWin-touching glue that samples this against a real clock lives in
 // `kwin/focus-flash-overlay.ts`.
 
-/** Triangular envelope: ramps 0 -> 1 over the first half of `durationMs`, then 1 -> 0 over
- * the second half. Returns 0 once `elapsedMs >= durationMs`, and 0 for a non-positive duration. */
+/** Sinusoidal envelope (first quadrant): ramps 0 -> 1 smoothly using sin(θ) where
+ * θ ∈ [0, π/2]. Returns 0 once `elapsedMs > durationMs`, and 0 for a non-positive duration. */
 export function flashOpacity(elapsedMs: number, durationMs: number): number {
-    if (durationMs <= 0 || elapsedMs >= durationMs) {
+    if (durationMs <= 0 || elapsedMs > durationMs) {
         return 0;
     }
-    const half = durationMs / 2;
-    if (elapsedMs <= half) {
-        return elapsedMs / half;
-    }
-    return 1 - (elapsedMs - half) / half;
+    const progress = elapsedMs / durationMs;
+    return Math.sin(progress * Math.PI);
 }

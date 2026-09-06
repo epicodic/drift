@@ -41,6 +41,7 @@ layout(std140, binding = 0) uniform buf {
     float coreHalf;   // half width of the fully-opaque border core in px
     float glow;       // falloff distance in px on each side
     float radius;     // corner radius in px (always 0 for now, see Scope)
+    float sharpness;  // pow() exponent applied to alpha; >1 concentrates the glow near the core
 };
 float sdRoundRect(vec2 p, vec2 b, float r) {
     vec2 q = abs(p) - b + r;
@@ -51,6 +52,7 @@ void main() {
     vec2 halfBox = itemSize * 0.5 - margin;        // window-edge box half extents
     float d = abs(sdRoundRect(p, halfBox, radius));
     float a = 1.0 - smoothstep(coreHalf, coreHalf + glow, d);
+    a = pow(a, sharpness);
     fragColor = vec4(glowColor.rgb, 1.0) * (a * glowColor.a * qt_Opacity); // premultiplied
 }
 ```
@@ -62,6 +64,7 @@ Uniform values, set from QML:
 - `coreHalf` — `dialog.borderWidth * 0.5`.
 - `glow` — `dialog.blurRadius`.
 - `radius` — `0`.
+- `sharpness` — `2.0` (hardcoded, not user-configurable; matches the perceptual falloff of the original `RectangularGlow`'s `spreadMultiplier * spreadMultiplier`, see [comparison note below](#tuning-knobs)).
 
 ## QML integration
 
@@ -80,6 +83,7 @@ mainItem: ShaderEffect {
     property real coreHalf: dialog.borderWidth * 0.5
     property real glow: dialog.blurRadius
     property real radius: 0
+    property real sharpness: 2.0
     fragmentShader: Qt.resolvedUrl("../shaders/focus_glow.frag.qsb")
 }
 ```
@@ -121,6 +125,7 @@ If the relative URL resolves wrong, the fix is a follow-up task, not designed up
 - `coreHalf` — half the solid border thickness before the falloff starts.
 - `glow` — how far the glow reaches on each side (bounded by `margin`, so raise `blurRadius`/the overlay margin if it clips).
 - `radius` — reserved for rounded corners; always `0` per [Scope](#scope).
+- `sharpness` — `pow()` exponent applied to alpha after the `smoothstep`; `1.0` is a linear falloff, `2.0` (the default) concentrates the glow near the core, matching how `Qt5Compat.GraphicalEffects`' `RectangularGlow` squares its `spreadMultiplier`.
 
 ## Testing
 

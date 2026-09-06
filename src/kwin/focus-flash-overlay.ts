@@ -37,6 +37,7 @@ PlasmaCore.Dialog {
         property real coreHalf: dialog.borderWidth * 0.5
         property real glow: dialog.blurRadius
         property real radius: 0
+        property real sharpness: 2.0
         fragmentShader: Qt.resolvedUrl("../shaders/focus_glow.frag.qsb")
     }
 }`;
@@ -82,7 +83,7 @@ export function createFocusFlashOverlay(
                     dialog.y = Math.round(frame.y - blurRadius);
                     dialog.width = Math.round(frame.width + blurRadius * 2);
                     dialog.height = Math.round(frame.height + blurRadius * 2);
-                    dialog.opacity = flashOpacity(elapsed, durationMs);
+                    dialog.opacity = flashOpacity(elapsed, durationMs) * 0.5;
                 } catch (error) {
                     // The window can be closed mid-flash — never let that take down the timer.
                     void error;
