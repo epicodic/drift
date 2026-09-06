@@ -54,6 +54,7 @@ interface Window {
     readonly transient: boolean;
     readonly fullScreen: boolean;
     skipTaskbar: boolean;
+    keepAbove: boolean;
     readonly onScreenDisplay: boolean;
     readonly deleted: boolean;
     readonly minSize: QSize;

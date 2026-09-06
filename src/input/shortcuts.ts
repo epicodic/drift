@@ -35,6 +35,7 @@ export interface ShortcutActions {
     decreaseColumnWidth(): void;
     increaseWindowHeight(): void;
     decreaseWindowHeight(): void;
+    toggleFloating(): void;
 }
 
 export function registerShortcuts(parent: QmlObject, settings: Settings, actions: ShortcutActions): void {
@@ -204,6 +205,13 @@ export function registerShortcuts(parent: QmlObject, settings: Settings, actions
         'Drift: Decrease Window Height',
         settings.shortcutDecreaseWindowHeight,
         actions.decreaseWindowHeight,
+    );
+    createShortcut(
+        parent,
+        'DriftToggleFloating',
+        'Drift: Toggle Floating',
+        settings.shortcutToggleFloating,
+        actions.toggleFloating,
     );
 }
 

@@ -76,4 +76,12 @@ describe('DEFAULT_SETTINGS', () => {
     it('defaults the focus flash duration to 300ms', () => {
         expect(DEFAULT_SETTINGS.focusFlashDurationMs).toBe(300);
     });
+
+    it('keeps undocked windows above others by default', () => {
+        expect(DEFAULT_SETTINGS.undockKeepAbove).toBe(true);
+    });
+
+    it('uses Meta+Space to toggle floating', () => {
+        expect(DEFAULT_SETTINGS.shortcutToggleFloating).toBe('Meta+Space');
+    });
 });

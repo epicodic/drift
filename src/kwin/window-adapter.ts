@@ -82,6 +82,13 @@ export class WindowAdapter {
         this.window.skipTaskbar = skipTaskbar;
     }
 
+    /** Sets whether the window stays above other (non-`keepAbove`) windows — used while a
+     * window is undocked, so it stays visible above the still-tiled windows behind it
+     * (docs: 2026-09-06-manual-undock-redock-design). */
+    setKeepAbove(keepAbove: boolean): void {
+        this.window.keepAbove = keepAbove;
+    }
+
     activities(): string[] {
         return this.window.activities;
     }

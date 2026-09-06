@@ -21,6 +21,7 @@ key_code() {
 		End) echo 16777233 ;;
 		Plus) echo 43 ;;
 		Minus) echo 45 ;;
+		Space) echo 32 ;;
 		[A-Z])
 			# Qt::Key_A..Key_Z (qnamespace.h) equal the ASCII codes of the
 			# uppercase letters themselves, so no per-letter case is needed.

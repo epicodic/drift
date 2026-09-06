@@ -122,6 +122,11 @@ export interface Settings {
     focusFlashBlurRadius: number;
     /** Total duration of the focus-flash fade-in-then-fade-out, in milliseconds. */
     focusFlashDurationMs: number;
+    /** Whether an undocked window is kept above still-docked windows (docs:
+     * 2026-09-06-manual-undock-redock-design). */
+    undockKeepAbove: boolean;
+    /** Shortcut sequence for toggling the active window between docked and floating. */
+    shortcutToggleFloating: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -171,6 +176,8 @@ export const DEFAULT_SETTINGS: Settings = {
     focusFlashBorderWidth: 4,
     focusFlashBlurRadius: 24,
     focusFlashDurationMs: 300,
+    undockKeepAbove: true,
+    shortcutToggleFloating: 'Meta+Space',
 };
 
 /** Reads user-configurable settings from kwinrc (docs §5). Untestable glue (docs §8). */
@@ -193,6 +200,8 @@ export function loadSettings(): Settings {
         focusFlashBorderWidth: readNumberConfig('focusFlashBorderWidth', DEFAULT_SETTINGS.focusFlashBorderWidth),
         focusFlashBlurRadius: readNumberConfig('focusFlashBlurRadius', DEFAULT_SETTINGS.focusFlashBlurRadius),
         focusFlashDurationMs: readNumberConfig('focusFlashDurationMs', DEFAULT_SETTINGS.focusFlashDurationMs),
+        undockKeepAbove: readBooleanConfig('undockKeepAbove', DEFAULT_SETTINGS.undockKeepAbove),
+        shortcutToggleFloating: readStringConfig('shortcutToggleFloating', DEFAULT_SETTINGS.shortcutToggleFloating),
         shortcutFocusLeft: readStringConfig('shortcutFocusLeft', DEFAULT_SETTINGS.shortcutFocusLeft),
         shortcutFocusRight: readStringConfig('shortcutFocusRight', DEFAULT_SETTINGS.shortcutFocusRight),
         shortcutToggleDebugConsole: readStringConfig(
