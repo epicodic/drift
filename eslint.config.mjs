@@ -7,6 +7,7 @@ export default tseslint.config(
     {
         ignores: [
             'drift/contents/code/main.js',
+            '.build/**',
             'node_modules/**',
             '.agents/**',
             '.serena/**',

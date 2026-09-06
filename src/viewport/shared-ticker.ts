@@ -6,6 +6,11 @@
 
 import type { Timer } from './animator';
 
+/** Internal render-tick rate driving every `SharedTicker`/`Animator`/`EdgeDwell` in the
+ * codebase — an implementation detail (~60fps), not user-tunable behavior, so it lives here
+ * as a constant rather than in `Settings` (docs/agents/specs/2026-09-06-settings-consolidation-design.md). */
+export const ANIMATION_TICK_MS = 16;
+
 export class SharedTicker {
     private readonly callbacks = new Map<number, () => void>();
     private nextId = 1;

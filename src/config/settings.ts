@@ -1,7 +1,9 @@
-// Hardcoded spike defaults (docs §7.2), overridable via the package's config/main.xml
-// (KConfigXT, read through `KWin.readConfig`) — the same mechanism Karousel uses.
+// Settings and their defaults are defined once in settings-definitions.ts (single source of
+// truth — docs/agents/specs/2026-09-06-settings-consolidation-design.md); this file derives
+// DEFAULT_SETTINGS from it and reads the live values through `KWin.readConfig`, backed by
+// the generated drift/contents/config/main.xml (KConfigXT schema).
 
-import { DEFAULT_WINDOW_RULES } from '../core/default-window-rules';
+import { SETTINGS_DEFINITIONS } from './settings-definitions';
 
 export interface Settings {
     /** Horizontal gap between columns, in pixels. */
@@ -10,8 +12,6 @@ export interface Settings {
     defaultColumnWidth: number;
     /** Duration of a focus-scroll animation, in milliseconds. */
     animationDurationMs: number;
-    /** Timer tick interval driving the animation, in milliseconds (~60fps). */
-    animationTickMs: number;
     /** Space reserved at the bottom of the screen (e.g. for a panel), in pixels. */
     bottomMargin: number;
     /** Shortcut sequence for focusing the column to the left. */
@@ -124,6 +124,9 @@ export interface Settings {
     focusFlashBlurRadius: number;
     /** Total duration of the focus-flash fade-in-then-fade-out, in milliseconds. */
     focusFlashDurationMs: number;
+    /** Peak opacity of the focus-flash highlight at the midpoint of its fade-in-then-fade-out
+     * (docs: 2026-09-05-focus-flash-highlight-design.md). */
+    focusFlashOpacity: number;
     /** Whether an undocked window is kept above still-docked windows (docs:
      * 2026-09-06-manual-undock-redock-design). */
     undockKeepAbove: boolean;
@@ -136,153 +139,37 @@ export interface Settings {
     windowRules: string;
 }
 
-export const DEFAULT_SETTINGS: Settings = {
-    columnGap: 8,
-    defaultColumnWidth: 800,
-    animationDurationMs: 200,
-    animationTickMs: 16,
-    bottomMargin: 0,
-    shortcutFocusLeft: 'Meta+Left',
-    shortcutFocusRight: 'Meta+Right',
-    shortcutToggleDebugConsole: 'Meta+Shift+D',
-    shortcutCycleAlignLeft: 'Meta+Shift+Left',
-    shortcutCycleAlignRight: 'Meta+Shift+Right',
-    shortcutViewportShiftLeft: 'Meta+Alt+Left',
-    shortcutViewportShiftRight: 'Meta+Alt+Right',
-    shortcutNavigateUp: 'Meta+Up',
-    shortcutNavigateDown: 'Meta+Down',
-    shortcutMoveWindowToStripAbove: 'Meta+Ctrl+Up',
-    shortcutMoveWindowToStripBelow: 'Meta+Ctrl+Down',
-    shortcutAbsorbRight: 'Meta+I',
-    shortcutExpel: 'Meta+O',
-    shortcutMoveWindowLeft: 'Meta+Ctrl+Left',
-    shortcutMoveWindowRight: 'Meta+Ctrl+Right',
-    shortcutStripUp: 'Meta+Page_Up',
-    shortcutStripDown: 'Meta+Page_Down',
-    shortcutMoveColumnToStripAbove: 'Meta+Ctrl+Page_Up',
-    shortcutMoveColumnToStripBelow: 'Meta+Ctrl+Page_Down',
-    shortcutFocusFirst: 'Meta+Home',
-    shortcutFocusLast: 'Meta+End',
-    shortcutMoveWindowToStart: 'Meta+Ctrl+Home',
-    shortcutMoveWindowToEnd: 'Meta+Ctrl+End',
-    shortcutViewportShiftToStart: 'Meta+Alt+Home',
-    shortcutViewportShiftToEnd: 'Meta+Alt+End',
-    shortcutIncreaseColumnWidth: 'Meta+Plus',
-    shortcutDecreaseColumnWidth: 'Meta+Minus',
-    shortcutIncreaseWindowHeight: 'Meta+Shift+Plus',
-    shortcutDecreaseWindowHeight: 'Meta+Shift+Minus',
-    viewportShiftStep: 400,
-    columnWidthStep: 80,
-    windowHeightStep: 80,
-    stripDragDwellMs: 400,
-    stripDragEdgeBorderPx: 2,
-    columnDragDwellMs: 400,
-    minimapAutoHideMs: 1200,
-    minimapShowThumbnails: true,
-    focusFlashEnabled: true,
-    focusFlashBorderWidth: 4,
-    focusFlashBlurRadius: 24,
-    focusFlashDurationMs: 300,
-    undockKeepAbove: true,
-    shortcutToggleFloating: 'Meta+Space',
-    windowRules: DEFAULT_WINDOW_RULES,
-};
+function buildDefaultSettings(): Settings {
+    // Object spread/Object.fromEntries are unsupported (spread confirmed; fromEntries
+    // unconfirmed) by KWin's declarativescript JS engine — build the object with a plain
+    // loop and bracket assignment instead, both already used elsewhere in this codebase.
+    const settings: Record<string, unknown> = {};
+    for (const definition of SETTINGS_DEFINITIONS) {
+        settings[definition.name] = definition.default;
+    }
+    return settings as unknown as Settings;
+}
+
+export const DEFAULT_SETTINGS: Settings = buildDefaultSettings();
 
 /** Reads user-configurable settings from kwinrc (docs §5). Untestable glue (docs §8). */
 export function loadSettings(): Settings {
-    // Object spread is unsupported by KWin's declarativescript JS engine — use Object.assign.
-    return Object.assign({}, DEFAULT_SETTINGS, {
-        bottomMargin: readNumberConfig('bottomMargin', DEFAULT_SETTINGS.bottomMargin),
-        columnGap: readNumberConfig('columnGap', DEFAULT_SETTINGS.columnGap),
-        defaultColumnWidth: readNumberConfig('defaultColumnWidth', DEFAULT_SETTINGS.defaultColumnWidth),
-        animationDurationMs: readNumberConfig('animationDurationMs', DEFAULT_SETTINGS.animationDurationMs),
-        viewportShiftStep: readNumberConfig('viewportShiftStep', DEFAULT_SETTINGS.viewportShiftStep),
-        columnWidthStep: readNumberConfig('columnWidthStep', DEFAULT_SETTINGS.columnWidthStep),
-        windowHeightStep: readNumberConfig('windowHeightStep', DEFAULT_SETTINGS.windowHeightStep),
-        stripDragDwellMs: readNumberConfig('stripDragDwellMs', DEFAULT_SETTINGS.stripDragDwellMs),
-        stripDragEdgeBorderPx: readNumberConfig('stripDragEdgeBorderPx', DEFAULT_SETTINGS.stripDragEdgeBorderPx),
-        columnDragDwellMs: readNumberConfig('columnDragDwellMs', DEFAULT_SETTINGS.columnDragDwellMs),
-        minimapAutoHideMs: readNumberConfig('minimapAutoHideMs', DEFAULT_SETTINGS.minimapAutoHideMs),
-        minimapShowThumbnails: readBooleanConfig('minimapShowThumbnails', DEFAULT_SETTINGS.minimapShowThumbnails),
-        focusFlashEnabled: readBooleanConfig('focusFlashEnabled', DEFAULT_SETTINGS.focusFlashEnabled),
-        focusFlashBorderWidth: readNumberConfig('focusFlashBorderWidth', DEFAULT_SETTINGS.focusFlashBorderWidth),
-        focusFlashBlurRadius: readNumberConfig('focusFlashBlurRadius', DEFAULT_SETTINGS.focusFlashBlurRadius),
-        focusFlashDurationMs: readNumberConfig('focusFlashDurationMs', DEFAULT_SETTINGS.focusFlashDurationMs),
-        undockKeepAbove: readBooleanConfig('undockKeepAbove', DEFAULT_SETTINGS.undockKeepAbove),
-        shortcutToggleFloating: readStringConfig('shortcutToggleFloating', DEFAULT_SETTINGS.shortcutToggleFloating),
-        shortcutFocusLeft: readStringConfig('shortcutFocusLeft', DEFAULT_SETTINGS.shortcutFocusLeft),
-        shortcutFocusRight: readStringConfig('shortcutFocusRight', DEFAULT_SETTINGS.shortcutFocusRight),
-        shortcutToggleDebugConsole: readStringConfig(
-            'shortcutToggleDebugConsole',
-            DEFAULT_SETTINGS.shortcutToggleDebugConsole,
-        ),
-        shortcutCycleAlignLeft: readStringConfig('shortcutCycleAlignLeft', DEFAULT_SETTINGS.shortcutCycleAlignLeft),
-        shortcutCycleAlignRight: readStringConfig('shortcutCycleAlignRight', DEFAULT_SETTINGS.shortcutCycleAlignRight),
-        shortcutViewportShiftLeft: readStringConfig(
-            'shortcutViewportShiftLeft',
-            DEFAULT_SETTINGS.shortcutViewportShiftLeft,
-        ),
-        shortcutViewportShiftRight: readStringConfig(
-            'shortcutViewportShiftRight',
-            DEFAULT_SETTINGS.shortcutViewportShiftRight,
-        ),
-        shortcutNavigateUp: readStringConfig('shortcutNavigateUp', DEFAULT_SETTINGS.shortcutNavigateUp),
-        shortcutNavigateDown: readStringConfig('shortcutNavigateDown', DEFAULT_SETTINGS.shortcutNavigateDown),
-        shortcutMoveWindowToStripAbove: readStringConfig(
-            'shortcutMoveWindowToStripAbove',
-            DEFAULT_SETTINGS.shortcutMoveWindowToStripAbove,
-        ),
-        shortcutMoveWindowToStripBelow: readStringConfig(
-            'shortcutMoveWindowToStripBelow',
-            DEFAULT_SETTINGS.shortcutMoveWindowToStripBelow,
-        ),
-        shortcutAbsorbRight: readStringConfig('shortcutAbsorbRight', DEFAULT_SETTINGS.shortcutAbsorbRight),
-        shortcutExpel: readStringConfig('shortcutExpel', DEFAULT_SETTINGS.shortcutExpel),
-        shortcutMoveWindowLeft: readStringConfig('shortcutMoveWindowLeft', DEFAULT_SETTINGS.shortcutMoveWindowLeft),
-        shortcutMoveWindowRight: readStringConfig('shortcutMoveWindowRight', DEFAULT_SETTINGS.shortcutMoveWindowRight),
-        shortcutStripUp: readStringConfig('shortcutStripUp', DEFAULT_SETTINGS.shortcutStripUp),
-        shortcutStripDown: readStringConfig('shortcutStripDown', DEFAULT_SETTINGS.shortcutStripDown),
-        shortcutMoveColumnToStripAbove: readStringConfig(
-            'shortcutMoveColumnToStripAbove',
-            DEFAULT_SETTINGS.shortcutMoveColumnToStripAbove,
-        ),
-        shortcutMoveColumnToStripBelow: readStringConfig(
-            'shortcutMoveColumnToStripBelow',
-            DEFAULT_SETTINGS.shortcutMoveColumnToStripBelow,
-        ),
-        shortcutFocusFirst: readStringConfig('shortcutFocusFirst', DEFAULT_SETTINGS.shortcutFocusFirst),
-        shortcutFocusLast: readStringConfig('shortcutFocusLast', DEFAULT_SETTINGS.shortcutFocusLast),
-        shortcutMoveWindowToStart: readStringConfig(
-            'shortcutMoveWindowToStart',
-            DEFAULT_SETTINGS.shortcutMoveWindowToStart,
-        ),
-        shortcutMoveWindowToEnd: readStringConfig('shortcutMoveWindowToEnd', DEFAULT_SETTINGS.shortcutMoveWindowToEnd),
-        shortcutViewportShiftToStart: readStringConfig(
-            'shortcutViewportShiftToStart',
-            DEFAULT_SETTINGS.shortcutViewportShiftToStart,
-        ),
-        shortcutViewportShiftToEnd: readStringConfig(
-            'shortcutViewportShiftToEnd',
-            DEFAULT_SETTINGS.shortcutViewportShiftToEnd,
-        ),
-        shortcutIncreaseColumnWidth: readStringConfig(
-            'shortcutIncreaseColumnWidth',
-            DEFAULT_SETTINGS.shortcutIncreaseColumnWidth,
-        ),
-        shortcutDecreaseColumnWidth: readStringConfig(
-            'shortcutDecreaseColumnWidth',
-            DEFAULT_SETTINGS.shortcutDecreaseColumnWidth,
-        ),
-        shortcutIncreaseWindowHeight: readStringConfig(
-            'shortcutIncreaseWindowHeight',
-            DEFAULT_SETTINGS.shortcutIncreaseWindowHeight,
-        ),
-        shortcutDecreaseWindowHeight: readStringConfig(
-            'shortcutDecreaseWindowHeight',
-            DEFAULT_SETTINGS.shortcutDecreaseWindowHeight,
-        ),
-        windowRules: readStringConfig('windowRules', DEFAULT_SETTINGS.windowRules),
-    });
+    const settings: Record<string, unknown> = {};
+    for (const definition of SETTINGS_DEFINITIONS) {
+        switch (definition.type) {
+            case 'UInt':
+            case 'Double':
+                settings[definition.name] = readNumberConfig(definition.name, definition.default as number);
+                break;
+            case 'String':
+                settings[definition.name] = readStringConfig(definition.name, definition.default as string);
+                break;
+            case 'Bool':
+                settings[definition.name] = readBooleanConfig(definition.name, definition.default as boolean);
+                break;
+        }
+    }
+    return settings as unknown as Settings;
 }
 
 // A bad/unexpected value here must never take down the rest of init() (docs §8).

@@ -3,13 +3,14 @@
 # holding an active grant on one of Drift's target keys, then explicitly registers each
 # Drift binding with kglobalaccel.
 #
-# - Table-driven: DRIFT_BINDINGS below is the single source of truth, one line per
-#   action: `drift_action_name | drift_action_text | sequence | alt_sequence`.
-#   To add or rebind a shortcut, edit a line here — nothing else needs to change
-#   unless the sequence uses a key/modifier not already known to key_code()/
-#   modifier_bit() in setup-shortcuts-lib.sh. Fields are padded with spaces for
-#   readability and collapsed back to a plain "|" join right after the heredoc.
-# - alt_sequence is optional (omit the field and its leading "|" if unused) and
+# - Table-driven: DRIFT_BINDINGS is generated from src/config/settings-definitions.ts
+#   (the single source of truth) by generate-shortcut-bindings.ts, and sourced from
+#   drift/contents/bin/shortcut-bindings.generated.sh below — see
+#   docs/agents/specs/2026-09-06-settings-consolidation-design.md. To add or rebind a
+#   shortcut, edit settings-definitions.ts and run `npm run build`; nothing else needs
+#   to change unless the sequence uses a key/modifier not already known to key_code()/
+#   modifier_bit() in setup-shortcuts-lib.sh.
+# - alt_sequence is optional and
 #   registers a second key sequence for the same action, e.g. a numpad Plus/Minus
 #   alongside the main-keyboard one. It has no counterpart in src/config/settings.ts:
 #   Drift's own QML `ShortcutHandler` (src/input/shortcuts.ts) can only hold one
@@ -23,9 +24,6 @@
 #   *every* registered component (not just kwin) — e.g. Meta+I's default conflict is
 #   systemsettings.desktop's "launch application" shortcut, a separate component. See
 #   find_conflicting_actions() in setup-shortcuts-lib.sh.
-# - Default sequences are intentionally duplicated from src/config/settings.ts
-#   (DEFAULT_SETTINGS); unavoidable since this script runs standalone, outside the
-#   KWin script process, before Drift has a chance to self-register anything.
 # - This script doesn't replace Drift's own QML `ShortcutHandler` elements
 #   (src/input/shortcuts.ts) — those remain required, since they actually receive
 #   KWin's "shortcut activated" signal and call into Drift's logic. This script only
@@ -49,42 +47,12 @@ SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 # shellcheck source=./setup-shortcuts-lib.sh
 . "${SCRIPT_DIR}/setup-shortcuts-lib.sh"
 
-# Action Name               | Text                              | Sequence          | Alt Sequence
-DRIFT_BINDINGS='
-DriftFocusLeft              | Drift: Focus Column Left          | Meta+Left
-DriftFocusRight             | Drift: Focus Column Right         | Meta+Right
-DriftToggleDebugConsole     | Drift: Toggle Debug Console       | Meta+Shift+D
-DriftCycleAlignLeft         | Drift: Cycle Column Align Left    | Meta+Shift+Left
-DriftCycleAlignRight        | Drift: Cycle Column Align Right   | Meta+Shift+Right
-DriftViewportShiftLeft      | Drift: Shift Viewport Left        | Meta+Alt+Left
-DriftViewportShiftRight     | Drift: Shift Viewport Right       | Meta+Alt+Right
-DriftNavigateUp             | Drift: Navigate Up                | Meta+Up
-DriftNavigateDown           | Drift: Navigate Down              | Meta+Down
-DriftMoveWindowToStripAbove | Drift: Move Window To Strip Above | Meta+Ctrl+Up
-DriftMoveWindowToStripBelow | Drift: Move Window To Strip Below | Meta+Ctrl+Down
-DriftAbsorbRight            | Drift: Absorb Column Right        | Meta+I
-DriftExpel                  | Drift: Expel Focused Tile         | Meta+O
-DriftMoveWindowLeft         | Drift: Move Window Left           | Meta+Ctrl+Left
-DriftMoveWindowRight        | Drift: Move Window Right          | Meta+Ctrl+Right
-DriftStripUp                | Drift: Strip Up                   | Meta+Page_Up
-DriftStripDown              | Drift: Strip Down                 | Meta+Page_Down
-DriftMoveColumnToStripAbove | Drift: Move Column To Strip Above | Meta+Ctrl+Page_Up
-DriftMoveColumnToStripBelow | Drift: Move Column To Strip Below | Meta+Ctrl+Page_Down
-DriftFocusFirst             | Drift: Focus First Column         | Meta+Home
-DriftFocusLast              | Drift: Focus Last Column          | Meta+End
-DriftMoveWindowToStart      | Drift: Move Window To Start       | Meta+Ctrl+Home
-DriftMoveWindowToEnd        | Drift: Move Window To End         | Meta+Ctrl+End
-DriftViewportShiftToStart   | Drift: Shift Viewport To Start    | Meta+Alt+Home
-DriftViewportShiftToEnd     | Drift: Shift Viewport To End      | Meta+Alt+End
-DriftIncreaseColumnWidth    | Drift: Increase Column Width      | Meta+Plus        | Meta+Num+Plus
-DriftDecreaseColumnWidth    | Drift: Decrease Column Width      | Meta+Minus       | Meta+Num+Minus
-DriftIncreaseWindowHeight   | Drift: Increase Window Height     | Meta+Shift+Plus  | Meta+Shift+Num+Plus
-DriftDecreaseWindowHeight   | Drift: Decrease Window Height     | Meta+Shift+Minus | Meta+Shift+Num+Minus
-DriftToggleFloating         | Drift: Toggle Floating            | Meta+Space
-'
-# The padding above is purely cosmetic; collapse " | " back to "|" so every
-# downstream awk/read consumer keeps seeing the original compact field format.
-DRIFT_BINDINGS="$(printf '%s\n' "$DRIFT_BINDINGS" | sed -E 's/[[:space:]]*\|[[:space:]]*/|/g; s/[[:space:]]+$//')"
+if [ ! -f "${SCRIPT_DIR}/shortcut-bindings.generated.sh" ]; then
+	echo "setup-shortcuts.sh: shortcut-bindings.generated.sh not found — run 'npm run build' first" >&2
+	exit 1
+fi
+# shellcheck source=./shortcut-bindings.generated.sh
+. "${SCRIPT_DIR}/shortcut-bindings.generated.sh"
 
 if ! command -v busctl >/dev/null 2>&1; then
 	echo "setup-shortcuts.sh: busctl not found (part of systemd) — cannot continue" >&2

@@ -8,6 +8,7 @@ import { createFocusFlashOverlay, type FocusFlashOverlay } from '../kwin/focus-f
 import { createMinimapOverlay, type MinimapOverlay } from '../kwin/minimap-overlay';
 import { createQmlTimer } from '../kwin/qml-timer';
 import { WorkspaceAdapter } from '../kwin/workspace-adapter';
+import { ANIMATION_TICK_MS } from '../viewport/shared-ticker';
 import { registerShortcuts } from '../input/shortcuts';
 import type { StripStack } from './strip-stack';
 import { StripManager } from './strip-manager';
@@ -38,10 +39,11 @@ export class Controller {
         this.minimapOverlay = createMinimapOverlay(root, settings.minimapAutoHideMs, settings.minimapShowThumbnails);
         this.focusFlashOverlay = createFocusFlashOverlay(
             root,
-            settings.animationTickMs,
+            ANIMATION_TICK_MS,
             settings.focusFlashBorderWidth,
             settings.focusFlashBlurRadius,
             settings.focusFlashDurationMs,
+            settings.focusFlashOpacity,
             settings.focusFlashEnabled,
         );
         this.stripManager = new StripManager(area, settings, createQmlTimer(root), this.workspaceAdapter);

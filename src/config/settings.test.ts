@@ -78,6 +78,10 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.focusFlashDurationMs).toBe(300);
     });
 
+    it('defaults the focus flash peak opacity to 0.5', () => {
+        expect(DEFAULT_SETTINGS.focusFlashOpacity).toBe(0.5);
+    });
+
     it('keeps undocked windows above others by default', () => {
         expect(DEFAULT_SETTINGS.undockKeepAbove).toBe(true);
     });
