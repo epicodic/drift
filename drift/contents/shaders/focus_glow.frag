@@ -10,6 +10,7 @@ layout(std140, binding = 0) uniform buf {
     float coreHalf;   // half width of the fully-opaque border core in px
     float glow;       // falloff distance in px on each side
     float radius;     // corner radius in px (always 0 for now, see design doc "Scope")
+    float sharpness;  // pow() exponent applied to alpha; >1 concentrates the glow near the core
 };
 float sdRoundRect(vec2 p, vec2 b, float r) {
     vec2 q = abs(p) - b + r;
@@ -20,5 +21,6 @@ void main() {
     vec2 halfBox = itemSize * 0.5 - margin;        // window-edge box half extents
     float d = abs(sdRoundRect(p, halfBox, radius));
     float a = 1.0 - smoothstep(coreHalf, coreHalf + glow, d);
+    a = pow(a, sharpness);
     fragColor = vec4(glowColor.rgb, 1.0) * (a * glowColor.a * qt_Opacity); // premultiplied
 }

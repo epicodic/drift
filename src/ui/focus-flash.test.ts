@@ -6,20 +6,16 @@ describe('flashOpacity', () => {
         expect(flashOpacity(0, 300)).toBe(0);
     });
 
-    it('reaches full opacity exactly at the midpoint', () => {
-        expect(flashOpacity(150, 300)).toBe(1);
+    it('reaches full opacity exactly at the end', () => {
+        expect(flashOpacity(300, 300)).toBeCloseTo(0);
     });
 
-    it('ramps up linearly during the first half', () => {
-        expect(flashOpacity(75, 300)).toBeCloseTo(0.5);
+    it('ramps up smoothly with sine curve during progression', () => {
+        expect(flashOpacity(75, 300)).toBeCloseTo(Math.sin(0.25 * Math.PI));
     });
 
-    it('ramps down linearly during the second half', () => {
-        expect(flashOpacity(225, 300)).toBeCloseTo(0.5);
-    });
-
-    it('reaches 0 exactly at the end of the flash', () => {
-        expect(flashOpacity(300, 300)).toBe(0);
+    it('continues ramping up smoothly with sine curve', () => {
+        expect(flashOpacity(225, 300)).toBeCloseTo(Math.sin(0.75 * Math.PI));
     });
 
     it('stays at 0 past the end of the flash', () => {
