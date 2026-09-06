@@ -18,7 +18,7 @@ import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import { combineStripStackSnapshot, type StripStackMinimapSnapshot } from '../ui/minimap';
 import { Animator, type Timer } from '../viewport/animator';
 import { EdgeDwell } from '../viewport/edge-dwell';
-import { SharedTicker } from '../viewport/shared-ticker';
+import { ANIMATION_TICK_MS, SharedTicker } from '../viewport/shared-ticker';
 import { Strip, type StripDragHooks } from './strip';
 
 export type StripFactory = (area: Rect, settings: Settings, timer: Timer, workspaceAdapter: WorkspaceAdapter) => Strip;
@@ -43,11 +43,11 @@ export class StripStack {
         private readonly createStrip: StripFactory = (area, settings, timer, workspaceAdapter) =>
             new Strip(area, settings, timer, workspaceAdapter),
     ) {
-        this.ticker = new SharedTicker(timer, settings.animationTickMs);
+        this.ticker = new SharedTicker(timer, ANIMATION_TICK_MS);
         this.verticalAnimator = new Animator(
             this.ticker.subscribe(),
             () => Date.now(),
-            settings.animationTickMs,
+            ANIMATION_TICK_MS,
             (cameraY) => this.applyVerticalOffset(cameraY),
         );
         this.strip(0);
@@ -396,7 +396,7 @@ export class StripStack {
         this.edgeDwell = new EdgeDwell<EdgeDirection>(
             this.ticker.subscribe(),
             () => Date.now(),
-            this.settings.animationTickMs,
+            ANIMATION_TICK_MS,
             this.settings.stripDragDwellMs,
             (direction) => this.onEdgeDwellFired(direction),
         );

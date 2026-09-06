@@ -27,7 +27,7 @@ import {
 import { Animator, type Timer } from '../viewport/animator';
 import { ColumnMotion } from '../viewport/column-motion';
 import { EdgeDwell } from '../viewport/edge-dwell';
-import { SharedTicker } from '../viewport/shared-ticker';
+import { ANIMATION_TICK_MS, SharedTicker } from '../viewport/shared-ticker';
 import { Viewport } from '../viewport/viewport';
 import { ColumnRegistry, type TileLocation } from './column-registry';
 import {
@@ -91,11 +91,11 @@ export class Strip {
         this.grid = new Grid(Math.max(1, area.height - settings.bottomMargin), settings.columnGap);
         this.viewport = new Viewport(area.width);
         this.geometrySync = new GeometrySync(area);
-        this.ticker = new SharedTicker(timer, settings.animationTickMs);
+        this.ticker = new SharedTicker(timer, ANIMATION_TICK_MS);
         this.animator = new Animator(
             this.ticker.subscribe(),
             () => Date.now(),
-            settings.animationTickMs,
+            ANIMATION_TICK_MS,
             (offset) => {
                 this.viewport.setOffset(offset);
                 this.render();
@@ -204,7 +204,7 @@ export class Strip {
             // frame while a column-position animation is still in flight. verticalOffsetY is
             // intentionally still omitted here — it's sticky via `this.verticalOffsetY` (see
             // render()'s own doc comment), so omitting it is safe.
-            this.columnMotionTimer.start(this.settings.animationTickMs, () =>
+            this.columnMotionTimer.start(ANIMATION_TICK_MS, () =>
                 this.render(excludeWindowId, false, undefined, stackPreview),
             );
         } else {
@@ -339,7 +339,7 @@ export class Strip {
                             new EdgeDwell<number>(
                                 this.ticker.subscribe(),
                                 () => Date.now(),
-                                this.settings.animationTickMs,
+                                ANIMATION_TICK_MS,
                                 this.settings.columnDragDwellMs,
                                 onFire,
                             ),

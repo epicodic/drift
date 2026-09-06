@@ -45,8 +45,8 @@ export interface FocusFlashOverlay {
     show(win: WindowAdapter): void;
 }
 
-/** `tickMs` reuses the viewport's own animation clock interval (`settings.animationTickMs`)
- * so the flash tracks a simultaneous reveal-pan animation smoothly. `enabled` is fixed at
+/** `tickMs` reuses the viewport's own animation clock interval (`ANIMATION_TICK_MS`) so the
+ * flash tracks a simultaneous reveal-pan animation smoothly. `enabled` is fixed at
  * construction time, same as every other setting here — Drift settings all take effect on
  * restart, not live. */
 export function createFocusFlashOverlay(
@@ -55,6 +55,7 @@ export function createFocusFlashOverlay(
     borderWidth: number,
     blurRadius: number,
     durationMs: number,
+    peakOpacity: number,
     enabled: boolean,
 ): FocusFlashOverlay {
     const dialog = Qt.createQmlObject(FOCUS_FLASH_QML, parent) as QmlFocusFlashDialog;
@@ -82,7 +83,7 @@ export function createFocusFlashOverlay(
                     dialog.y = Math.round(frame.y);
                     dialog.width = Math.round(frame.width);
                     dialog.height = Math.round(frame.height);
-                    dialog.opacity = flashOpacity(elapsed, durationMs) * 0.5;
+                    dialog.opacity = flashOpacity(elapsed, durationMs) * peakOpacity;
                 } catch (error) {
                     // The window can be closed mid-flash — never let that take down the timer.
                     void error;

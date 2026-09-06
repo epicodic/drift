@@ -117,7 +117,7 @@ sequenceDiagram
     Shortcuts->>Viewport: offsetToReveal(rect.x, rect.width)
     Viewport-->>Shortcuts: target offset
     Shortcuts->>Animator: animate(current, target, duration)
-    loop every animationTickMs
+    loop every ANIMATION_TICK_MS
         Animator->>Viewport: scrollTo(offset)
         Animator->>GeometrySync: apply(window, columnRect, offset) for each column
         GeometrySync->>Window: setFrameGeometry(realRect)
