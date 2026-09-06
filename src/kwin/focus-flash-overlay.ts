@@ -28,12 +28,11 @@ PlasmaCore.Dialog {
         height: dialog.height
         implicitWidth: dialog.width
         implicitHeight: dialog.height
-        // Solid highlight color; the shader turns it into a symmetric glow around the
+        // Solid highlight color; the shader turns it into an inward-only glow hugging the
         // window edge (see drift/contents/shaders/focus_glow.frag), so the hue can never
         // fringe toward black the way a blurred-then-masked stroke did.
         property color glowColor: Kirigami.Theme.highlightColor
         property vector2d itemSize: Qt.vector2d(width, height)
-        property real margin: dialog.blurRadius
         property real coreHalf: dialog.borderWidth * 0.5
         property real glow: dialog.blurRadius
         property real radius: 0
@@ -79,10 +78,10 @@ export function createFocusFlashOverlay(
                 const elapsed = Date.now() - startedAt;
                 try {
                     const frame = win.frameGeometry();
-                    dialog.x = Math.round(frame.x - blurRadius);
-                    dialog.y = Math.round(frame.y - blurRadius);
-                    dialog.width = Math.round(frame.width + blurRadius * 2);
-                    dialog.height = Math.round(frame.height + blurRadius * 2);
+                    dialog.x = Math.round(frame.x);
+                    dialog.y = Math.round(frame.y);
+                    dialog.width = Math.round(frame.width);
+                    dialog.height = Math.round(frame.height);
                     dialog.opacity = flashOpacity(elapsed, durationMs) * 0.5;
                 } catch (error) {
                     // The window can be closed mid-flash — never let that take down the timer.
