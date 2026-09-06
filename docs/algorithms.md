@@ -44,6 +44,22 @@ Checking only the *immediate* neighbor, rather than voting across every other co
 
 On `interactiveMoveResizeFinished`, the same edge-based computation runs once more, then the dragged column itself is forced to snap instantly into its final slot (`Strip.snapColumn`) while its neighbor keeps whatever slide it was already mid-flight on.
 
+## Drag-to-Stack Hover Resolution
+
+Source: [`resolveStackSlot`](../src/input/drag-hover.ts) in `drag-hover.ts`.
+
+Drag-to-stack subdivides a target column into zones: the outer quarter (`< 0.25` or `> 0.75` of the column's local width fraction) keeps triggering ordinary drag-reorder (above); the middle half is a stack zone. Once the dragged window's virtual-x center falls in a target column's stack zone, `resolveStackSlot(grid, targetColumnId, excludeColumnId, excludeTileId, yCenter)` resolves which vertical slot within that column's tile stack the drag should land in.
+
+It walks the target column's tiles top to bottom, accumulating each tile's height as a running `y` cursor exactly like `layoutOffsets` does horizontally for columns, and returns the index of the first tile whose vertical center `yCenter` is above — i.e. the slot the drag would insert before — or the stack's length if `yCenter` is below every tile (append at the bottom). When the target column is the dragged tile's own column (a same-stack reorder), that tile is excluded from the candidate list first, so it never counts as its own neighbor. Because it takes only already-resolved column ids and a `y` position, it needs no KWin dependency and is directly unit-testable.
+
+## Focus-Flash Opacity Envelope
+
+Source: [`flashOpacity`](../src/ui/focus-flash.ts) in `focus-flash.ts`, sampled each tick by [`FocusFlashOverlay`](../src/kwin/focus-flash-overlay.ts) in `focus-flash-overlay.ts`.
+
+`flashOpacity(elapsedMs, durationMs)` is a pure sinusoidal envelope: $\sin(\theta)$ for $\theta = \pi \cdot \text{elapsedMs}/\text{durationMs} \in [0, \pi]$, which ramps smoothly from 0 up to 1 at the envelope's midpoint and back down to 0, rather than a linear fade or an instant on/off. It returns exactly `0` once `elapsedMs` exceeds `durationMs` (so the overlay knows when to stop ticking) and for any non-positive duration.
+
+The glow's actual rendering — the inward-only edge falloff itself — is a separate concern handled entirely in the SDF fragment shader (`drift/contents/shaders/focus_glow.frag`); this function only ever produces the *time-varying* overall opacity multiplier applied on top of that shader's output, keeping the "when" and the "what it looks like" independently testable.
+
 ## Viewport Reveal and Animation Easing
 
 Source: [`Viewport.offsetToReveal`](../src/viewport/viewport.ts) in `viewport.ts` and [`Animation`](../src/viewport/animator.ts)/[`Animator`](../src/viewport/animator.ts) in `animator.ts`.
