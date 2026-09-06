@@ -43,6 +43,6 @@ describe('windowRules default stays consistent across main.xml and default-windo
         const { rules, warnings } = parseWindowRules(DEFAULT_WINDOW_RULES);
 
         expect(warnings).toEqual([]);
-        expect(rules).toHaveLength(11);
+        expect(rules).toHaveLength(10);
     });
 });
