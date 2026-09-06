@@ -70,7 +70,7 @@ A new KWin-free module, per `docs/coding-conventions.md`'s "keep KWin API access
 - `matchRule(rules: WindowRule[], resourceClass: string, caption: string): WindowRule | null` — first-match-wins lookup over pure strings, with no dependency on `Window`/`WindowAdapter` types.
 - `resolveWidth(width: number | string | undefined, screenWidth: number): number | undefined` — resolves a `"NN%"` string against the given screen width; passes a plain number through unchanged.
 
-`src/kwin/window-adapter.ts` gains a `resourceClass()` accessor (mirroring the existing `caption()`), so `WindowManager` can call `matchRule` without touching the raw KWin `Window` type directly.
+`src/kwin/window-adapter.ts` gains a `resourceClass` getter (mirroring the existing `caption` getter) and a `screenWidth()` method (for resolving a rule's `"NN%"` width), so `WindowManager` can call `matchRule`/`resolveWidth` without touching the raw KWin `Window`/`Output` types directly.
 
 ## Runtime integration
 
@@ -82,7 +82,7 @@ All wiring happens at the single point every new tileable window already passes 
 - **`align`**: applied once, right after the column is placed, by computing the target offset via the existing `alignOffsets()` (`src/viewport/align-cycle.ts`) for that column and screen, then animating the viewport to it the same way `Strip.cycleAlign` already does for the manual shortcut — jumping directly to the `left`/`center`/`right` candidate instead of stepping through Strip's 3-phase cycle.
   Known limitation, inherited from the existing manual shortcut: the viewport offset is shared by the whole strip, so this pans every column on that screen, not just the new window's — identical to what `Meta+Shift+Left/Right` already does today, just triggered automatically instead of by keypress.
 - **`screen`**: matched and carried on the resolved rule, but not acted on.
-  When a rule's `screen` doesn't match the window's actual current output, `addWindow` logs a `debug()` line noting cross-monitor placement isn't implemented, so the gap is visible without changing behavior.
+  Whenever a matched rule sets `screen` at all, `addWindow` logs a `debug()` line noting cross-monitor placement isn't implemented, so the gap is visible without changing behavior. (Comparing against the window's actual current output would need a `WorkspaceAdapter` reference `WindowManager` doesn't otherwise need — not worth adding for a field with zero behavioral effect either way.)
 
 ## Config UI — `drift/contents/ui/config.ui`
 
