@@ -5,10 +5,9 @@ layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
     vec4 glowColor;   // premultiply happens below; pass straight RGBA from QML
-    vec2 itemSize;    // effect item size in px
-    float margin;     // px from item edge to the window-edge line (== blurRadius)
+    vec2 itemSize;    // effect item size in px, == the window frame (no outward padding)
     float coreHalf;   // half width of the fully-opaque border core in px
-    float glow;       // falloff distance in px on each side
+    float glow;       // inward falloff distance in px
     float radius;     // corner radius in px (always 0 for now, see design doc "Scope")
     float sharpness;  // pow() exponent applied to alpha; >1 concentrates the glow near the core
 };
@@ -18,8 +17,8 @@ float sdRoundRect(vec2 p, vec2 b, float r) {
 }
 void main() {
     vec2 p = (qt_TexCoord0 - 0.5) * itemSize;      // centered pixel coords
-    vec2 halfBox = itemSize * 0.5 - margin;        // window-edge box half extents
-    float d = abs(sdRoundRect(p, halfBox, radius));
+    vec2 halfBox = itemSize * 0.5;                 // item == window edge, so box == item bounds
+    float d = -sdRoundRect(p, halfBox, radius);    // 0 at the edge, grows inward only
     float a = 1.0 - smoothstep(coreHalf, coreHalf + glow, d);
     a = pow(a, sharpness);
     fragColor = vec4(glowColor.rgb, 1.0) * (a * glowColor.a * qt_Opacity); // premultiplied

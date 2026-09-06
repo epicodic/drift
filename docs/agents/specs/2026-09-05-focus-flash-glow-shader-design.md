@@ -23,9 +23,9 @@ A signed-distance-field (SDF) shader avoids all of this: a single pass over one 
 
 ## The SDF shader
 
-`drift/contents/shaders/focus_glow.frag` computes the distance to the rectangle **outline**, not the filled box.
-`abs(sdRoundRect(...))` is `0` on the border line and grows in both directions.
-Alpha is a smooth falloff of that distance, so the glow is symmetric and the deep interior is fully transparent.
+`drift/contents/shaders/focus_glow.frag` computes the distance to the rectangle **outline**, measured only on the interior side.
+`-sdRoundRect(...)` is `0` on the border line and grows only as fragments move inward; the dialog is sized to the window frame exactly (see [QML integration](#qml-integration)), so no exterior fragment is ever sampled.
+Alpha is a smooth falloff of that distance, so the glow hugs the edge from the inside and the deep interior is fully transparent.
 The shader always emits `glowColor.rgb` directly, premultiplied by the computed alpha — it never blurs pixel colors, so hue can never fringe toward black.
 
 ```glsl
@@ -36,10 +36,9 @@ layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
     vec4 glowColor;   // premultiply happens below; pass straight RGBA from QML
-    vec2 itemSize;    // effect item size in px
-    float margin;     // px from item edge to the window-edge line (== blurRadius)
+    vec2 itemSize;    // effect item size in px, == the window frame (no outward padding)
     float coreHalf;   // half width of the fully-opaque border core in px
-    float glow;       // falloff distance in px on each side
+    float glow;       // inward falloff distance in px
     float radius;     // corner radius in px (always 0 for now, see Scope)
     float sharpness;  // pow() exponent applied to alpha; >1 concentrates the glow near the core
 };
@@ -49,8 +48,8 @@ float sdRoundRect(vec2 p, vec2 b, float r) {
 }
 void main() {
     vec2 p = (qt_TexCoord0 - 0.5) * itemSize;      // centered pixel coords
-    vec2 halfBox = itemSize * 0.5 - margin;        // window-edge box half extents
-    float d = abs(sdRoundRect(p, halfBox, radius));
+    vec2 halfBox = itemSize * 0.5;                 // item == window edge, so box == item bounds
+    float d = -sdRoundRect(p, halfBox, radius);    // 0 at the edge, grows inward only
     float a = 1.0 - smoothstep(coreHalf, coreHalf + glow, d);
     a = pow(a, sharpness);
     fragColor = vec4(glowColor.rgb, 1.0) * (a * glowColor.a * qt_Opacity); // premultiplied
@@ -60,7 +59,6 @@ void main() {
 Uniform values, set from QML:
 
 - `glowColor` — `Kirigami.Theme.highlightColor` (unchanged: not user-configurable).
-- `margin` — `dialog.blurRadius` (places the SDF box exactly on the window edge, since the dialog is already padded outward by `blurRadius` on every side).
 - `coreHalf` — `dialog.borderWidth * 0.5`.
 - `glow` — `dialog.blurRadius`.
 - `radius` — `0`.
@@ -79,7 +77,6 @@ mainItem: ShaderEffect {
     implicitHeight: dialog.height
     property color glowColor: Kirigami.Theme.highlightColor
     property vector2d itemSize: Qt.vector2d(width, height)
-    property real margin: dialog.blurRadius
     property real coreHalf: dialog.borderWidth * 0.5
     property real glow: dialog.blurRadius
     property real radius: 0
@@ -89,7 +86,7 @@ mainItem: ShaderEffect {
 ```
 
 This drops the `colorFill`/`strokeMask`/`OpacityMask`/crisp-border `Rectangle` layers and the `import QtQuick.Effects` / `import Qt5Compat.GraphicalEffects` lines entirely — the shader is the whole visual.
-`dialog`'s outer sizing (frame geometry padded outward by `blurRadius` on every side) is unchanged, so `margin = blurRadius` continues to place the outline exactly on the window edge.
+`dialog`'s outer sizing also changes here: it's now sized to the window's frame geometry **exactly**, with no outward padding, since the glow only ever draws inside that boundary. The overlay's `show()` tick sets `dialog.x/y/width/height` straight from `win.frameGeometry()`, dropping the previous `± blurRadius` padding math.
 
 ## Build wiring
 
@@ -123,7 +120,7 @@ If the relative URL resolves wrong, the fix is a follow-up task, not designed up
 ## Tuning knobs
 
 - `coreHalf` — half the solid border thickness before the falloff starts.
-- `glow` — how far the glow reaches on each side (bounded by `margin`, so raise `blurRadius`/the overlay margin if it clips).
+- `glow` — how far the glow reaches inward from the edge (bounded by the window's own half-width/half-height, so it naturally clips gracefully on tiny windows instead of spilling outside them).
 - `radius` — reserved for rounded corners; always `0` per [Scope](#scope).
 - `sharpness` — `pow()` exponent applied to alpha after the `smoothstep`; `1.0` is a linear falloff, `2.0` (the default) concentrates the glow near the core, matching how `Qt5Compat.GraphicalEffects`' `RectangularGlow` squares its `spreadMultiplier`.
 
@@ -132,7 +129,7 @@ If the relative URL resolves wrong, the fix is a follow-up task, not designed up
 - `flashOpacity` and the TS-level tick/reposition logic in `focus-flash-overlay.ts` are already covered by the original spec's test plan and are untouched by this change.
 - The shader and QML are inherently untestable outside a live compositor, same as the rest of `focus-flash-overlay.ts` and `minimap-overlay.ts` — no unit tests planned for the shader itself.
 - `npm run typecheck && npm test -- --run && npm run lint` stay structural only; they additionally confirm the new `build:shaders` step succeeds (or fails loudly if `qsb` is missing), but cannot see visual output.
-- Real verification is a live KWin session: install, trigger a focus change, and confirm a symmetric highlight-colored glow with a transparent center and no black fringe. Check the KWin log for shader-compile or file-not-found errors if nothing renders.
+- Real verification is a live KWin session: install, trigger a focus change, and confirm an inward-only highlight-colored glow hugging the window edge, with a transparent center, nothing drawn outside the window bounds, and no black fringe. Check the KWin log for shader-compile or file-not-found errors if nothing renders.
 
 ## Rollback
 
