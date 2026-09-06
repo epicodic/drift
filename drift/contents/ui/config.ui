@@ -397,6 +397,38 @@
                             </item>
                         </layout>
                     </widget>
+                    <widget class="QWidget" name="tab_windowRules">
+                        <attribute name="title">
+                            <string>Window Rules</string>
+                        </attribute>
+                        <layout class="QVBoxLayout" name="verticalLayout_windowRules">
+                            <item>
+                                <widget class="QLabel" name="label_windowRulesExplanation">
+                                    <property name="text">
+                                        <string>JSON array of rules matching a window's class/caption, to set its float, width, align, or screen. See docs/agents/specs/2026-09-06-window-rules-design.md for the schema.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                        <bool>true</bool>
+                                    </property>
+                                </widget>
+                            </item>
+                            <item>
+                                <widget class="QPlainTextEdit" name="kcfg_windowRules">
+                                    <property name="tabChangesFocus">
+                                        <bool>true</bool>
+                                    </property>
+                                    <property name="lineWrapMode">
+                                        <enum>QPlainTextEdit::NoWrap</enum>
+                                    </property>
+                                    <property name="font">
+                                        <font>
+                                            <family>Monospace</family>
+                                        </font>
+                                    </property>
+                                </widget>
+                            </item>
+                        </layout>
+                    </widget>
                 </widget>
             </item>
         </layout>

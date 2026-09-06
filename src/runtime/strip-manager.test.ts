@@ -26,6 +26,8 @@ interface FakeStripStack {
     removeWindow: ReturnType<typeof vi.fn>;
     activateWindow: ReturnType<typeof vi.fn>;
     render: ReturnType<typeof vi.fn>;
+    setFocusedColumnWidth: ReturnType<typeof vi.fn>;
+    alignFocusedColumn: ReturnType<typeof vi.fn>;
 }
 
 function fakeStripStack(): FakeStripStack {
@@ -33,8 +35,17 @@ function fakeStripStack(): FakeStripStack {
     const removeWindow = vi.fn();
     const activateWindow = vi.fn();
     const render = vi.fn();
-    const stack = { addWindow, removeWindow, activateWindow, render } as unknown as StripStack;
-    return { stack, addWindow, removeWindow, activateWindow, render };
+    const setFocusedColumnWidth = vi.fn();
+    const alignFocusedColumn = vi.fn();
+    const stack = {
+        addWindow,
+        removeWindow,
+        activateWindow,
+        render,
+        setFocusedColumnWidth,
+        alignFocusedColumn,
+    } as unknown as StripStack;
+    return { stack, addWindow, removeWindow, activateWindow, render, setFocusedColumnWidth, alignFocusedColumn };
 }
 
 function recordingFactory(): { factory: StripStackFactory; created: FakeStripStack[] } {
@@ -148,5 +159,48 @@ describe('StripManager', () => {
 
         manager.stripStackFor('b', 'd1');
         expect(created.length).toBe(countBefore + 1);
+    });
+});
+
+describe('StripManager.applyRuleOverrides', () => {
+    it('applies a width override to the strip stack owning the window', () => {
+        const { manager, created } = makeManager();
+        const win = fakeWin('w1');
+        manager.addTo('a', 'd1', win);
+
+        manager.applyRuleOverrides(win, { width: 900 });
+
+        expect(created[0].setFocusedColumnWidth).toHaveBeenCalledWith(900);
+        expect(created[0].alignFocusedColumn).not.toHaveBeenCalled();
+    });
+
+    it('applies an align override to the strip stack owning the window', () => {
+        const { manager, created } = makeManager();
+        const win = fakeWin('w1');
+        manager.addTo('a', 'd1', win);
+
+        manager.applyRuleOverrides(win, { align: 'left' });
+
+        expect(created[0].alignFocusedColumn).toHaveBeenCalledWith('left');
+        expect(created[0].setFocusedColumnWidth).not.toHaveBeenCalled();
+    });
+
+    it('does nothing for a window with no owning strip stack', () => {
+        const { manager, created } = makeManager();
+
+        manager.applyRuleOverrides(fakeWin('unowned'), { width: 900 });
+
+        expect(created).toHaveLength(0);
+    });
+
+    it('applies both width and align from the same call', () => {
+        const { manager, created } = makeManager();
+        const win = fakeWin('w1');
+        manager.addTo('a', 'd1', win);
+
+        manager.applyRuleOverrides(win, { width: 900, align: 'left' });
+
+        expect(created[0].setFocusedColumnWidth).toHaveBeenCalledWith(900);
+        expect(created[0].alignFocusedColumn).toHaveBeenCalledWith('left');
     });
 });

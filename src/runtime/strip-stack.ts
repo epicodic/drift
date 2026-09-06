@@ -11,6 +11,7 @@
 
 import type { Rect, EdgeDirection } from '../core/coordinates';
 import { edgeDirection } from '../core/coordinates';
+import type { ColumnAlign } from '../core/window-rules';
 import type { Settings } from '../config/settings';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
@@ -56,6 +57,14 @@ export class StripStack {
         win.setSkipTaskbar(false);
         this.activeStrip().addWindow(win, false, this.stripDragHooks());
         this.stripByWindow.set(win.id, this.activeStripIndex);
+    }
+
+    setFocusedColumnWidth(width: number): void {
+        this.activeStrip().setFocusedColumnWidth(width);
+    }
+
+    alignFocusedColumn(align: ColumnAlign): void {
+        this.activeStrip().alignFocusedColumn(align);
     }
 
     removeWindow(win: WindowAdapter): void {

@@ -7,6 +7,7 @@ import type { Rect } from '../core/coordinates';
 import { formatDebugState } from '../core/debug-format';
 import type { Column } from '../core/column';
 import { Grid } from '../core/grid';
+import type { ColumnAlign } from '../core/window-rules';
 import type { Settings } from '../config/settings';
 import { debug, setDebugState } from '../debug';
 import { debugCamera, debugRows } from '../debug/snapshot';
@@ -701,6 +702,40 @@ export class Strip {
 
     cycleAlignRight(): void {
         this.cycleAlign('right');
+    }
+
+    /** Sets the focused column's width directly — used once, right after a window is
+     * created, to apply a window rule's `width` (docs: 2026-09-06-window-rules-design).
+     * A no-op if nothing is focused (shouldn't happen on the caller's actual call path,
+     * since `Grid.addColumn` always focuses the column it just created). */
+    setFocusedColumnWidth(width: number): void {
+        const focused = this.grid.focusedColumn();
+        if (focused === null) {
+            return;
+        }
+        focused.setWidth(width);
+        this.render();
+    }
+
+    /** Jumps the focused column directly to `align`'s edge/center, without cycling through
+     * phases the way `cycleAlignLeft`/`cycleAlignRight` do — used once, right after a window
+     * is created, to apply a window rule's `align` (docs: 2026-09-06-window-rules-design).
+     * Deliberately duplicates cycleAlign's screen-resolution logic instead of factoring it
+     * out: cycleAlign's own multi-monitor wraparound behavior is separately tuned and
+     * tested, and this method doesn't need it. */
+    alignFocusedColumn(align: ColumnAlign): void {
+        const focused = this.grid.focusedColumn();
+        if (focused === null || focused.hidden) {
+            return;
+        }
+        const rect = this.grid.columnRect(focused.id);
+        const screens = this.screenBounds();
+        const offset = this.viewport.offset();
+        const screenIndex = currentScreenIndex(rect.x, rect.width, offset, screens);
+        const screen = screenIndex === null ? { left: 0, width: this.viewport.viewportWidth() } : screens[screenIndex];
+        const offsets = alignOffsets(rect.x, rect.width, screen);
+        const target = align === 'left' ? offsets.left : align === 'right' ? offsets.right : offsets.center;
+        this.animator.animate(offset, target, this.settings.animationDurationMs);
     }
 
     private animateViewportTo(target: number): void {

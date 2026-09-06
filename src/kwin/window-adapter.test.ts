@@ -175,6 +175,24 @@ describe('WindowAdapter.output', () => {
     });
 });
 
+describe('WindowAdapter.resourceClass', () => {
+    it('reads the underlying window resourceClass', () => {
+        const window = createWindow({ resourceClass: 'firefox' });
+
+        expect(new WindowAdapter(window).resourceClass).toBe('firefox');
+    });
+});
+
+describe('WindowAdapter.screenWidth', () => {
+    it("reads the width of the window's current output", () => {
+        const window = createWindow({
+            output: { name: 'output-1', geometry: { x: 0, y: 0, width: 2560, height: 1440 } },
+        });
+
+        expect(new WindowAdapter(window).screenWidth()).toBe(2560);
+    });
+});
+
 describe('WindowAdapter.singleAssignment', () => {
     it('returns the activity and desktop for a window on exactly one of each', () => {
         const window = createWindow({

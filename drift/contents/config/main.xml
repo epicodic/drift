@@ -143,5 +143,8 @@
         <entry name="shortcutToggleFloating" type="String">
             <default>Meta+Space</default>
         </entry>
+        <entry name="windowRules" type="String">
+            <default>[]</default>
+        </entry>
     </group>
 </kcfg>

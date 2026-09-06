@@ -4,6 +4,10 @@ import type { WindowAdapter } from '../kwin/window-adapter';
 import type { StripManager } from './strip-manager';
 import { WindowManager } from './window-manager';
 
+vi.mock('../debug', () => ({ debug: vi.fn() }));
+
+import { debug } from '../debug';
+
 function fakeStripManager() {
     const owners = new Map<string, string>();
     const addTo = vi.fn((activity: string, desktop: string, win: WindowAdapter) =>
@@ -12,13 +16,14 @@ function fakeStripManager() {
     const remove = vi.fn((win: WindowAdapter) => owners.delete(win.id));
     const activate = vi.fn();
     const ownerOf = vi.fn((id: string) => owners.get(id) ?? null);
+    const applyRuleOverrides = vi.fn();
     const keyOf = (activity: string, desktop: string) => `${activity}|${desktop}`;
-    const manager = { addTo, remove, activate, ownerOf, keyOf } as unknown as StripManager;
-    return { manager, addTo, remove, activate, ownerOf };
+    const manager = { addTo, remove, activate, ownerOf, applyRuleOverrides, keyOf } as unknown as StripManager;
+    return { manager, addTo, remove, activate, ownerOf, applyRuleOverrides };
 }
 
-function fakeSettings(undockKeepAbove = true): Settings {
-    return { undockKeepAbove } as unknown as Settings;
+function fakeSettings(undockKeepAbove = true, windowRules = '[]'): Settings {
+    return { undockKeepAbove, windowRules } as unknown as Settings;
 }
 
 interface FakeWin {
@@ -33,7 +38,13 @@ interface FakeWin {
 
 function fakeWin(
     id: string,
-    options: { tileable?: boolean; assignment?: { activity: string; desktop: string } | null } = {},
+    options: {
+        tileable?: boolean;
+        assignment?: { activity: string; desktop: string } | null;
+        resourceClass?: string;
+        caption?: string;
+        screenWidth?: number;
+    } = {},
 ): FakeWin {
     let assignment = options.assignment === undefined ? { activity: 'a', desktop: 'd1' } : options.assignment;
     let activitiesHandler = (): void => {};
@@ -44,6 +55,9 @@ function fakeWin(
         id,
         isTileable: () => options.tileable ?? true,
         singleAssignment: () => assignment,
+        resourceClass: options.resourceClass ?? 'test-app',
+        caption: options.caption ?? 'Test Window',
+        screenWidth: () => options.screenWidth ?? 1920,
         onActivitiesChanged: (handler: () => void) => {
             activitiesHandler = handler;
             return disconnectActivities;
@@ -278,5 +292,132 @@ describe('WindowManager.toggleFloating', () => {
 
         expect(sm.remove).not.toHaveBeenCalled();
         expect(sm.addTo).not.toHaveBeenCalled();
+    });
+});
+
+describe('WindowManager — window rules', () => {
+    it('floats a window matched by a float:true rule instead of tiling it', () => {
+        const sm = fakeStripManager();
+        const win = fakeWin('w1', { resourceClass: 'firefox' });
+        const settings = fakeSettings(true, '[{"class":"firefox","float":true}]');
+
+        new WindowManager(sm.manager, settings).addWindow(win.win);
+
+        expect(sm.addTo).not.toHaveBeenCalled();
+        expect(win.setKeepAbove).toHaveBeenCalledWith(true);
+    });
+
+    it('does not set keepAbove for a floated rule window when undockKeepAbove is false', () => {
+        const sm = fakeStripManager();
+        const win = fakeWin('w1', { resourceClass: 'firefox' });
+        const settings = fakeSettings(false, '[{"class":"firefox","float":true}]');
+
+        new WindowManager(sm.manager, settings).addWindow(win.win);
+
+        expect(win.setKeepAbove).not.toHaveBeenCalled();
+    });
+
+    it('resizes a newly tiled window via a matched width rule', () => {
+        const sm = fakeStripManager();
+        const win = fakeWin('w1', { resourceClass: 'slack' });
+        const settings = fakeSettings(true, '[{"class":"slack","width":900}]');
+
+        new WindowManager(sm.manager, settings).addWindow(win.win);
+
+        expect(sm.addTo).toHaveBeenCalledWith('a', 'd1', win.win);
+        expect(sm.applyRuleOverrides).toHaveBeenCalledWith(win.win, { width: 900 });
+    });
+
+    it("resolves a percentage width against the window's current screen width", () => {
+        const sm = fakeStripManager();
+        const win = fakeWin('w1', { resourceClass: 'slack', screenWidth: 1920 });
+        const settings = fakeSettings(true, '[{"class":"slack","width":"50%"}]');
+
+        new WindowManager(sm.manager, settings).addWindow(win.win);
+
+        expect(sm.applyRuleOverrides).toHaveBeenCalledWith(win.win, { width: 960 });
+    });
+
+    it('applies an align rule via the strip manager', () => {
+        const sm = fakeStripManager();
+        const win = fakeWin('w1', { resourceClass: 'code' });
+        const settings = fakeSettings(true, '[{"class":"code","align":"left"}]');
+
+        new WindowManager(sm.manager, settings).addWindow(win.win);
+
+        expect(sm.applyRuleOverrides).toHaveBeenCalledWith(win.win, { align: 'left' });
+    });
+
+    it('combines width and align overrides from the same rule into one call', () => {
+        const sm = fakeStripManager();
+        const win = fakeWin('w1', { resourceClass: 'code' });
+        const settings = fakeSettings(true, '[{"class":"code","width":900,"align":"left"}]');
+
+        new WindowManager(sm.manager, settings).addWindow(win.win);
+
+        expect(sm.applyRuleOverrides).toHaveBeenCalledWith(win.win, { width: 900, align: 'left' });
+    });
+
+    it('does not call applyRuleOverrides when the matched rule sets neither width nor align', () => {
+        const sm = fakeStripManager();
+        const win = fakeWin('w1', { resourceClass: 'firefox' });
+        const settings = fakeSettings(true, '[{"class":"firefox"}]');
+
+        new WindowManager(sm.manager, settings).addWindow(win.win);
+
+        expect(sm.applyRuleOverrides).not.toHaveBeenCalled();
+    });
+
+    it('logs a debug message when a matched rule sets screen, without moving anything', () => {
+        const sm = fakeStripManager();
+        const win = fakeWin('w1', { resourceClass: 'steam' });
+        const settings = fakeSettings(true, '[{"class":"steam","screen":1}]');
+
+        new WindowManager(sm.manager, settings).addWindow(win.win);
+
+        expect(sm.addTo).toHaveBeenCalledWith('a', 'd1', win.win);
+        expect(debug).toHaveBeenCalledWith(expect.stringContaining('screen'));
+    });
+
+    it('still logs the screen debug message when the same rule also floats the window', () => {
+        const sm = fakeStripManager();
+        const win = fakeWin('w1', { resourceClass: 'steam' });
+        const settings = fakeSettings(true, '[{"class":"steam","float":true,"screen":1}]');
+
+        new WindowManager(sm.manager, settings).addWindow(win.win);
+
+        expect(sm.addTo).not.toHaveBeenCalled();
+        expect(debug).toHaveBeenCalledWith(expect.stringContaining('screen'));
+    });
+
+    it('never applies width/align overrides to a window floated by the same rule', () => {
+        const sm = fakeStripManager();
+        const win = fakeWin('w1', { resourceClass: 'steam' });
+        const settings = fakeSettings(true, '[{"class":"steam","float":true,"width":900,"align":"left"}]');
+
+        new WindowManager(sm.manager, settings).addWindow(win.win);
+
+        expect(sm.applyRuleOverrides).not.toHaveBeenCalled();
+    });
+
+    it('leaves an unmatched window untouched', () => {
+        const sm = fakeStripManager();
+        const win = fakeWin('w1', { resourceClass: 'other-app' });
+        const settings = fakeSettings(true, '[{"class":"firefox","float":true}]');
+
+        new WindowManager(sm.manager, settings).addWindow(win.win);
+
+        expect(sm.addTo).toHaveBeenCalledWith('a', 'd1', win.win);
+        expect(win.setKeepAbove).not.toHaveBeenCalled();
+        expect(sm.applyRuleOverrides).not.toHaveBeenCalled();
+    });
+
+    it('logs parse warnings via debug at construction', () => {
+        const sm = fakeStripManager();
+        const settings = fakeSettings(true, 'not json');
+
+        new WindowManager(sm.manager, settings);
+
+        expect(debug).toHaveBeenCalledWith(expect.stringContaining('invalid JSON'));
     });
 });
