@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_WINDOW_RULES } from '../core/default-window-rules';
 import { DEFAULT_SETTINGS } from './settings';
 
 describe('DEFAULT_SETTINGS', () => {
@@ -85,7 +86,7 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.shortcutToggleFloating).toBe('Meta+Space');
     });
 
-    it('defaults to no window rules', () => {
-        expect(DEFAULT_SETTINGS.windowRules).toBe('[]');
+    it('defaults window rules to the bundled starter set', () => {
+        expect(DEFAULT_SETTINGS.windowRules).toBe(DEFAULT_WINDOW_RULES);
     });
 });

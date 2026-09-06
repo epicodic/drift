@@ -1,6 +1,8 @@
 // Hardcoded spike defaults (docs §7.2), overridable via the package's config/main.xml
 // (KConfigXT, read through `KWin.readConfig`) — the same mechanism Karousel uses.
 
+import { DEFAULT_WINDOW_RULES } from '../core/default-window-rules';
+
 export interface Settings {
     /** Horizontal gap between columns, in pixels. */
     columnGap: number;
@@ -129,7 +131,8 @@ export interface Settings {
     shortcutToggleFloating: string;
     /** Raw JSON array of window rules, matched by resourceClass/caption to override a newly
      * opened window's float/width/align, and (currently inert) screen (docs:
-     * 2026-09-06-window-rules-design). */
+     * 2026-09-06-window-rules-design). Defaults to `DEFAULT_WINDOW_RULES`, a starter set
+     * translated from Karousel's own bundled defaults. */
     windowRules: string;
 }
 
@@ -182,7 +185,7 @@ export const DEFAULT_SETTINGS: Settings = {
     focusFlashDurationMs: 300,
     undockKeepAbove: true,
     shortcutToggleFloating: 'Meta+Space',
-    windowRules: '[]',
+    windowRules: DEFAULT_WINDOW_RULES,
 };
 
 /** Reads user-configurable settings from kwinrc (docs §5). Untestable glue (docs §8). */
