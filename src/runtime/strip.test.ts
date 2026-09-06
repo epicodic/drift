@@ -1638,3 +1638,43 @@ describe('Strip — increaseWindowHeight/decreaseWindowHeight', () => {
         expect(strip.increaseWindowHeight()).toBe(false);
     });
 });
+
+describe('Strip.setFocusedColumnWidth', () => {
+    it("resizes the focused column's window and re-renders", () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1', { width: 400 });
+        strip.addWindow(win.adapter);
+
+        strip.setFocusedColumnWidth(900);
+
+        expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ width: 900 }));
+    });
+});
+
+describe('Strip.alignFocusedColumn', () => {
+    it('jumps directly to the left/center/right edge, without cycling through phases', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1', { width: 1600 });
+        strip.addWindow(win.adapter);
+
+        strip.alignFocusedColumn('right');
+        expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: -320 }));
+
+        strip.alignFocusedColumn('center');
+        expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: -160 }));
+
+        strip.alignFocusedColumn('left');
+        expect(win.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 0 }));
+    });
+
+    it('does nothing when the focused column is hidden (minimized)', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1', { minimized: true });
+        strip.addWindow(win.adapter);
+        win.setFrameGeometry.mockClear();
+
+        strip.alignFocusedColumn('right');
+
+        expect(win.setFrameGeometry).not.toHaveBeenCalled();
+    });
+});

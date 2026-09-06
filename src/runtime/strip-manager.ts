@@ -4,6 +4,7 @@
 // created lazily and pruned when their activity or desktop disappears.
 
 import type { Rect } from '../core/coordinates';
+import type { WindowRuleOverrides } from '../core/window-rules';
 import type { Settings } from '../config/settings';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
@@ -50,6 +51,26 @@ export class StripManager {
         const key = this.keyOf(activity, desktop);
         this.stack(key).addWindow(win);
         this.ownerByWindow.set(win.id, key);
+    }
+
+    /** Applies a matched window rule's width/align overrides to the column that owns
+     * `win` — called once, immediately after `addTo`, from `WindowManager.addWindow`
+     * (docs: 2026-09-06-window-rules-design). */
+    applyRuleOverrides(win: WindowAdapter, overrides: WindowRuleOverrides): void {
+        const key = this.ownerByWindow.get(win.id);
+        if (key === undefined) {
+            return;
+        }
+        const stack = this.stacks.get(key);
+        if (stack === undefined) {
+            return;
+        }
+        if (overrides.width !== undefined) {
+            stack.setFocusedColumnWidth(overrides.width);
+        }
+        if (overrides.align !== undefined) {
+            stack.alignFocusedColumn(overrides.align);
+        }
     }
 
     remove(win: WindowAdapter): void {

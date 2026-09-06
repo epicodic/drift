@@ -18,6 +18,10 @@ export class WindowAdapter {
         return this.window.caption;
     }
 
+    get resourceClass(): string {
+        return this.window.resourceClass;
+    }
+
     icon(): QIcon {
         return this.window.icon;
     }
@@ -99,6 +103,12 @@ export class WindowAdapter {
 
     output(): Output {
         return this.window.output;
+    }
+
+    /** The width of the screen this window is currently on — used to resolve a window
+     * rule's `"NN%"` width against the right monitor (docs: 2026-09-06-window-rules-design). */
+    screenWidth(): number {
+        return this.window.output.geometry.width;
     }
 
     /** The window's single activity+desktop, or null unless it is on exactly one of each. */

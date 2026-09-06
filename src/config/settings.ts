@@ -127,6 +127,10 @@ export interface Settings {
     undockKeepAbove: boolean;
     /** Shortcut sequence for toggling the active window between docked and floating. */
     shortcutToggleFloating: string;
+    /** Raw JSON array of window rules, matched by resourceClass/caption to override a newly
+     * opened window's float/width/align, and (currently inert) screen (docs:
+     * 2026-09-06-window-rules-design). */
+    windowRules: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -178,6 +182,7 @@ export const DEFAULT_SETTINGS: Settings = {
     focusFlashDurationMs: 300,
     undockKeepAbove: true,
     shortcutToggleFloating: 'Meta+Space',
+    windowRules: '[]',
 };
 
 /** Reads user-configurable settings from kwinrc (docs §5). Untestable glue (docs §8). */
@@ -273,6 +278,7 @@ export function loadSettings(): Settings {
             'shortcutDecreaseWindowHeight',
             DEFAULT_SETTINGS.shortcutDecreaseWindowHeight,
         ),
+        windowRules: readStringConfig('windowRules', DEFAULT_SETTINGS.windowRules),
     });
 }
 

@@ -84,4 +84,8 @@ describe('DEFAULT_SETTINGS', () => {
     it('uses Meta+Space to toggle floating', () => {
         expect(DEFAULT_SETTINGS.shortcutToggleFloating).toBe('Meta+Space');
     });
+
+    it('defaults to no window rules', () => {
+        expect(DEFAULT_SETTINGS.windowRules).toBe('[]');
+    });
 });

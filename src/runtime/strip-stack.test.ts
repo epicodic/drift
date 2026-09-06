@@ -79,6 +79,8 @@ interface FakeStrip {
     detachFocusedTile: ReturnType<typeof vi.fn>;
     isEmpty: ReturnType<typeof vi.fn>;
     setSkipTaskbar: ReturnType<typeof vi.fn>;
+    setFocusedColumnWidth: ReturnType<typeof vi.fn>;
+    alignFocusedColumn: ReturnType<typeof vi.fn>;
 }
 
 function fakeStrip(): FakeStrip {
@@ -119,6 +121,8 @@ function fakeStrip(): FakeStrip {
         detachFocusedTile: vi.fn(() => null),
         isEmpty: vi.fn(() => true),
         setSkipTaskbar: vi.fn(),
+        setFocusedColumnWidth: vi.fn(),
+        alignFocusedColumn: vi.fn(),
     };
     const strip = { ...fns } as unknown as Strip;
     return { strip, ...fns };
@@ -942,5 +946,27 @@ describe('StripStack — cross-strip drag of a stacked column', () => {
         } finally {
             vi.useRealTimers();
         }
+    });
+});
+
+describe('StripStack.setFocusedColumnWidth / alignFocusedColumn', () => {
+    it('delegates setFocusedColumnWidth to the active strip', () => {
+        const { stack, created } = makeStack();
+        const win = fakeWin('w1');
+        stack.addWindow(win);
+
+        stack.setFocusedColumnWidth(900);
+
+        expect(created[0].setFocusedColumnWidth).toHaveBeenCalledWith(900);
+    });
+
+    it('delegates alignFocusedColumn to the active strip', () => {
+        const { stack, created } = makeStack();
+        const win = fakeWin('w1');
+        stack.addWindow(win);
+
+        stack.alignFocusedColumn('left');
+
+        expect(created[0].alignFocusedColumn).toHaveBeenCalledWith('left');
     });
 });
