@@ -13,7 +13,9 @@ Concepts used across Drift's source, docs, and build tooling, with a short descr
 - **Activity / virtual desktop** — Plasma workspace dimensions; each `(activity, virtual desktop)` pair gets its own independent `StripStack`, so unrelated workspaces never affect each other's layout.
 - **Align-cycle** — a shortcut that steps the already-focused column through three viewport positions: flush left, centered, flush right.
 - **Drag-reorder** — dragging a window past a neighbor's center swaps their column order live, with the displaced column sliding into place.
+- **Drag-to-stack** — the mouse equivalent of absorb/expel: dragging a window into the middle "stack zone" of another column live-previews it landing at a specific tile slot there, while the outer quarter on either side still triggers drag-reorder (see `resolveStackSlot` under Input Handling, and [`docs/agents/specs/2026-09-03-drag-to-stack-design.md`](agents/specs/2026-09-03-drag-to-stack-design.md)).
 - **Neighbor push** — resizing a column's width shifts every column to its right without resizing them, growing or shrinking the strip's total virtual width.
+- **Undock / Redock** (`Meta+Space`, `toggleFloating`) — pulls a single window out of its strip into normal floating/`keepAbove` behavior, or puts a floating window back into the strip for its current activity+desktop; symmetric with close/reopen, no remembered position (see [`docs/agents/specs/2026-09-06-manual-undock-redock-design.md`](agents/specs/2026-09-06-manual-undock-redock-design.md)).
 - **Focus model** — exactly one column is focused at a time, tracked by the grid as a column id; every focus change triggers a reveal.
 - **Reveal** (`revealFocused`) — scrolling the viewport to the minimal offset that brings the focused column fully into view.
 
@@ -70,6 +72,8 @@ Concepts used across Drift's source, docs, and build tooling, with a short descr
 
 - **Debug console** — an on-screen `PlasmaCore.Dialog` overlay showing the live layout/camera state ([`src/kwin/debug-console.ts`](../src/kwin/debug-console.ts)).
 - **Minimap** — an overview visualization of all columns, tiles, strips, and the current viewport ([`src/ui/minimap.ts`](../src/ui/minimap.ts), [`src/kwin/minimap-overlay.ts`](../src/kwin/minimap-overlay.ts)).
+- **Focus-flash** — a brief glow that hugs the newly-focused window's edge on every focus change, driven by a sinusoidal opacity envelope (`flashOpacity` in [`src/ui/focus-flash.ts`](../src/ui/focus-flash.ts)) and rendered by a custom SDF fragment shader ([`src/kwin/focus-flash-overlay.ts`](../src/kwin/focus-flash-overlay.ts), [`drift/contents/shaders/focus_glow.frag`](../drift/contents/shaders/focus_glow.frag)).
+- **SDF (signed distance field)** — a shading technique that computes each pixel's distance to a shape's outline rather than sampling/blurring a texture; used by the focus-flash glow so its alpha falls off smoothly from the inside edge without ever blurring (and hue-shifting) actual pixel color.
 - **Snapshot** (`debugRows`/`debugCamera`) — builds the plain data fed into the debug console and minimap from the live `Grid`/`Viewport` ([`src/debug/snapshot.ts`](../src/debug/snapshot.ts)).
 - **Debug sink** — a pluggable output channel for `debug()`/`setDebugState()` log lines ([`src/debug.ts`](../src/debug.ts)).
 
