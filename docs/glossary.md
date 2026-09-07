@@ -13,7 +13,7 @@ Concepts used across Drift's source, docs, and build tooling, with a short descr
 - **Activity / virtual desktop** — Plasma workspace dimensions; each `(activity, virtual desktop)` pair gets its own independent `StripStack`, so unrelated workspaces never affect each other's layout.
 - **Align-cycle** — a shortcut that steps the already-focused column through three viewport positions: flush left, centered, flush right.
 - **Drag-reorder** — dragging a window's edge past `reorderThresholdFraction` of the way across a neighbor swaps their column order live, with the displaced column sliding into place.
-- **Drag-to-stack** — the mouse equivalent of absorb/expel: dragging a window over another tile (same column or a neighbor's) whose top edge lands in that tile's top or bottom quarter live-previews it landing above or below there, once the target holds steady past the stack dwell (see `resolveStackTarget` under Input Handling, and [`docs/agents/specs/2026-09-07-drag-reorder-stack-refinement-design.md`](agents/specs/2026-09-07-drag-reorder-stack-refinement-design.md)).
+- **Drag-to-stack** — the mouse equivalent of absorb/expel: dragging a window whose own top-left corner lands in another tile's (same column or a neighbor's) top or bottom quarter live-previews it landing above or below there, once the target holds steady past the stack dwell (see `resolveStackTarget` under Input Handling, and [`docs/agents/specs/2026-09-07-drag-reorder-stack-refinement-design.md`](agents/specs/2026-09-07-drag-reorder-stack-refinement-design.md)).
 - **Neighbor push** — resizing a column's width shifts every column to its right without resizing them, growing or shrinking the strip's total virtual width.
 - **Undock / Redock** (`Meta+Space`, `toggleFloating`) — pulls a single window out of its strip into normal floating/`keepAbove` behavior, or puts a floating window back into the strip for its current activity+desktop; symmetric with close/reopen, no remembered position (see [`docs/agents/specs/2026-09-06-manual-undock-redock-design.md`](agents/specs/2026-09-06-manual-undock-redock-design.md)).
 - **Focus model** — exactly one column is focused at a time, tracked by the grid as a column id; every focus change triggers a reveal.
@@ -55,7 +55,7 @@ Concepts used across Drift's source, docs, and build tooling, with a short descr
 
 - **Shortcuts** — global keybindings wired to grid/viewport actions via a QML `ShortcutHandler` ([`src/input/shortcuts.ts`](../src/input/shortcuts.ts)).
 - **Drag reorder** (`registerDragReorder`) — converts a dragged window's own edges to virtual x and asks `Grid.insertionIndexForEdges` whether it should swap with a neighbor past `reorderThresholdFraction` ([`src/input/drag.ts`](../src/input/drag.ts)).
-- **Stack hover** (`resolveStackTarget`) — pure geometry that picks which candidate tile (same-column sibling or neighbor's tile) a drag is aimed at, and above/below it, from rect overlap and a top-edge band ([`src/input/drag-hover.ts`](../src/input/drag-hover.ts)).
+- **Stack hover** (`resolveStackTarget`) — pure geometry that picks which candidate tile (same-column sibling or neighbor's tile) a drag is aimed at, and above/below it, from horizontal rect overlap and a band on the dragged window's own top-left corner ([`src/input/drag-hover.ts`](../src/input/drag-hover.ts)).
 
 ## KWin & Plasma Integration
 

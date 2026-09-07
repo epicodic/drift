@@ -25,43 +25,57 @@ export interface StackTarget {
     direction: StackDirection;
 }
 
-/** Picks which candidate a drag is aimed at, and above/below it. Among candidates whose
- * horizontal overlap with `draggedRect` (as a fraction of the candidate's own width)
- * clears `overlapFraction`, the one with the most vertical overlap wins; its height is
- * then split into an above/below/dead-zone band by where `draggedRect`'s own top edge
- * falls: top 25% -> above, bottom 25% -> below, the middle 50% -> no target (this dead
- * zone is what keeps a near-boundary hover from flickering between adjacent slots).
- * Returns null when no candidate clears the gate, or the winning candidate's band is
- * the dead zone. */
+/** Picks which candidate a drag is aimed at, and above/below it, using only the dragged
+ * window's own top-left corner (`draggedRect.y`) — never its height, which would let a
+ * tall/short dragged window reach a differently-sized band than a candidate's own edge
+ * would suggest. A candidate bands into 'above' when that corner falls in its own top
+ * 25%, 'below' when it falls in its own bottom 25%; the middle 50% (and the corner
+ * falling outside the candidate's range entirely) excludes that candidate rather than
+ * returning a dead zone, so a same-position candidate can't flicker between a band and
+ * nothing as an uninvolved neighbor's geometry changes. Among candidates that clear both
+ * the horizontal overlap gate and band into a direction, the one with the most
+ * horizontal overlap wins. Returns null when no candidate qualifies at all. */
 export function resolveStackTarget(
     draggedRect: Rect,
     candidates: readonly StackCandidate[],
     overlapFraction: number,
 ): StackTarget | null {
     let best: StackCandidate | null = null;
-    let bestOverlapY = 0;
+    let bestDirection: StackDirection | null = null;
+    let bestOverlapFraction = 0;
     for (const candidate of candidates) {
-        if (horizontalOverlapFraction(draggedRect, candidate.rect) < overlapFraction) {
+        const overlap = horizontalOverlapFraction(draggedRect, candidate.rect);
+        if (overlap < overlapFraction) {
             continue;
         }
-        const overlapY = verticalOverlap(draggedRect, candidate.rect);
-        if (overlapY <= 0) {
+        const direction = resolveDirection(draggedRect.y, candidate.rect);
+        if (direction === null) {
             continue;
         }
-        if (best === null || overlapY > bestOverlapY) {
+        if (best === null || overlap > bestOverlapFraction) {
             best = candidate;
-            bestOverlapY = overlapY;
+            bestDirection = direction;
+            bestOverlapFraction = overlap;
         }
     }
-    if (best === null) {
+    if (best === null || bestDirection === null) {
         return null;
     }
-    const topFraction = (draggedRect.y - best.rect.y) / best.rect.height;
-    if (topFraction < 0.25) {
-        return { columnId: best.columnId, tileId: best.tileId, direction: 'above' };
+    return { columnId: best.columnId, tileId: best.tileId, direction: bestDirection };
+}
+
+/** Bands `draggedY` (the dragged window's own top-left corner) against `target`'s top
+ * 25%/bottom 25%, or excludes it (null) for the middle 50% or for falling outside
+ * `target`'s own y-range entirely. */
+function resolveDirection(draggedY: number, target: Rect): StackDirection | null {
+    if (draggedY < target.y || draggedY > target.y + target.height) {
+        return null;
     }
-    if (topFraction > 0.75) {
-        return { columnId: best.columnId, tileId: best.tileId, direction: 'below' };
+    if (draggedY < target.y + 0.25 * target.height) {
+        return 'above';
+    }
+    if (draggedY > target.y + 0.75 * target.height) {
+        return 'below';
     }
     return null;
 }
@@ -75,14 +89,15 @@ export function stackTargetIndex(target: StackTarget, tiles: readonly { id: numb
     return target.direction === 'above' ? index : index + 1;
 }
 
-function verticalOverlap(a: Rect, b: Rect): number {
-    return Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
-}
-
 function horizontalOverlapFraction(dragged: Rect, target: Rect): number {
     const overlap = Math.min(dragged.x + dragged.width, target.x + target.width) - Math.max(dragged.x, target.x);
     if (overlap <= 0) {
         return 0;
     }
-    return overlap / target.width;
+    // Divide by the narrower of the two widths, not always the candidate's — otherwise
+    // a dragged window narrower than half the candidate's width could never clear the
+    // gate, even when it sits fully inside the candidate horizontally (overlap capped at
+    // the dragged window's own width, so the fraction against the candidate's width
+    // alone would always undercount it).
+    return overlap / Math.min(dragged.width, target.width);
 }
