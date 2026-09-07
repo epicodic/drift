@@ -10,6 +10,7 @@
         "generate:config": "node .build/generate-main-xml.cjs > drift/contents/config/main.xml && node .build/generate-shortcut-bindings.cjs > drift/contents/bin/shortcut-bindings.generated.sh",
         "build:shaders": "scripts/compile-shaders.sh",
         "typecheck": "tsc --noEmit",
+        "pretest": "rollup -c && npm run generate:config",
         "test": "vitest run",
         "test:watch": "vitest",
         "lint": "eslint . && prettier --check . && qmllint drift/contents/ui/main.qml",
