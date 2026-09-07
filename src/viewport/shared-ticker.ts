@@ -1,5 +1,5 @@
 // A `Strip` only gets one real KWin-provided `Timer`, but the camera pan (`Animator`)
-// and column-position smoothing (`ColumnMotion`) are independent concerns that may both
+// and column-position smoothing (`AxisMotion`) are independent concerns that may both
 // need to tick at once. `SharedTicker` hands out independent Timer-shaped handles: the
 // real timer starts once any handle is active, and stops only once every handle has
 // stopped.

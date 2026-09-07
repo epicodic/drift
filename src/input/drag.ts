@@ -58,7 +58,14 @@ export interface DragReorderDeps {
      * every drag that window does. Applied uniformly to same-column and cross-column
      * stack hovers alike (docs: 2026-09-07-drag-reorder-stack-refinement-design). */
     createStackDwell(onFire: (key: string) => void): EdgeDwell<string>;
-    snapColumn(columnId: number): void;
+    /** Seeds the dragged column's x (and the window's own y/height) motion at its
+     * actual drop position on a reorder settle, so it eases into its final slot instead
+     * of snapping (docs: 2026-09-07-stack-and-release-motion-design). */
+    seedReorderRelease(windowId: string, columnId: number, virtualX: number, virtualY: number, height: number): void;
+    /** Same idea for a stack drop: seeds the dropped tile's y/height at its actual drop
+     * position (column x is intentionally left alone for a cross-column drop — docs:
+     * 2026-09-07-stack-and-release-motion-design). */
+    seedStackRelease(windowId: string, virtualY: number, height: number): void;
     commitTileIntoStack(fromColumnId: number, fromTileId: number, toColumnId: number, slot: number): void;
     /** Strip-crossing hooks (docs: 2026-09-02-cross-row-drag-design) — StripStack supplies
      * these to watch the pointer's vertical position on every drag tick without a second,
@@ -379,14 +386,36 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
             deps.onDragFinished?.();
             return;
         }
+        // The window's own actual position/size right at release — the animation's intended
+        // starting point, converted to the same virtual-x/area-relative-y coordinate space
+        // Grid/Column already produce (docs: 2026-09-07-stack-and-release-motion-design).
+        const dropRect = windowRectVirtual(win, deps.area, deps.viewport.offset());
         if (lastStackHover === null) {
-            // Reorder already committed live, tick by tick — nothing left to apply here
-            // except settling the dragged column's own animation at its final real slot.
-            deps.snapColumn(location.columnId);
-        } else if (lastStackHover.columnId === location.columnId) {
-            requireColumn(deps.grid, location.columnId).moveTile(location.tileId, lastStackHover.slot);
+            const homeColumn = requireColumn(deps.grid, location.columnId);
+            if (homeColumn.tileCount() === 1) {
+                // A genuine reorder settled live — this is a standalone column, safe to seed
+                // its shared x from this tile's own drop position.
+                deps.seedReorderRelease(win.id, location.columnId, dropRect.x, dropRect.y, dropRect.height);
+            } else {
+                // Nothing committed (no reorder fired, no stack target ever armed) — the tile
+                // is just settling back into its own multi-tile stack. Only seed y/height:
+                // column x is shared across every tile in the column, and seeding it from this
+                // one tile's own live drop position would corrupt its siblings' x for one frame
+                // (docs: 2026-09-07-stack-and-release-motion-design).
+                deps.seedStackRelease(win.id, dropRect.y, dropRect.height);
+            }
         } else {
-            deps.commitTileIntoStack(location.columnId, location.tileId, lastStackHover.columnId, lastStackHover.slot);
+            deps.seedStackRelease(win.id, dropRect.y, dropRect.height);
+            if (lastStackHover.columnId === location.columnId) {
+                requireColumn(deps.grid, location.columnId).moveTile(location.tileId, lastStackHover.slot);
+            } else {
+                deps.commitTileIntoStack(
+                    location.columnId,
+                    location.tileId,
+                    lastStackHover.columnId,
+                    lastStackHover.slot,
+                );
+            }
         }
         lastStackHover = null;
         deps.render();

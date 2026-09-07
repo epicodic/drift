@@ -3,7 +3,7 @@
 // drag (docs: 2026-09-02-cross-row-drag-design) and reused for the horizontal drag-to-stack
 // dwell, armed on a resolved stack target's compound key (columnId:tileId:direction) instead
 // of an edge direction (docs: 2026-09-07-drag-reorder-stack-refinement-design). Pure and
-// KWin-free, driven entirely by an injected clock and Timer, like Animator/ColumnMotion.
+// KWin-free, driven entirely by an injected clock and Timer, like Animator/AxisMotion.
 // Generic over `T` (the "direction"/zone identity) so both callers share the exact same
 // arm/fire/disarm semantics.
 
