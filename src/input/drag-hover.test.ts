@@ -1,72 +1,87 @@
 import { describe, expect, it } from 'vitest';
-import { Grid } from '../core/grid';
-import { resolveStackSlot } from './drag-hover';
+import { Rect } from '../core/coordinates';
+import { resolveStackTarget, stackTargetIndex, StackCandidate } from './drag-hover';
 
-describe('resolveStackSlot', () => {
-    it('returns null when the target column does not exist', () => {
-        const grid = new Grid(1000, 0);
-        expect(resolveStackSlot(grid, 999, 999, 1, 0)).toBeNull();
+function rect(x: number, y: number, width: number, height: number): Rect {
+    return { x, y, width, height };
+}
+
+describe('resolveStackTarget', () => {
+    it('returns null when there are no candidates', () => {
+        expect(resolveStackTarget(rect(0, 0, 300, 200), [], 0.5)).toBeNull();
     });
 
-    it('picks slot 0 (insert above) for a plain single-tile neighbor when hovering its top half', () => {
-        const grid = new Grid(1000, 0);
-        const dragged = grid.addColumn(300);
-        const neighbor = grid.addColumn(300); // single tile, 1000 tall
-
-        expect(resolveStackSlot(grid, neighbor.id, dragged.id, dragged.tiles()[0].id, 100)).toBe(0);
+    it('returns null when the only candidate fails the horizontal overlap gate', () => {
+        // candidate spans x=[300,600) (width 300); dragged window spans x=[0,300+299]=
+        // [0,299], leaving essentially zero horizontal overlap.
+        const candidates: StackCandidate[] = [{ columnId: 1, tileId: 10, rect: rect(300, 0, 300, 1000) }];
+        expect(resolveStackTarget(rect(0, 400, 299, 100), candidates, 0.5)).toBeNull();
     });
 
-    it('picks the trailing slot (insert below) for a plain single-tile neighbor when hovering its bottom half', () => {
-        const grid = new Grid(1000, 0);
-        const dragged = grid.addColumn(300);
-        const neighbor = grid.addColumn(300); // single tile, 1000 tall
-
-        expect(resolveStackSlot(grid, neighbor.id, dragged.id, dragged.tiles()[0].id, 900)).toBe(1);
+    it("resolves 'above' when the dragged window's top edge is in the candidate's top quarter", () => {
+        // candidate: y=[0,1000). Top-quarter boundary is y=250. Dragged top edge at y=100.
+        const candidates: StackCandidate[] = [{ columnId: 1, tileId: 10, rect: rect(0, 0, 300, 1000) }];
+        expect(resolveStackTarget(rect(0, 100, 300, 200), candidates, 0.5)).toEqual({
+            columnId: 1,
+            tileId: 10,
+            direction: 'above',
+        });
     });
 
-    it("resolves the slot from vertical position among an already-stacked target column's tiles", () => {
-        const grid = new Grid(1000, 0);
-        const dragged = grid.addColumn(300);
-        const neighbor = grid.addColumn(300);
-        neighbor.addTile(); // neighbor now has 2 tiles, each 500 tall: [0..500), [500..1000)
-
-        const topSlot = resolveStackSlot(grid, neighbor.id, dragged.id, dragged.tiles()[0].id, 100);
-        expect(topSlot).toBe(0); // above the first tile's midpoint (250)
-
-        const bottomSlot = resolveStackSlot(grid, neighbor.id, dragged.id, dragged.tiles()[0].id, 900);
-        expect(bottomSlot).toBe(2); // below every tile's midpoint -> append at bottom
+    it("resolves 'below' when the dragged window's top edge is in the candidate's bottom quarter", () => {
+        // candidate: y=[0,1000). Bottom-quarter boundary is y=750. Dragged top edge at y=900.
+        const candidates: StackCandidate[] = [{ columnId: 1, tileId: 10, rect: rect(0, 0, 300, 1000) }];
+        expect(resolveStackTarget(rect(0, 900, 300, 200), candidates, 0.5)).toEqual({
+            columnId: 1,
+            tileId: 10,
+            direction: 'below',
+        });
     });
 
-    it("does not exclude any tile when the target is a different column than the dragged tile's home", () => {
-        const grid = new Grid(1000, 0);
-        const dragged = grid.addColumn(300);
-        const neighbor = grid.addColumn(300);
-        neighbor.addTile();
-        const neighborTopTileId = neighbor.tiles()[0].id;
-
-        // Even if excludeTileId happened to numerically collide with a neighbor tile id, the
-        // exclusion filter only applies when targetColumnId === excludeColumnId (same-column
-        // drag) — here it's a genuine cross-column hover, so nothing in `neighbor` is excluded.
-        const slot = resolveStackSlot(grid, neighbor.id, dragged.id, neighborTopTileId, 100);
-        expect(slot).toBe(0);
+    it("returns null when the dragged window's top edge is in the candidate's middle dead zone", () => {
+        // candidate: y=[0,1000). Middle band is (250,750). Dragged top edge at y=500.
+        const candidates: StackCandidate[] = [{ columnId: 1, tileId: 10, rect: rect(0, 0, 300, 1000) }];
+        expect(resolveStackTarget(rect(0, 500, 300, 200), candidates, 0.5)).toBeNull();
     });
 
-    it("excludes the dragged tile from its own column's slot computation (same-column drag)", () => {
-        const grid = new Grid(1000, 0);
-        const column = grid.addColumn(300);
-        const bottomId = column.addTile(); // [top tile 0..500), [bottomId 500..1000)
+    it('picks the candidate with the most vertical overlap among several passing the gate', () => {
+        const candidates: StackCandidate[] = [
+            { columnId: 1, tileId: 10, rect: rect(0, 0, 300, 200) }, // dragged overlaps y=[100,200) -> 100px
+            // dragged overlaps y=[200,300) -> 100px... see below
+            { columnId: 1, tileId: 20, rect: rect(0, 200, 300, 400) },
+            // dragged overlaps y=[100,300) -> 200px, most overlap
+            { columnId: 1, tileId: 30, rect: rect(0, 50, 300, 300) },
+        ];
+        // dragged window: y=[100,300)
+        const target = resolveStackTarget(rect(0, 100, 300, 200), candidates, 0.5);
+        expect(target?.tileId).toBe(30);
+    });
 
-        // Dragging bottomId within its own column, hovering near the top (y=100).
-        const topSlot = resolveStackSlot(grid, column.id, column.id, bottomId, 100);
-        expect(topSlot).toBe(0); // the top tile is the only "other" tile, and its midpoint (250) is below yCenter
+    it('picks the gate-passing candidate over one with more vertical but insufficient horizontal overlap', () => {
+        const candidates: StackCandidate[] = [
+            // wins on vertical overlap alone, but only 10% horizontal overlap with the dragged window.
+            { columnId: 1, tileId: 10, rect: rect(270, 0, 300, 1000) },
+            // less generous vertical overlap, but fully within the dragged window horizontally.
+            { columnId: 2, tileId: 20, rect: rect(0, 50, 300, 300) },
+        ];
+        const target = resolveStackTarget(rect(0, 100, 300, 200), candidates, 0.5);
+        expect(target?.tileId).toBe(20);
+    });
+});
 
-        // Hovering near the bottom (y=900) discriminates exclusion, unlike y=100 above.
-        // Correct (bottomId excluded): others = [topTile], midpoint 250; 900 is past it,
-        // so the loop falls through -> slot = others.length = 1.
-        // Broken (bottomId NOT excluded): others = [topTile, bottomId], midpoints 250 and 750;
-        // 900 is past both -> slot = others.length = 2. The two cases disagree (1 vs 2), so
-        // this assertion actually fails if the exclusion filter is removed.
-        const bottomSlot = resolveStackSlot(grid, column.id, column.id, bottomId, 900);
-        expect(bottomSlot).toBe(1);
+describe('stackTargetIndex', () => {
+    it("resolves 'above' to the candidate tile's own index", () => {
+        const tiles = [{ id: 10 }, { id: 20 }, { id: 30 }];
+        expect(stackTargetIndex({ columnId: 1, tileId: 20, direction: 'above' }, tiles)).toBe(1);
+    });
+
+    it("resolves 'below' to one past the candidate tile's own index", () => {
+        const tiles = [{ id: 10 }, { id: 20 }, { id: 30 }];
+        expect(stackTargetIndex({ columnId: 1, tileId: 20, direction: 'below' }, tiles)).toBe(2);
+    });
+
+    it("resolves 'below' the last tile to an append index", () => {
+        const tiles = [{ id: 10 }, { id: 20 }];
+        expect(stackTargetIndex({ columnId: 1, tileId: 20, direction: 'below' }, tiles)).toBe(2);
     });
 });

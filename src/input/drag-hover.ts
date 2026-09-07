@@ -1,40 +1,88 @@
-// Pure geometry: given a target column already identified by the caller (via pointer
-// position — see drag.ts's priority logic), which vertical slot within that column's tile
-// stack a drag should land in. No KWin dependency — takes only already-resolved column ids
-// and a y position, so it's directly unit-testable without mocking any signal wiring
-// (docs: 2026-09-04-drag-reorder-stack-priority-design).
+// Pure geometry: which candidate tile a drag is aimed at, and above/below it, purely from
+// rect overlap with the dragged window — the single mechanism shared by same-column
+// (reordering within your own stack) and cross-column (stacking into a neighbor) drags
+// alike. No KWin dependency and no `Grid` dependency: takes only already-resolved rects,
+// so it's directly unit-testable without mocking any signal wiring or layout model
+// (docs: 2026-09-07-drag-reorder-stack-refinement-design).
 
-import { Grid } from '../core/grid';
+import { Rect } from '../core/coordinates';
 
-export interface StackHover {
+export type StackDirection = 'above' | 'below';
+
+/** One tile a drag could land on: which column it belongs to (its own column for a
+ * same-column candidate, a neighbor's for a cross-column one), its tile id, and its
+ * current on-screen rect. The dragged tile itself is never included — callers filter
+ * it out before calling `resolveStackTarget`. */
+export interface StackCandidate {
     columnId: number;
-    slot: number;
+    tileId: number;
+    rect: Rect;
 }
 
-/** `excludeColumnId`/`excludeTileId` identify the dragged tile itself: when `targetColumnId`
- * IS the dragged tile's own column (a same-column drag, re-ordering tiles within one stack),
- * that tile is excluded from the slot computation so it doesn't count as its own neighbor.
- * For a genuine cross-column hover, nothing is excluded — the target's own tiles are all real
- * candidates. Returns null only when `targetColumnId` doesn't resolve to a real column. */
-export function resolveStackSlot(
-    grid: Grid,
-    targetColumnId: number,
-    excludeColumnId: number,
-    excludeTileId: number,
-    yCenter: number,
-): number | null {
-    const targetColumn = grid.column(targetColumnId);
-    if (targetColumn === null) {
+export interface StackTarget {
+    columnId: number;
+    tileId: number;
+    direction: StackDirection;
+}
+
+/** Picks which candidate a drag is aimed at, and above/below it. Among candidates whose
+ * horizontal overlap with `draggedRect` (as a fraction of the candidate's own width)
+ * clears `overlapFraction`, the one with the most vertical overlap wins; its height is
+ * then split into an above/below/dead-zone band by where `draggedRect`'s own top edge
+ * falls: top 25% -> above, bottom 25% -> below, the middle 50% -> no target (this dead
+ * zone is what keeps a near-boundary hover from flickering between adjacent slots).
+ * Returns null when no candidate clears the gate, or the winning candidate's band is
+ * the dead zone. */
+export function resolveStackTarget(
+    draggedRect: Rect,
+    candidates: readonly StackCandidate[],
+    overlapFraction: number,
+): StackTarget | null {
+    let best: StackCandidate | null = null;
+    let bestOverlapY = 0;
+    for (const candidate of candidates) {
+        if (horizontalOverlapFraction(draggedRect, candidate.rect) < overlapFraction) {
+            continue;
+        }
+        const overlapY = verticalOverlap(draggedRect, candidate.rect);
+        if (overlapY <= 0) {
+            continue;
+        }
+        if (best === null || overlapY > bestOverlapY) {
+            best = candidate;
+            bestOverlapY = overlapY;
+        }
+    }
+    if (best === null) {
         return null;
     }
-    const sameColumn = targetColumnId === excludeColumnId;
-    const others = targetColumn.tiles().filter((tile) => !sameColumn || tile.id !== excludeTileId);
-    let y = 0;
-    for (let i = 0; i < others.length; i++) {
-        if (yCenter < y + others[i].height / 2) {
-            return i;
-        }
-        y += others[i].height;
+    const topFraction = (draggedRect.y - best.rect.y) / best.rect.height;
+    if (topFraction < 0.25) {
+        return { columnId: best.columnId, tileId: best.tileId, direction: 'above' };
     }
-    return others.length;
+    if (topFraction > 0.75) {
+        return { columnId: best.columnId, tileId: best.tileId, direction: 'below' };
+    }
+    return null;
+}
+
+/** Translates a resolved `StackTarget` into a tile-list index for `Column.insertTileAt`/
+ * `Column.moveTile`, given the exact tile list the target column currently holds (the
+ * dragged tile already excluded by the caller for a same-column list, exactly as
+ * `StackCandidate`s themselves are). */
+export function stackTargetIndex(target: StackTarget, tiles: readonly { id: number }[]): number {
+    const index = tiles.findIndex((tile) => tile.id === target.tileId);
+    return target.direction === 'above' ? index : index + 1;
+}
+
+function verticalOverlap(a: Rect, b: Rect): number {
+    return Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+}
+
+function horizontalOverlapFraction(dragged: Rect, target: Rect): number {
+    const overlap = Math.min(dragged.x + dragged.width, target.x + target.width) - Math.max(dragged.x, target.x);
+    if (overlap <= 0) {
+        return 0;
+    }
+    return overlap / target.width;
 }
