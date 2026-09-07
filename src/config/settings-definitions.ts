@@ -170,6 +170,8 @@ export const SETTINGS_DEFINITIONS: AnySettingsDefinition[] = [
     { name: 'stripDragDwellMs', type: 'UInt', default: 400 },
     { name: 'stripDragEdgeBorderPx', type: 'UInt', default: 2 },
     { name: 'columnDragDwellMs', type: 'UInt', default: 400 },
+    { name: 'reorderThresholdFraction', type: 'Double', default: 0.85 },
+    { name: 'stackOverlapFraction', type: 'Double', default: 0.5 },
     { name: 'minimapAutoHideMs', type: 'UInt', default: 1200 },
     { name: 'minimapShowThumbnails', type: 'Bool', default: true },
     { name: 'focusFlashEnabled', type: 'Bool', default: true },
