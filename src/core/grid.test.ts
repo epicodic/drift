@@ -144,7 +144,7 @@ describe('Grid — insertion index for drag edges', () => {
     it('returns its own index when the dragged column is the only column', () => {
         const grid = new Grid(HEIGHT, GAP);
         const a = grid.addColumn(300);
-        expect(grid.insertionIndexForEdges(a.id, -999, 999)).toBe(0);
+        expect(grid.insertionIndexForEdges(a.id, -999, 999, 0.5)).toBe(0);
     });
 
     it("swaps with the right neighbor once the dragged window's right edge crosses its center", () => {
@@ -154,9 +154,9 @@ describe('Grid — insertion index for drag edges', () => {
         grid.addColumn(200); // c: [820,1020), center 920
         // left edge stays well short of a's center throughout (b is 500 wide), so
         // only the right edge crossing c's center matters here.
-        expect(grid.insertionIndexForEdges(b.id, 400, 900)).toBe(1); // short of c's center -> stays put
-        expect(grid.insertionIndexForEdges(b.id, 420, 920)).toBe(1); // exactly at the center -> not yet crossed
-        expect(grid.insertionIndexForEdges(b.id, 430, 930)).toBe(2); // past c's center -> swap with c
+        expect(grid.insertionIndexForEdges(b.id, 400, 900, 0.5)).toBe(1); // short of c's center -> stays put
+        expect(grid.insertionIndexForEdges(b.id, 420, 920, 0.5)).toBe(1); // exactly at the center -> not yet crossed
+        expect(grid.insertionIndexForEdges(b.id, 430, 930, 0.5)).toBe(2); // past c's center -> swap with c
     });
 
     it("swaps with the left neighbor once the dragged window's left edge crosses its center", () => {
@@ -166,9 +166,9 @@ describe('Grid — insertion index for drag edges', () => {
         grid.addColumn(200); // c: [820,1020)
         // right edge stays well short of c's center throughout (b is 500 wide), so
         // only the left edge crossing a's center matters here.
-        expect(grid.insertionIndexForEdges(b.id, 160, 660)).toBe(1); // short of a's center -> stays put
-        expect(grid.insertionIndexForEdges(b.id, 150, 650)).toBe(1); // exactly at the center -> not yet crossed
-        expect(grid.insertionIndexForEdges(b.id, 140, 640)).toBe(0); // past a's center -> swap with a
+        expect(grid.insertionIndexForEdges(b.id, 160, 660, 0.5)).toBe(1); // short of a's center -> stays put
+        expect(grid.insertionIndexForEdges(b.id, 150, 650, 0.5)).toBe(1); // exactly at the center -> not yet crossed
+        expect(grid.insertionIndexForEdges(b.id, 140, 640, 0.5)).toBe(0); // past a's center -> swap with a
     });
 
     it('combines with moveColumn to reorder based on a drop position', () => {
@@ -176,57 +176,33 @@ describe('Grid — insertion index for drag edges', () => {
         grid.addColumn(300); // a
         const b = grid.addColumn(500); // b: [310,810), center 560
         const c = grid.addColumn(200); // c (dragged): [820,1020), immediate left neighbor is b
-        const targetIndex = grid.insertionIndexForEdges(c.id, 500, 999); // left edge past b's center (560)
+        const targetIndex = grid.insertionIndexForEdges(c.id, 500, 999, 0.5); // left edge past b's center (560)
         grid.moveColumn(c.id, targetIndex);
         expect(grid.columns().map((col) => col.id)).toEqual([1, 3, 2]);
         expect(grid.columnRect(c.id).x).toBe(310); // c moved into b's old slot
         expect(grid.columnRect(b.id).x).toBe(520); // b shifted right to make room for c
     });
-});
 
-describe('Grid — columnAtVirtualX', () => {
-    it('returns the column whose span contains virtualX', () => {
-        const grid = new Grid(1000, 0);
-        const a = grid.addColumn(300); // 0..300
-        const b = grid.addColumn(300); // 300..600
-
-        expect(grid.columnAtVirtualX(150)).toBe(a.id);
-        expect(grid.columnAtVirtualX(450)).toBe(b.id);
+    it('fires later than center-crossing with a higher threshold fraction (near-final-position)', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        grid.addColumn(300); // a: [0,300), width 300
+        const b = grid.addColumn(500); // b (dragged): [310,810)
+        grid.addColumn(200); // c: [820,1020), width 200, 85% threshold at 820 + 200*0.85 = 990
+        // past center (920) but short of 85% -> stays put
+        expect(grid.insertionIndexForEdges(b.id, 400, 920, 0.85)).toBe(1);
+        // past 85% -> swap with c
+        expect(grid.insertionIndexForEdges(b.id, 400, 991, 0.85)).toBe(2);
     });
 
-    it('clamps to the first column for virtualX before the strip', () => {
-        const grid = new Grid(1000, 0);
-        const a = grid.addColumn(300);
-        grid.addColumn(300);
-
-        expect(grid.columnAtVirtualX(-500)).toBe(a.id);
-    });
-
-    it('clamps to the last visible column for virtualX past the strip', () => {
-        const grid = new Grid(1000, 0);
-        grid.addColumn(300);
-        const b = grid.addColumn(300);
-
-        expect(grid.columnAtVirtualX(9999)).toBe(b.id);
-    });
-
-    it('skips hidden columns', () => {
-        const grid = new Grid(1000, 0);
-        const a = grid.addColumn(300); // 0..300
-        const hidden = grid.addColumn(300); // 300..600
-        const c = grid.addColumn(300); // 600..900
-        grid.hideColumn(hidden.id);
-
-        expect(grid.columnAtVirtualX(150)).toBe(a.id);
-        // 300 falls inside hidden's own span [300,600), not a's [0,300) or c's [600,900).
-        // Only the skip logic prevents this from matching hidden itself; without it, this
-        // would wrongly return hidden.id instead of falling through to c.
-        expect(grid.columnAtVirtualX(300)).toBe(c.id);
-    });
-
-    it('returns null for an empty grid', () => {
-        const grid = new Grid(1000, 0);
-        expect(grid.columnAtVirtualX(0)).toBeNull();
+    it('fires later than center-crossing on the left side too, symmetrically', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        grid.addColumn(300); // a: [0,300), width 300, 85% threshold (from the right) at 0 + 300*(1-0.85) = 45
+        const b = grid.addColumn(500); // b (dragged): [310,810)
+        grid.addColumn(200); // c: [820,1020)
+        // past center (150) but short of the 85% depth -> stays put
+        expect(grid.insertionIndexForEdges(b.id, 150, 650, 0.85)).toBe(1);
+        // past the 85% depth -> swap with a
+        expect(grid.insertionIndexForEdges(b.id, 44, 544, 0.85)).toBe(0);
     });
 });
 
@@ -238,8 +214,49 @@ describe('Grid — insertion index skips hidden columns', () => {
         const c = grid.addColumn(200); // c (dragged)
         grid.hideColumn(b.id);
         // with b hidden, c's only visible left neighbor is a.
-        expect(grid.insertionIndexForEdges(c.id, 160, 999)).toBe(2); // short of a's center -> stays put (own index)
-        expect(grid.insertionIndexForEdges(c.id, 140, 999)).toBe(0); // past a's center -> swap with a
+        // short of a's center -> stays put (own index)
+        expect(grid.insertionIndexForEdges(c.id, 160, 999, 0.5)).toBe(2);
+        expect(grid.insertionIndexForEdges(c.id, 140, 999, 0.5)).toBe(0); // past a's center -> swap with a
+    });
+});
+
+describe('Grid — visibleNeighborColumnIds', () => {
+    it('returns both neighbor ids for a column in the middle', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(300);
+        const c = grid.addColumn(300);
+        expect(grid.visibleNeighborColumnIds(b.id)).toEqual([a.id, c.id]);
+    });
+
+    it('returns only the right neighbor for the first column', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(300);
+        expect(grid.visibleNeighborColumnIds(a.id)).toEqual([b.id]);
+    });
+
+    it('returns only the left neighbor for the last column', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(300);
+        expect(grid.visibleNeighborColumnIds(b.id)).toEqual([a.id]);
+    });
+
+    it('returns an empty array for the only column', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        expect(grid.visibleNeighborColumnIds(a.id)).toEqual([]);
+    });
+
+    it('skips a hidden neighbor', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(300);
+        const c = grid.addColumn(300);
+        grid.hideColumn(b.id);
+        expect(grid.visibleNeighborColumnIds(a.id)).toEqual([c.id]);
+        expect(grid.visibleNeighborColumnIds(c.id)).toEqual([a.id]);
     });
 });
 
