@@ -334,9 +334,10 @@ export class Strip {
                             verticalOffsetY?: undefined,
                             stackPreview?: StackPreview,
                         ) => this.render(excludeWindowId, instant, verticalOffsetY, stackPreview),
-                        cursorPos: () => this.workspaceAdapter.cursorPos(),
-                        createStackDwell: (onFire: (columnId: number) => void) =>
-                            new EdgeDwell<number>(
+                        reorderThresholdFraction: this.settings.reorderThresholdFraction,
+                        stackOverlapFraction: this.settings.stackOverlapFraction,
+                        createStackDwell: (onFire: (key: string) => void) =>
+                            new EdgeDwell<string>(
                                 this.ticker.subscribe(),
                                 () => Date.now(),
                                 ANIMATION_TICK_MS,
