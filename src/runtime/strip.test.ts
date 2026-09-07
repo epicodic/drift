@@ -1069,13 +1069,11 @@ describe('Strip — live reorder commit (restored original edge-crosses-center b
         const bCalls = b.setFrameGeometry.mock.calls;
         const bRealX = bCalls[bCalls.length - 1][0].x;
 
-        // Pointer parked over column a — irrelevant to reorder (which measures the window's own
-        // edges), but needed so the tick reaches the cross-column branch at all rather than the
-        // same-column one (pointer over b's own, empty-of-anyone-else home column).
-        workspaceAdapter.cursor = { x: aRealX + 100, y: 500 };
         b.startDrag();
-        // b's LEFT edge (aRealX + 100) crosses a's center (aRealX + 320).
-        b.setFrameGeometryValue({ x: aRealX + 100, y: 0, width: 640, height: 1000 });
+        // reorderThresholdFraction defaults to 0.85, so a's (the left neighbor's) swap
+        // threshold sits at aRealX + 640 * (1 - 0.85) = aRealX + 96 — deep into a, not merely
+        // past its center. b's LEFT edge (aRealX + 50) clears that with comfortable margin.
+        b.setFrameGeometryValue({ x: aRealX + 50, y: 0, width: 640, height: 1000 });
         b.triggerFrameGeometryChanged({ x: bRealX, y: 0, width: 640, height: 1000 });
 
         const aCallsAfter = a.setFrameGeometry.mock.calls;
@@ -1138,9 +1136,14 @@ describe('Strip — stack dwell preview (docs: 2026-09-04-drag-reorder-stack-pri
             const bRealX = bCalls[bCalls.length - 1][0].x;
             a.setFrameGeometry.mockClear();
 
-            workspaceAdapter.cursor = { x: 100, y: 100 }; // over column a, near its top
             b.startDrag();
-            b.setFrameGeometryValue({ x: bRealX, y: 0, width: 640, height: 1000 });
+            // b's own geometry (not the pointer) is what stack resolution measures now: parked
+            // at x=200 it overlaps a's [0,640) rect by 440px — 68.75% of a's width, clearing the
+            // default 50% stackOverlapFraction gate — while its left edge (200) stays short of
+            // the reorder threshold (640 * (1 - 0.85) = 96), so reorder never preempts the stack
+            // check. y=0 keeps its top edge flush with a's, landing in a's top-25% band, which
+            // resolves to direction 'above'.
+            b.setFrameGeometryValue({ x: 200, y: 0, width: 640, height: 1000 });
             b.triggerFrameGeometryChanged({ x: bRealX, y: 0, width: 640, height: 1000 }); // arms the dwell
 
             const aCallsBeforeFire = a.setFrameGeometry.mock.calls;
