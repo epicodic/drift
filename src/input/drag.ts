@@ -245,7 +245,6 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
     // when the dwell armed — the dwell's own timer tick is independent of
     // frameGeometryChanged, so a few more pixels of drag may have happened since.
     const stackDwell = deps.createStackDwell((key) => {
-        armedStackKey = key;
         const location = currentLocation();
         if (location === null) {
             return;
@@ -258,6 +257,7 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
         if (currentKey !== key) {
             return; // moved on before the dwell fired; the next regular tick will reconcile
         }
+        armedStackKey = key;
         renderStackPreview(location, target);
     });
 
