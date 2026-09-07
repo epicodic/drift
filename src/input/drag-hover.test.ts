@@ -44,6 +44,20 @@ describe('resolveStackTarget', () => {
         expect(resolveStackTarget(rect(0, 500, 300, 200), candidates, 0.5)).toBeNull();
     });
 
+    it("returns null when the dragged window's top edge is exactly at the top-quarter boundary", () => {
+        // candidate: y=[0,1000). Top-quarter boundary is y=250. The comparison is strict
+        // (topFraction < 0.25), so topFraction === 0.25 falls in the dead zone, not 'above'.
+        const candidates: StackCandidate[] = [{ columnId: 1, tileId: 10, rect: rect(0, 0, 300, 1000) }];
+        expect(resolveStackTarget(rect(0, 250, 300, 200), candidates, 0.5)).toBeNull();
+    });
+
+    it("returns null when the dragged window's top edge is exactly at the bottom-quarter boundary", () => {
+        // candidate: y=[0,1000). Bottom-quarter boundary is y=750. The comparison is strict
+        // (topFraction > 0.75), so topFraction === 0.75 falls in the dead zone, not 'below'.
+        const candidates: StackCandidate[] = [{ columnId: 1, tileId: 10, rect: rect(0, 0, 300, 1000) }];
+        expect(resolveStackTarget(rect(0, 750, 300, 200), candidates, 0.5)).toBeNull();
+    });
+
     it('picks the candidate with the most vertical overlap among several passing the gate', () => {
         const candidates: StackCandidate[] = [
             { columnId: 1, tileId: 10, rect: rect(0, 0, 300, 200) }, // dragged overlaps y=[100,200) -> 100px
