@@ -142,45 +142,53 @@ export class Grid {
         return columnRect(offset, column.width, this.height);
     }
 
-    /** Id of whichever column's horizontal span currently contains `virtualX` — used
-     * to resolve a live drag's hover target. Clamped to the first/last visible column
-     * when `virtualX` falls entirely outside the strip's content extent. Null only
-     * when the grid has no visible columns at all
-     * (docs: 2026-09-03-drag-to-stack-design). */
-    columnAtVirtualX(virtualX: number): number | null {
-        const offsets = this.layoutOffsets();
-        const widths = this.layoutWidths();
-        let lastVisible: Column | null = null;
-        for (let i = 0; i < this.ordered.length; i++) {
-            if (this.ordered[i].hidden) {
-                continue;
-            }
-            lastVisible = this.ordered[i];
-            if (virtualX < offsets[i] + widths[i]) {
-                return this.ordered[i].id;
-            }
-        }
-        return lastVisible ? lastVisible.id : null;
-    }
-
     /** Target `moveColumn` index for the dragged column `excludeId`, judged by its
      * own leading edges rather than its center: it trades places with its current
-     * immediate right neighbor once its own right edge crosses that neighbor's
-     * real center, or with its immediate left neighbor once its own left edge
-     * crosses that neighbor's real center. Hidden columns are skipped when
-     * looking for a neighbor. Returns `excludeId`'s own current index (i.e. no
+     * immediate right neighbor once its own right edge crosses `thresholdFraction`
+     * of the way into that neighbor (measured from their shared boundary), or with
+     * its immediate left neighbor symmetrically. `thresholdFraction = 0.5` is a
+     * plain center-crossing swap; a higher fraction requires the drag to travel
+     * further into the neighbor before firing — near its final post-swap position
+     * rather than merely past the halfway point (docs:
+     * 2026-09-07-drag-reorder-stack-refinement-design). Hidden columns are skipped
+     * when looking for a neighbor. Returns `excludeId`'s own current index (i.e. no
      * move) when neither immediate neighbor has been crossed. */
-    insertionIndexForEdges(excludeId: number, leftEdgeVirtualX: number, rightEdgeVirtualX: number): number {
+    insertionIndexForEdges(
+        excludeId: number,
+        leftEdgeVirtualX: number,
+        rightEdgeVirtualX: number,
+        thresholdFraction: number,
+    ): number {
         const index = this.requireIndex(excludeId);
         const rightIndex = this.visibleNeighborIndex(index, 1);
-        if (rightIndex !== null && rightEdgeVirtualX > this.centerAt(rightIndex)) {
+        if (rightIndex !== null && rightEdgeVirtualX > this.thresholdAt(rightIndex, thresholdFraction)) {
             return rightIndex;
         }
         const leftIndex = this.visibleNeighborIndex(index, -1);
-        if (leftIndex !== null && leftEdgeVirtualX < this.centerAt(leftIndex)) {
+        if (leftIndex !== null && leftEdgeVirtualX < this.thresholdAt(leftIndex, 1 - thresholdFraction)) {
             return leftIndex;
         }
         return index;
+    }
+
+    /** Ids of `columnId`'s immediate visible left/right neighbors (skipping hidden
+     * columns), in the same "immediate neighbor" sense `insertionIndexForEdges`
+     * uses — `[left, right]` with either side omitted if it has no visible
+     * neighbor. Used by drag-to-stack to gather cross-column stack candidates
+     * without a pointer-position column lookup (docs:
+     * 2026-09-07-drag-reorder-stack-refinement-design). */
+    visibleNeighborColumnIds(columnId: number): number[] {
+        const index = this.requireIndex(columnId);
+        const ids: number[] = [];
+        const leftIndex = this.visibleNeighborIndex(index, -1);
+        if (leftIndex !== null) {
+            ids.push(this.ordered[leftIndex].id);
+        }
+        const rightIndex = this.visibleNeighborIndex(index, 1);
+        if (rightIndex !== null) {
+            ids.push(this.ordered[rightIndex].id);
+        }
+        return ids;
     }
 
     /** Drag-to-stack's equivalent of `insertionIndexForEdges` for a stacked tile dragged
@@ -311,9 +319,11 @@ export class Grid {
         return offsets;
     }
 
-    /** Real center of the column at `index` in the full ordered list (offset plus half width). */
-    private centerAt(index: number): number {
-        return this.layoutOffsets()[index] + this.layoutWidths()[index] / 2;
+    /** Real x position `fraction` of the way across the column at `index`, measured from its
+     * own left offset. `fraction = 0.5` reproduces the old fixed center-crossing threshold
+     * (docs: 2026-09-07-drag-reorder-stack-refinement-design). */
+    private thresholdAt(index: number, fraction: number): number {
+        return this.layoutOffsets()[index] + this.layoutWidths()[index] * fraction;
     }
 
     /** Index of the nearest VISIBLE column strictly in direction `step` (+1 right,
