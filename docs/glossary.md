@@ -46,8 +46,8 @@ Concepts used across Drift's source, docs, and build tooling, with a short descr
 - **`offsetToReveal`** — computes the minimal scroll offset that brings a given rect fully into view.
 - **Animator / Animation** — drives an eased, clock-driven interpolation from a current offset to a target offset ([`src/viewport/animator.ts`](../src/viewport/animator.ts)).
 - **`easeOutCubic`** — the default easing function: a fast start with a gentle settle.
-- **ColumnMotion** — animates a column's real x from wherever it currently sits to its new logical x whenever the layout changes for a reason other than the user actively dragging or resizing it ([`src/viewport/column-motion.ts`](../src/viewport/column-motion.ts)).
-- **SharedTicker** — hands out independent `Timer`-shaped handles that share one real timer, so the camera pan and per-column motion can tick independently ([`src/viewport/shared-ticker.ts`](../src/viewport/shared-ticker.ts)).
+- **AxisMotion** — animates a value (a column's real x, or a tile's real y/height) from wherever it currently sits to its new logical value whenever the layout changes for a reason other than the user actively dragging or resizing it; `Strip` owns three independent instances, keyed by column id (x) or window id (y, height) ([`src/viewport/axis-motion.ts`](../src/viewport/axis-motion.ts)).
+- **SharedTicker** — hands out independent `Timer`-shaped handles that share one real timer, so the camera pan and per-column/per-tile motions can tick independently ([`src/viewport/shared-ticker.ts`](../src/viewport/shared-ticker.ts)).
 - **EdgeDwell** — detects the pointer held past a screen edge (or other identified zone) for a dwell period and fires once, used for strip-flip during cross-strip drag and for drag-to-stack ([`src/viewport/edge-dwell.ts`](../src/viewport/edge-dwell.ts)).
 - **`alignOffsets` / `nextAlignStep`** — computes the three align-cycle candidate offsets and steps between them ([`src/viewport/align-cycle.ts`](../src/viewport/align-cycle.ts)).
 

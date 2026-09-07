@@ -25,7 +25,7 @@ import {
     type ScreenBounds,
 } from '../viewport/align-cycle';
 import { Animator, type Timer } from '../viewport/animator';
-import { ColumnMotion } from '../viewport/column-motion';
+import { AxisMotion } from '../viewport/axis-motion';
 import { EdgeDwell } from '../viewport/edge-dwell';
 import { ANIMATION_TICK_MS, SharedTicker } from '../viewport/shared-ticker';
 import { Viewport } from '../viewport/viewport';
@@ -64,7 +64,9 @@ export class Strip {
     private readonly viewport: Viewport;
     private readonly geometrySync: GeometrySync;
     private readonly animator: Animator;
-    private readonly columnMotion = new ColumnMotion();
+    private readonly columnMotion = new AxisMotion<number>();
+    private readonly tileYMotion = new AxisMotion<string>();
+    private readonly tileHeightMotion = new AxisMotion<string>();
     private readonly ticker: SharedTicker;
     private readonly columnMotionTimer: Timer;
     private readonly registry = new ColumnRegistry();
@@ -188,16 +190,32 @@ export class Strip {
                 if (!win || win.id === excludeWindowId) {
                     continue;
                 }
-                const rect = previewRects?.get(tile.id) ?? column.tileRect(tile.id, columnRect);
+                const targetRect = previewRects?.get(tile.id) ?? column.tileRect(tile.id, columnRect);
+                let y: number;
+                let height: number;
+                if (instant) {
+                    this.tileYMotion.snapTo(win.id, targetRect.y);
+                    this.tileHeightMotion.snapTo(win.id, targetRect.height);
+                    y = targetRect.y;
+                    height = targetRect.height;
+                } else {
+                    y = this.tileYMotion.update(win.id, targetRect.y, Date.now(), this.settings.animationDurationMs);
+                    height = this.tileHeightMotion.update(
+                        win.id,
+                        targetRect.height,
+                        Date.now(),
+                        this.settings.animationDurationMs,
+                    );
+                }
                 this.geometrySync.apply(
                     win,
-                    Object.assign({}, rect, { x }),
+                    Object.assign({}, targetRect, { x, y, height }),
                     this.viewport.offset(),
                     this.verticalOffsetY,
                 );
             }
         }
-        if (this.columnMotion.isAnimating()) {
+        if (this.columnMotion.isAnimating() || this.tileYMotion.isAnimating() || this.tileHeightMotion.isAnimating()) {
             // Preserve excludeWindowId and stackPreview: a live drag-reorder must keep skipping
             // the dragged window's own geometry across continuation ticks, not just the first,
             // and a live stack-hover preview must not flicker back to committed rects for one
@@ -220,6 +238,28 @@ export class Strip {
      * while its neighbors keep animating (docs: 2026-08-31-drag-reorder-live-preview). */
     snapColumn(columnId: number): void {
         this.columnMotion.snapTo(columnId, this.grid.columnRect(columnId).x);
+    }
+
+    /** Seeds a just-finished drag-reorder's column at its actual drop position (real
+     * x/y/height, already converted to virtual/area-relative coordinates by the caller)
+     * instead of hard-snapping to the resolved slot — the very next `render()` then
+     * eases it in rather than jumping there. Replaces the previous unconditional
+     * `snapColumn`-to-final-slot on a reorder release (docs:
+     * 2026-09-07-stack-and-release-motion-design). */
+    seedReorderRelease(windowId: string, columnId: number, virtualX: number, virtualY: number, height: number): void {
+        this.columnMotion.snapTo(columnId, virtualX);
+        this.tileYMotion.snapTo(windowId, virtualY);
+        this.tileHeightMotion.snapTo(windowId, height);
+    }
+
+    /** Same idea as `seedReorderRelease`, for a stack drop: seeds the dropped tile's
+     * actual drop y/height so the next `render()` eases it into its resolved stack slot.
+     * Column x is deliberately left untouched — a cross-column drop's horizontal
+     * position still snaps to the target column's x (docs:
+     * 2026-09-07-stack-and-release-motion-design). */
+    seedStackRelease(windowId: string, virtualY: number, height: number): void {
+        this.tileYMotion.snapTo(windowId, virtualY);
+        this.tileHeightMotion.snapTo(windowId, height);
     }
 
     /** Which (column, tile) a window is currently registered under — used by drag
@@ -344,7 +384,15 @@ export class Strip {
                                 this.settings.columnDragDwellMs,
                                 onFire,
                             ),
-                        snapColumn: (id: number) => this.snapColumn(id),
+                        seedReorderRelease: (
+                            windowId: string,
+                            columnId: number,
+                            virtualX: number,
+                            virtualY: number,
+                            height: number,
+                        ) => this.seedReorderRelease(windowId, columnId, virtualX, virtualY, height),
+                        seedStackRelease: (windowId: string, virtualY: number, height: number) =>
+                            this.seedStackRelease(windowId, virtualY, height),
                         commitTileIntoStack: (
                             fromColumnId: number,
                             fromTileId: number,
@@ -370,6 +418,8 @@ export class Strip {
             this.registry.deleteTile(location.columnId, location.tileId);
             column.removeTile(location.tileId);
             this.geometrySync.forget(win.id);
+            this.tileYMotion.forget(win.id);
+            this.tileHeightMotion.forget(win.id);
             this.fullScreenTiles.delete(this.tileKey(location.columnId, location.tileId));
             this.minimizedTiles.delete(this.tileKey(location.columnId, location.tileId));
             this.render();
@@ -421,6 +471,8 @@ export class Strip {
         this.registry.deleteColumn(columnId);
         for (const win of windows) {
             this.geometrySync.forget(win.id);
+            this.tileYMotion.forget(win.id);
+            this.tileHeightMotion.forget(win.id);
         }
         this.fullScreenTiles.forEach((key) => {
             if (key.startsWith(`${columnId}:`)) {
@@ -641,7 +693,10 @@ export class Strip {
 
     /** Absorb: pull the column to the right of the focused one into its stack, as a
      * new tile at the bottom. No-op if there's no right neighbor or it's already a
-     * stack (docs: 2026-09-03-vertical-tiling-design). */
+     * stack (docs: 2026-09-03-vertical-tiling-design). Deliberately does not forget the
+     * absorbed window's tile y/height motion: its old position is exactly the intended
+     * starting point for the stack-entry animation, not a stale value to discard (docs:
+     * 2026-09-07-stack-and-release-motion-design). */
     absorbRight(): void {
         const focused = this.grid.focusedColumn();
         if (focused === null) {
@@ -679,7 +734,8 @@ export class Strip {
      * the general, drag-driven form of `absorbRight`, for any source/target pair.
      * `fromColumnId` must differ from `toColumnId`; same-column reordering goes
      * through `Column.moveTile` directly (see drag.ts), which needs no registry or
-     * bookkeeping changes at all (docs: 2026-09-03-drag-to-stack-design). */
+     * bookkeeping changes at all (docs: 2026-09-03-drag-to-stack-design). Also deliberately
+     * does not forget the moved window's tile y/height motion — see `absorbRight`. */
     commitTileIntoStack(fromColumnId: number, fromTileId: number, toColumnId: number, slot: number): void {
         const toTileId = this.grid.moveTileIntoColumn(fromColumnId, fromTileId, toColumnId, slot);
         this.registry.moveWindow(fromColumnId, fromTileId, toColumnId, toTileId);
@@ -829,6 +885,11 @@ export class Strip {
                 const column = this.grid.column(columnId);
                 if (column !== null && column.tileCount() > 1) {
                     this.minimizedTiles.add(this.tileKey(columnId, tileId));
+                    const win = this.registry.get(columnId, tileId);
+                    if (win) {
+                        this.tileYMotion.forget(win.id);
+                        this.tileHeightMotion.forget(win.id);
+                    }
                     return;
                 }
                 this.grid.hideColumn(columnId);
@@ -847,6 +908,11 @@ export class Strip {
                 if (fullScreen) {
                     this.fullScreenTiles.add(key);
                     this.columnMotion.forget(columnId);
+                    const win = this.registry.get(columnId, tileId);
+                    if (win) {
+                        this.tileYMotion.forget(win.id);
+                        this.tileHeightMotion.forget(win.id);
+                    }
                 } else {
                     this.fullScreenTiles.delete(key);
                 }

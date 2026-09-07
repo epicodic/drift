@@ -335,7 +335,9 @@ describe('Strip', () => {
         top.setFrameGeometry.mockClear();
         bottom.setFrameGeometry.mockClear();
 
-        strip.render();
+        // instant=true: bypasses bottom's tile-motion animation so this only asserts the
+        // fullscreen-exclusion property below, not an unrelated in-flight animation frame.
+        strip.render(undefined, true);
 
         expect(top.setFrameGeometry).not.toHaveBeenCalled(); // fullscreen tile's geometry left alone
         expect(bottom.setFrameGeometry).toHaveBeenCalled(); // sibling tile still positioned
@@ -792,7 +794,7 @@ describe('Strip', () => {
         });
     });
 
-    describe('column-motion animation', () => {
+    describe('axis-motion animation', () => {
         it('starts a pushed neighbor from its previous position and settles it at the new one', () => {
             vi.useFakeTimers();
             vi.setSystemTime(0);
@@ -924,6 +926,102 @@ describe('Strip', () => {
 
             expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 1616 }));
         });
+    });
+});
+
+describe('Strip — stack motion animation', () => {
+    it("animates a newly-stacked tile's y/height from its previous standalone position to its new stacked slot", () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const timer = fakeTimer();
+            const strip = new Strip(AREA, DEFAULT_SETTINGS, timer, fakeWorkspaceAdapter());
+            const left = fakeWindow('left');
+            const right = fakeWindow('right');
+            strip.addWindow(left.adapter);
+            strip.addWindow(right.adapter);
+            strip.focusLeft();
+            right.setFrameGeometry.mockClear();
+
+            strip.absorbRight(); // right becomes left's second tile, stacked below
+
+            // first frame: right hasn't jumped yet, still at its previous standalone y/height
+            expect(right.setFrameGeometry).toHaveBeenCalledWith(expect.objectContaining({ y: 0, height: AREA.height }));
+
+            vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs);
+            timer.fire();
+
+            const settled = right.setFrameGeometry.mock.calls.slice(-1)[0][0] as { y: number; height: number };
+            expect(settled.y).toBeGreaterThan(0); // now below its stack-mate
+            expect(settled.height).toBeLessThan(AREA.height); // now sharing the column
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('renders a stacked tile at its exact logical y/height when instant=true, bypassing animation', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const left = fakeWindow('left');
+        const right = fakeWindow('right');
+        strip.addWindow(left.adapter);
+        strip.addWindow(right.adapter);
+        strip.focusLeft();
+        strip.absorbRight();
+        right.setFrameGeometry.mockClear();
+
+        strip.render(undefined, true); // e.g. a live interactive-resize frame
+
+        const rect = right.setFrameGeometry.mock.calls.slice(-1)[0][0] as { y: number; height: number };
+        expect(rect.y).toBeGreaterThan(0);
+        expect(rect.height).toBeLessThan(AREA.height);
+    });
+
+    it('snaps a stack tile back into place after fullscreen instead of animating from its pre-fullscreen position', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const a = fakeWindow('a');
+        const b = fakeWindow('b');
+        strip.addWindow(a.adapter);
+        strip.addWindow(b.adapter);
+        strip.focusLeft();
+        strip.absorbRight(); // column: [a, b], b stacked below a
+        b.setIsFullScreen(true);
+        b.triggerFullScreenChanged(); // excluded from render; forgets b's y/height motion
+
+        const c = fakeWindow('c');
+        strip.addWindow(c.adapter); // pushes nothing here, but let's actually change the stack: absorb c too
+        strip.focusLeft(); // back to the [a, b] column (still focused on a's tile)
+        strip.absorbRight(); // column becomes [a, b, c] while b is still fullscreen-excluded
+
+        b.setIsFullScreen(false);
+        b.triggerFullScreenChanged(); // resumes rendering — must snap straight to its new 3-way slot
+
+        const rect = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as { y: number; height: number };
+        // 3-way split of AREA.height, b in the middle slot — allow a couple of pixels of
+        // rounding slack rather than assuming an exactly-integer-divisible split.
+        expect(Math.abs(rect.height - AREA.height / 3)).toBeLessThanOrEqual(2);
+        expect(Math.abs(rect.y - AREA.height / 3)).toBeLessThanOrEqual(2);
+    });
+
+    it('snaps a minimized stack tile back into place after restore instead of animating from its pre-minimize position', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const a = fakeWindow('a');
+        const b = fakeWindow('b');
+        strip.addWindow(a.adapter);
+        strip.addWindow(b.adapter);
+        strip.focusLeft();
+        strip.absorbRight(); // column: [a, b]
+        b.minimize(); // excluded from render; forgets b's y/height motion
+
+        const c = fakeWindow('c');
+        strip.addWindow(c.adapter);
+        strip.focusLeft();
+        strip.absorbRight(); // column becomes [a, b, c] while b is still minimize-excluded
+
+        b.restore(); // resumes rendering — must snap straight to its new 3-way slot
+
+        const rect = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as { y: number; height: number };
+        expect(Math.abs(rect.height - AREA.height / 3)).toBeLessThanOrEqual(2);
+        expect(Math.abs(rect.y - AREA.height / 3)).toBeLessThanOrEqual(2);
     });
 });
 
@@ -1085,6 +1183,217 @@ describe('Strip — live reorder commit', () => {
         strip.render();
         const aFinalCalls = a.setFrameGeometry.mock.calls;
         expect(aFinalCalls[aFinalCalls.length - 1][0].x).toBe(bRealX);
+    });
+});
+
+describe('Strip — reorder release eases into place', () => {
+    it('eases the dragged column from its drop position into its resolved slot, instead of snapping', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const timer = new ManualTimer();
+            const workspaceAdapter = fakeWorkspaceAdapter();
+            const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, timer, workspaceAdapter);
+            const a = fakeWindow('a', { width: 640 });
+            const b = fakeWindow('b', { width: 640 });
+            strip.addWindow(a.adapter); // col a @ x=0
+            strip.addWindow(b.adapter); // col b @ x=808
+
+            const aRealX = a.setFrameGeometry.mock.calls.slice(-1)[0][0].x as number;
+            const bRealX = b.setFrameGeometry.mock.calls.slice(-1)[0][0].x as number;
+
+            b.startDrag();
+            const dropX = aRealX + 50; // deep enough into a to trigger the live swap
+            b.setFrameGeometryValue({ x: dropX, y: 0, width: 640, height: 1000 });
+            b.triggerFrameGeometryChanged({ x: bRealX, y: 0, width: 640, height: 1000 }); // commits the swap live
+
+            b.finishDrag();
+
+            // right after release: eased in from the actual drop point, not snapped to the
+            // resolved slot
+            const rightAfterRelease = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as { x: number };
+            expect(rightAfterRelease.x).toBe(dropX);
+
+            vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs);
+            timer.fire();
+
+            const settled = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as { x: number };
+            expect(settled.x).toBe(aRealX); // now resting exactly at its resolved (swapped-into) slot
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("does not corrupt a stack sibling's x when the dragged tile settles back into its own multi-tile column without ever committing a reorder or a stack move", () => {
+        // Regression: lastStackHover === null does NOT imply the released tile's column is
+        // standalone — it's also null whenever tickInner never armed a stack target at all
+        // (e.g. no candidate ever overlapped vertically, or the dwell never elapsed). In that
+        // case location.columnId can still be the tile's original multi-tile stack column, and
+        // seeding its shared x from the dragged tile's own (slightly off) live position would
+        // corrupt every sibling's x for one frame.
+        const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, new ManualTimer(), fakeWorkspaceAdapter());
+        const a = fakeWindow('a', { width: 640 });
+        const b = fakeWindow('b', { width: 640 });
+        const c = fakeWindow('c', { width: 640 });
+        strip.addWindow(a.adapter); // col A
+        strip.addWindow(b.adapter); // col B
+        strip.focusLeft();
+        strip.absorbRight(); // col A becomes stack [a, b]; col B removed
+        strip.addWindow(c.adapter); // col C, inserted right after col A — gives A a right neighbor
+
+        const aRealX = a.setFrameGeometry.mock.calls.slice(-1)[0][0].x as number;
+        const bRect = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as {
+            x: number;
+            y: number;
+            width: number;
+            height: number;
+        };
+
+        b.startDrag();
+        // Nudge b 10px right — nowhere near reorderThresholdFraction's swap threshold against
+        // C, and b's y never changes, so it never vertically overlaps a (the only same-column
+        // candidate) at all: resolveCurrentTarget resolves null, no stack target is ever armed,
+        // and lastStackHover stays null — yet col A (b's home column) is still a 2-tile stack.
+        b.setFrameGeometryValue({ x: bRect.x + 10, y: bRect.y, width: bRect.width, height: bRect.height });
+        b.triggerFrameGeometryChanged({ x: bRect.x, y: bRect.y, width: bRect.width, height: bRect.height });
+
+        b.finishDrag();
+
+        // a was never touched — its x must stay exactly where it was, not jump to b's own
+        // (10px-off) drop position.
+        const aAfterRelease = a.setFrameGeometry.mock.calls.slice(-1)[0][0] as { x: number };
+        expect(aAfterRelease.x).toBe(aRealX);
+    });
+});
+
+describe('Strip — stack release eases into place', () => {
+    it('eases the dragged tile from its drop y/height into its resolved cross-column stack slot', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const workspaceAdapter = fakeWorkspaceAdapter();
+            const timer = new ManualTimer();
+            const strip = new Strip(
+                WIDE_AREA,
+                { ...DEFAULT_SETTINGS, columnDragDwellMs: 100 },
+                timer,
+                workspaceAdapter,
+            );
+            const a = fakeWindow('a', { width: 640 });
+            const b = fakeWindow('b', { width: 640 });
+            strip.addWindow(a.adapter);
+            strip.addWindow(b.adapter);
+            const bRealX = b.setFrameGeometry.mock.calls.slice(-1)[0][0].x as number;
+
+            b.startDrag();
+            // Dragged down to y=100 (its own live screen position, e.g. wherever the cursor
+            // left it — distinct from both its pre-drag y=0 and its eventual resolved slot
+            // y=0, so the assertions below can't pass by coincidence). topFraction = 100/1000
+            // = 0.1, comfortably under resolveStackTarget's 0.25 'above' threshold, so this
+            // still resolves to the 'above' direction (see the equivalent dwell-preview test
+            // for the rest of the geometry rationale).
+            b.setFrameGeometryValue({ x: 200, y: 100, width: 640, height: 1000 });
+            b.triggerFrameGeometryChanged({ x: bRealX, y: 0, width: 640, height: 1000 }); // arms the dwell
+
+            vi.setSystemTime(100);
+            timer.fire(); // dwell elapses, resolves+previews the cross-column stack target
+
+            b.finishDrag(); // commits the cross-column stack move
+
+            // right after release: eased in from the actual drop y/height, not snapped to the
+            // resolved slot
+            const rightAfterRelease = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as {
+                y: number;
+                height: number;
+            };
+            expect(rightAfterRelease.y).toBe(100);
+            expect(rightAfterRelease.height).toBe(1000);
+
+            vi.setSystemTime(100 + DEFAULT_SETTINGS.animationDurationMs);
+            timer.fire();
+
+            const settled = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as { y: number; height: number };
+            expect(settled.y).toBe(0); // top slot of the 2-tile stack
+            expect(settled.height).toBeLessThan(1000); // redistributed within the stack
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('eases the dragged tile from its drop y into its resolved same-column stack slot', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const workspaceAdapter = fakeWorkspaceAdapter();
+            const timer = new ManualTimer();
+            const strip = new Strip(
+                WIDE_AREA,
+                { ...DEFAULT_SETTINGS, columnDragDwellMs: 100 },
+                timer,
+                workspaceAdapter,
+            );
+            const a = fakeWindow('a', { width: 640 });
+            const b = fakeWindow('b', { width: 640 });
+            strip.addWindow(a.adapter); // col A
+            strip.addWindow(b.adapter); // col B
+            strip.focusLeft();
+            strip.absorbRight(); // col A becomes stack [a, b], eased in from a's/b's prior geometry
+
+            // Let the absorb's own eased transition finish before dragging, so the rects below
+            // reflect the stack's actual settled geometry: a (y=0,h=500) on top, b (y=500,h=500)
+            // on the bottom.
+            vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs);
+            timer.fire();
+
+            const aRect = a.setFrameGeometry.mock.calls.slice(-1)[0][0] as {
+                x: number;
+                y: number;
+                width: number;
+                height: number;
+            };
+            const bRect = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as {
+                x: number;
+                y: number;
+                width: number;
+                height: number;
+            };
+
+            b.startDrag();
+            // Dragged up to y=100, its own live screen position — well clear of a's y=0/h=500
+            // top-25% band (topFraction = 100/500 = 0.2 < 0.25), so this resolves to a same-column
+            // target: {columnId: A, tileId: a, direction: 'above'}. Column A has no neighbor
+            // columns at all (col B was absorbed away), so reorder and edge-expel never fire on
+            // this tick, and the only stack candidate resolveCurrentTarget can gather is a's own
+            // tile — ruling out an accidental cross-column resolution.
+            b.setFrameGeometryValue({ x: bRect.x, y: 100, width: bRect.width, height: bRect.height });
+            b.triggerFrameGeometryChanged({ x: bRect.x, y: bRect.y, width: bRect.width, height: bRect.height }); // arms the dwell
+
+            const dwellFiresAt = DEFAULT_SETTINGS.animationDurationMs + 100;
+            vi.setSystemTime(dwellFiresAt);
+            timer.fire(); // dwell elapses, resolves+previews the same-column stack target
+
+            b.finishDrag(); // commits the same-column move via Column.moveTile
+
+            // right after release: eased in from the actual drop y, not snapped to the resolved
+            // slot
+            const rightAfterRelease = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as {
+                y: number;
+                height: number;
+            };
+            expect(rightAfterRelease.y).toBe(100);
+            expect(rightAfterRelease.height).toBe(bRect.height);
+
+            vi.setSystemTime(dwellFiresAt + DEFAULT_SETTINGS.animationDurationMs);
+            timer.fire();
+
+            const settled = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as { y: number; height: number };
+            expect(settled.y).toBe(aRect.y); // now the stack's top slot, swapped ahead of a
+            // Unlike a cross-column drop, Column.moveTile never redistributes height — b keeps
+            // exactly the height it had at drop.
+            expect(settled.height).toBe(bRect.height);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });
 

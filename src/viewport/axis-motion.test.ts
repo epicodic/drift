@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ColumnMotion } from './column-motion';
+import { AxisMotion } from './axis-motion';
 
-describe('ColumnMotion', () => {
+describe('AxisMotion', () => {
     it('snaps to the target the first time an id is seen (no animation)', () => {
-        const motion = new ColumnMotion();
+        const motion = new AxisMotion<number>();
 
         const value = motion.update(1, 500, 0, 200);
 
@@ -12,7 +12,7 @@ describe('ColumnMotion', () => {
     });
 
     it('animates toward a new target when it changes', () => {
-        const motion = new ColumnMotion();
+        const motion = new AxisMotion<number>();
         motion.update(1, 500, 0, 200); // establishes resting at 500
 
         const value = motion.update(1, 900, 1000, 200);
@@ -22,7 +22,7 @@ describe('ColumnMotion', () => {
     });
 
     it('interpolates partway through the animation', () => {
-        const motion = new ColumnMotion();
+        const motion = new AxisMotion<number>();
         motion.update(1, 0, 0, 200);
         motion.update(1, 100, 0, 200); // animate 0 -> 100 over 200ms, started at t=0
 
@@ -32,7 +32,7 @@ describe('ColumnMotion', () => {
     });
 
     it('settles exactly at the target once the duration has elapsed, and stops animating', () => {
-        const motion = new ColumnMotion();
+        const motion = new AxisMotion<number>();
         motion.update(1, 0, 0, 200);
         motion.update(1, 100, 0, 200);
 
@@ -43,7 +43,7 @@ describe('ColumnMotion', () => {
     });
 
     it('retargets from the current interpolated value, not the old target, when the target changes mid-flight', () => {
-        const motion = new ColumnMotion();
+        const motion = new AxisMotion<number>();
         motion.update(1, 0, 0, 200);
         motion.update(1, 100, 0, 200); // animating 0 -> 100
         motion.update(1, 100, 100, 200); // now at ~87.5, still mid-flight
@@ -54,7 +54,7 @@ describe('ColumnMotion', () => {
     });
 
     it('snapTo cancels any in-flight animation and rests at the given value immediately', () => {
-        const motion = new ColumnMotion();
+        const motion = new AxisMotion<number>();
         motion.update(1, 0, 0, 200);
         motion.update(1, 100, 0, 200); // animating
 
@@ -65,7 +65,7 @@ describe('ColumnMotion', () => {
     });
 
     it('forget makes a later update treat the id as brand new (snaps instead of animating)', () => {
-        const motion = new ColumnMotion();
+        const motion = new AxisMotion<number>();
         motion.update(1, 0, 0, 200);
         motion.update(1, 100, 0, 200); // animating 0 -> 100
 
@@ -77,7 +77,7 @@ describe('ColumnMotion', () => {
     });
 
     it('collapses to the target immediately with a zero duration', () => {
-        const motion = new ColumnMotion();
+        const motion = new AxisMotion<number>();
         motion.update(1, 0, 0, 200);
 
         const value = motion.update(1, 500, 0, 0);
@@ -86,14 +86,22 @@ describe('ColumnMotion', () => {
         expect(motion.isAnimating()).toBe(false);
     });
 
-    it('tracks multiple columns independently', () => {
-        const motion = new ColumnMotion();
+    it('tracks multiple ids independently', () => {
+        const motion = new AxisMotion<number>();
         motion.update(1, 0, 0, 200);
         motion.update(2, 1000, 0, 200);
 
-        motion.update(1, 100, 0, 200); // only column 1 retargets
+        motion.update(1, 100, 0, 200); // only id 1 retargets
 
         expect(motion.isAnimating()).toBe(true);
-        expect(motion.update(2, 1000, 100, 200)).toBe(1000); // column 2 untouched, still resting
+        expect(motion.update(2, 1000, 100, 200)).toBe(1000); // id 2 untouched, still resting
+    });
+
+    it('works with a non-numeric key type (e.g. window id)', () => {
+        const motion = new AxisMotion<string>();
+
+        const value = motion.update('win-1', 42, 0, 200);
+
+        expect(value).toBe(42);
     });
 });

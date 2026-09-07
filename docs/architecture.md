@@ -83,7 +83,7 @@ See [`docs/agents/specs/2026-09-01-row-navigation-design.md`](agents/specs/2026-
 | Module | Purpose |
 |---|---|
 | [`src/core/`](../src/core) | Pure, KWin-free layout model: `Grid`, `Column`, and the coordinate math in `coordinates.ts`. Fully unit-tested. |
-| [`src/viewport/`](../src/viewport) | Pure "camera" (`Viewport`) and the timer-driven scroll animation (`Animator`), plus `ColumnMotion` (per-column position smoothing) and `SharedTicker` (lets both share one real `Timer`). Fully unit-tested. |
+| [`src/viewport/`](../src/viewport) | Pure "camera" (`Viewport`) and the timer-driven scroll animation (`Animator`), plus `AxisMotion` (per-column x / per-tile y-height position smoothing) and `SharedTicker` (lets both share one real `Timer`). Fully unit-tested. |
 | [`src/kwin/`](../src/kwin) | The only code that touches the live KWin API: `WindowAdapter` (incl. `setKeepAbove`/`setSkipTaskbar`), `WorkspaceAdapter`, `GeometrySync`, `createQmlTimer`, `createDebugConsole`, `MinimapOverlay`, and `FocusFlashOverlay` (the on-screen overlays). Thin by design; only `toRealRect`/`toVirtualX` and `GeometrySync`'s echo tracking are unit-tested. |
 | [`src/ui/`](../src/ui) | Pure, KWin-free view-model builders consumed by the `kwin/` overlays: `buildMinimapSnapshot` (minimap.ts) and `flashOpacity` (focus-flash.ts). Fully unit-tested, mirroring `src/debug/`'s role. |
 | [`src/input/`](../src/input) | Wires KWin interaction events (drag lifecycle, global shortcuts) to `core`/`viewport` calls, including drag-reorder (`drag.ts`) and drag-to-stack's hover resolution (`drag-hover.ts`). |
