@@ -1051,8 +1051,8 @@ describe('Strip — commitTileIntoStack', () => {
     });
 });
 
-describe('Strip — live reorder commit (restored original edge-crosses-center behavior)', () => {
-    it("commits a real Grid.moveColumn swap, live, when the dragged window's own edge crosses the neighbor's center", () => {
+describe('Strip — live reorder commit', () => {
+    it('commits a real Grid.moveColumn swap, live, once the dragged edge passes reorderThresholdFraction', () => {
         // Regression coverage for docs: 2026-09-04-drag-reorder-stack-priority-design — reorder
         // is live again (not deferred to release), and triggers off the dragged WINDOW's own
         // edge, not the real pointer. Goes through the real Strip.addWindow wiring, not a direct
@@ -1100,9 +1100,8 @@ describe('Strip — stack dwell preview (docs: 2026-09-04-drag-reorder-stack-pri
         const bRealX = bCalls[bCalls.length - 1][0].x;
         a.setFrameGeometry.mockClear();
 
-        // Real pointer over column a, but b's own window geometry never moved — reorder's
-        // edge-crossing check (which measures the window, not the pointer) never fires.
-        workspaceAdapter.cursor = { x: 100, y: 500 };
+        // b's own window geometry never moved — reorder's edge-crossing check (which measures
+        // the window, not the pointer) never fires.
         b.startDrag();
         b.setFrameGeometryValue({ x: bRealX, y: 0, width: 640, height: 1000 });
         b.triggerFrameGeometryChanged({ x: bRealX, y: 0, width: 640, height: 1000 });
