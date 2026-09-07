@@ -32,25 +32,34 @@ Rounding matters because KWin/Wayland can report fractional geometry for the sam
 
 Source: [`Grid.insertionIndexForEdges`](../src/core/grid.ts) in `grid.ts`, driven by [`registerDragReorder`](../src/input/drag.ts) in `drag.ts`.
 
-While a window is being interactively moved, Drift never writes its real geometry — it moves freely under the cursor — but the *order* of the other columns updates live: on every `frameGeometryChanged` tick during the drag, `registerDragReorder` converts the dragged window's own left and right edges (not the cursor) to virtual x coordinates (`toVirtualX`), then asks `Grid.insertionIndexForEdges` whether it should trade places with its current immediate left or right neighbor.
+While a window is being interactively moved, Drift never writes its real geometry — it moves freely under the cursor — but the *order* of the other columns updates live.
+On every `frameGeometryChanged` tick during the drag, `registerDragReorder` converts the dragged window's own left and right edges (not the cursor) to virtual x coordinates (`toVirtualX`), then asks `Grid.insertionIndexForEdges` whether it should trade places with its current immediate left or right neighbor.
 If the returned index differs from the column's current position, the swap is committed immediately via `Grid.moveColumn`, and the displaced neighbor slides into its new position through the normal per-column position animation (see "Layout-Change Position Animation" below) rather than jumping.
 Using the window's own edges, rather than the cursor, means the vote reflects where the dragged window itself sits, regardless of where within it the user grabbed to start the drag.
 
-The criterion is intentionally directional and edge-based, matching how a user visually judges a swap: the dragged window trades places with its right neighbor once its own *right* edge crosses that neighbor's center, and with its left neighbor once its own *left* edge crosses that neighbor's center.
-`insertionIndexForEdges(excludeId, leftEdgeVirtualX, rightEdgeVirtualX)` finds only the current immediate left and right neighbor (skipping hidden columns), reading each one's real center — its actual current offset plus half its width, taken straight from the grid's live layout — and checks the matching edge against it: the right edge against the right neighbor's center, the left edge against the left neighbor's center.
-It returns that neighbor's index once its center is crossed, or `excludeId`'s own current index (i.e. no move) when neither immediate neighbor has been crossed.
-Because centers are read from the real, undisturbed layout, the two directions are symmetric: crossing a neighbor's center costs the same distance whether that neighbor is to the left or to the right.
+The criterion is directional, edge-based, and threshold-driven: the dragged window trades places with its right neighbor once its own *right* edge has penetrated `reorderThresholdFraction` of the way across that neighbor (measured from their shared boundary), and with its left neighbor symmetrically.
+`insertionIndexForEdges(excludeId, leftEdgeVirtualX, rightEdgeVirtualX, thresholdFraction)` finds only the current immediate left and right neighbor (skipping hidden columns), computes each one's threshold x position — its real offset plus a fraction of its width, taken straight from the grid's live layout — and checks the matching edge against it: the right edge against `offset + width * thresholdFraction` for the right neighbor, the left edge against `offset + width * (1 - thresholdFraction)` for the left neighbor.
+It returns that neighbor's index once its threshold is crossed, or `excludeId`'s own current index (i.e. no move) when neither immediate neighbor has been crossed.
+
+`thresholdFraction = 0.5` reproduces a plain center-crossing swap; the shipped default (`settings.reorderThresholdFraction`, `0.85`) requires the drag to travel most of the way across the neighbor — near where the dragged column will actually end up post-swap — rather than firing the instant it's merely half displaced, so a drag that only grazes a neighbor while aiming for something else no longer commits an unintended swap.
+Because both thresholds are read from the real, undisturbed layout, the two directions stay symmetric: penetrating a neighbor by the configured fraction costs the same distance whether that neighbor is to the left or to the right.
 Checking only the *immediate* neighbor, rather than voting across every other column at once, keeps each reorder step a single swap — consecutive ticks during a fast drag simply keep re-evaluating against whatever the new immediate neighbor becomes after each swap.
 
 On `interactiveMoveResizeFinished`, the same edge-based computation runs once more, then the dragged column itself is forced to snap instantly into its final slot (`Strip.snapColumn`) while its neighbor keeps whatever slide it was already mid-flight on.
 
 ## Drag-to-Stack Hover Resolution
 
-Source: [`resolveStackSlot`](../src/input/drag-hover.ts) in `drag-hover.ts`.
+Source: [`resolveStackTarget`, `stackTargetIndex`](../src/input/drag-hover.ts) in `drag-hover.ts`, candidates gathered by [`registerDragReorder`](../src/input/drag.ts) in `drag.ts` via `Grid.visibleNeighborColumnIds`/`Column.tileRect`.
 
-Drag-to-stack subdivides a target column into zones: the outer quarter (`< 0.25` or `> 0.75` of the column's local width fraction) keeps triggering ordinary drag-reorder (above); the middle half is a stack zone. Once the dragged window's virtual-x center falls in a target column's stack zone, `resolveStackSlot(grid, targetColumnId, excludeColumnId, excludeTileId, yCenter)` resolves which vertical slot within that column's tile stack the drag should land in.
+Stacking is resolved purely from the dragged window's own geometry — never the cursor position — using the same measurement axis reorder already uses.
+Every tick that reorder does *not* fire, `registerDragReorder` gathers a list of candidate tiles: the dragged tile's own column's other tiles (if it's currently in a multi-tile stack) plus every tile in both immediate neighbor columns.
+`resolveStackTarget(draggedRect, candidates, overlapFraction)` filters those candidates to ones whose horizontal overlap with the dragged window (as a fraction of the candidate's own width) clears `overlapFraction` (`settings.stackOverlapFraction`, default `0.5`), then picks whichever surviving candidate has the most vertical overlap with the dragged window.
 
-It walks the target column's tiles top to bottom, accumulating each tile's height as a running `y` cursor exactly like `layoutOffsets` does horizontally for columns, and returns the index of the first tile whose vertical center `yCenter` is above — i.e. the slot the drag would insert before — or the stack's length if `yCenter` is below every tile (append at the bottom). When the target column is the dragged tile's own column (a same-stack reorder), that tile is excluded from the candidate list first, so it never counts as its own neighbor. Because it takes only already-resolved column ids and a `y` position, it needs no KWin dependency and is directly unit-testable.
+That winning candidate's height is then split into three vertical bands by where the dragged window's own top edge falls within it: the top 25% resolves to `'above'` (insert before that tile), the bottom 25% resolves to `'below'` (insert after it), and the middle 50% is a dead zone that resolves to no target at all — this dead zone is what keeps a hover near a tile-height boundary from flickering between adjacent slots.
+`stackTargetIndex(target, tiles)` then translates the `{ tileId, direction }` result into a tile-list index for the eventual commit (`Column.insertTileAt`/`Column.moveTile`).
+
+The resolved target must hold steady — the same `(columnId, tileId, direction)` triple, encoded as one string key — for `columnDragDwellMs` before a preview actually appears, reusing the same `EdgeDwell` dwell timer cross-row drag uses; this applies uniformly whether the candidate is in the dragged tile's own column or a neighbor's, so a drag merely passing across another window on its way elsewhere never flashes a stack preview.
+Because `resolveStackTarget`/`stackTargetIndex` take only already-resolved rects and tile lists, they need no `Grid` or KWin dependency and are directly unit-testable.
 
 ## Focus-Flash Opacity Envelope
 
