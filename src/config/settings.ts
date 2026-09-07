@@ -110,6 +110,16 @@ export interface Settings {
      * no preview at all — this is what stops a fast drag-through from flashing a stack preview
      * on its way to a genuine reorder swap. */
     columnDragDwellMs: number;
+    /** Fraction of a neighbor column's width the dragged column's edge must penetrate
+     * (measured from their shared boundary) before a reorder swap fires — generalizes the
+     * old fixed 50% center-crossing threshold so a swap commits near the drag's final
+     * post-swap position instead of at the halfway point, cutting down on swaps firing off
+     * a drag that only grazed a neighbor (docs: 2026-09-07-drag-reorder-stack-refinement-design). */
+    reorderThresholdFraction: number;
+    /** Minimum horizontal overlap (as a fraction of the candidate tile's own width)
+     * between the dragged window and a candidate tile before that tile is considered for
+     * stacking at all (docs: 2026-09-07-drag-reorder-stack-refinement-design). */
+    stackOverlapFraction: number;
     /** How long the minimap overlay stays visible after the last focus-step press, in milliseconds. */
     minimapAutoHideMs: number;
     /** Whether the minimap's column boxes show a live preview of each window's content

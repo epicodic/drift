@@ -24,6 +24,14 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.columnDragDwellMs).toBe(400);
     });
 
+    it('defaults the reorder threshold fraction to 0.85 (near-final-position, not center-crossing)', () => {
+        expect(DEFAULT_SETTINGS.reorderThresholdFraction).toBe(0.85);
+    });
+
+    it('defaults the stack overlap fraction to 0.5', () => {
+        expect(DEFAULT_SETTINGS.stackOverlapFraction).toBe(0.5);
+    });
+
     it('defaults the strip-drag edge border to 2px', () => {
         expect(DEFAULT_SETTINGS.stripDragEdgeBorderPx).toBe(2);
     });
