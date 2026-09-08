@@ -279,9 +279,12 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
         const homeColumn = requireColumn(deps.grid, location.columnId);
         const homeIndex = deps.grid.indexOf(location.columnId);
 
+        const raw = win.frameGeometry();
         debug(
             `drag tick: win=${win.id} loc=col${location.columnId}/tile${location.tileId} ` +
-                `winEdges=(${winEdges.left.toFixed(0)},${winEdges.right.toFixed(0)})`,
+                `winEdges=(${winEdges.left.toFixed(0)},${winEdges.right.toFixed(0)}) ` +
+                `raw=(${raw.x.toFixed(0)},${raw.y.toFixed(0)},${raw.width.toFixed(0)},${raw.height.toFixed(0)}) ` +
+                `viewportOffset=${deps.viewport.offset().toFixed(0)}`,
         );
 
         // Reorder: checked first, live — the dragged column's own edge penetrating a

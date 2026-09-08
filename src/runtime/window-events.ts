@@ -10,6 +10,7 @@ import {
     type ResizeEdge,
     type VerticalResizeEdge,
 } from '../core/coordinates';
+import { debug } from '../debug';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { TileLocation } from './column-registry';
 
@@ -60,6 +61,14 @@ export function onWindowGeometryChanged(win: WindowAdapter, oldReal: Rect, deps:
             return; // height-only change on a plain (non-stacked) column: still ignored
         }
         const edge = verticalResizedEdge(oldReal, newReal);
+        // TEMPORARY: confirms whether a non-echoed sibling height change fires a render() that
+        // only excludes itself, not whatever window is being interactively dragged elsewhere
+        // (docs: 2026-09-07-drag-reorder-stack-refinement-design).
+        debug(
+            `onWindowGeometryChanged: height-resize win=${win.id} col=${location.columnId}/tile${location.tileId} ` +
+                `old=(${oldReal.x.toFixed(0)},${oldReal.y.toFixed(0)},${oldReal.width.toFixed(0)},${oldReal.height.toFixed(0)}) ` +
+                `new=(${newReal.x.toFixed(0)},${newReal.y.toFixed(0)},${newReal.width.toFixed(0)},${newReal.height.toFixed(0)})`,
+        );
         deps.resizeTile(location.columnId, location.tileId, Math.round(newReal.height), edge);
         deps.render(win.id, true);
         return;
@@ -68,6 +77,7 @@ export function onWindowGeometryChanged(win: WindowAdapter, oldReal: Rect, deps:
         // A live border drag can tell us the left edge genuinely moved, and needs to render
         // immediately (excluding itself, and skipping neighbor animation) to track the pointer
         // without stutter.
+        debug(`onWindowGeometryChanged: width-resize win=${win.id} col=${columnId}`);
         deps.resizeColumn(columnId, Math.round(newReal.width), resizedEdge(oldReal, newReal));
         deps.render(win.id, true);
         return;
@@ -83,6 +93,14 @@ export function onWindowGeometryChanged(win: WindowAdapter, oldReal: Rect, deps:
     // for the new size, which is meaningless as a drag direction and would otherwise corrupt the
     // strip's origin — treat it as a right-edge resize that leaves the column's own virtual x
     // untouched.
+    // TEMPORARY: this is the one branch that calls render() with NO excludeWindowId at all —
+    // confirms whether it's firing during a live drag elsewhere (docs:
+    // 2026-09-07-drag-reorder-stack-refinement-design).
+    debug(
+        `onWindowGeometryChanged: programmatic-jump win=${win.id} col=${columnId} ` +
+            `old=(${oldReal.x.toFixed(0)},${oldReal.y.toFixed(0)},${oldReal.width.toFixed(0)},${oldReal.height.toFixed(0)}) ` +
+            `new=(${newReal.x.toFixed(0)},${newReal.y.toFixed(0)},${newReal.width.toFixed(0)},${newReal.height.toFixed(0)})`,
+    );
     deps.resizeColumn(columnId, Math.round(newReal.width), 'right');
     deps.render();
     // A programmatic resize (e.g. maximize) can grow a column out of view without any focus

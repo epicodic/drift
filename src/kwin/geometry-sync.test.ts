@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { toRealRect, toVirtualX } from './geometry-sync';
+import { GeometrySync, toRealRect, toVirtualX } from './geometry-sync';
+import type { WindowAdapter } from './window-adapter';
+
+function fakeWindow(id: string): WindowAdapter {
+    return { id, setFrameGeometry: () => {} } as unknown as WindowAdapter;
+}
 
 describe('toRealRect', () => {
     const area = { x: 0, y: 0, width: 1920, height: 1080 };
@@ -65,5 +70,77 @@ describe('toVirtualX', () => {
         const virtualRect = { x: 640, y: 0, width: 300, height: 1080 };
         const real = toRealRect(virtualRect, area, 250);
         expect(toVirtualX(real.x, area, 250)).toBe(virtualRect.x);
+    });
+});
+
+describe('GeometrySync', () => {
+    const area = { x: 0, y: 0, width: 1920, height: 1080 };
+
+    it('isEcho recognizes the most recently applied rect', () => {
+        const sync = new GeometrySync(area);
+        const rect = { x: 0, y: 0, width: 300, height: 1080 };
+
+        sync.apply(fakeWindow('w1'), rect, 0);
+
+        expect(sync.isEcho('w1', rect)).toBe(true);
+    });
+
+    it('isEcho returns false for a rect Drift never applied', () => {
+        const sync = new GeometrySync(area);
+
+        expect(sync.isEcho('w1', { x: 0, y: 0, width: 300, height: 1080 })).toBe(false);
+    });
+
+    it('isEcho recognizes a stale write whose confirming signal arrives after a newer one was already applied', () => {
+        // A fast preview animation can call apply() several times before the compositor's
+        // frameGeometryChanged signal for the FIRST of those writes comes back — remembering
+        // only the latest applied rect would wrongly treat that stale signal as an external
+        // resize (docs: 2026-09-07-drag-reorder-stack-refinement-design).
+        const sync = new GeometrySync(area);
+        const win = fakeWindow('w1');
+        const first = { x: 0, y: 0, width: 300, height: 1080 };
+        const second = { x: 0, y: 0, width: 300, height: 1200 };
+
+        sync.apply(win, first, 0);
+        sync.apply(win, second, 0);
+
+        expect(sync.isEcho('w1', first)).toBe(true);
+    });
+
+    it('consuming an older echo also clears anything applied before it for that window', () => {
+        const sync = new GeometrySync(area);
+        const win = fakeWindow('w1');
+        const first = { x: 0, y: 0, width: 300, height: 1080 };
+        const second = { x: 0, y: 0, width: 300, height: 1200 };
+
+        sync.apply(win, first, 0);
+        sync.apply(win, second, 0);
+        sync.isEcho('w1', second);
+
+        expect(sync.isEcho('w1', first)).toBe(false);
+    });
+
+    it('does not grow unbounded when the same rect is re-applied every render tick without ever being confirmed', () => {
+        const sync = new GeometrySync(area);
+        const win = fakeWindow('w1');
+        const rect = { x: 0, y: 0, width: 300, height: 1080 };
+
+        for (let i = 0; i < 50; i++) {
+            sync.apply(win, rect, 0);
+        }
+
+        expect(sync.isEcho('w1', rect)).toBe(true);
+        expect(sync.isEcho('w1', rect)).toBe(false); // already consumed, no duplicate entries remained
+    });
+
+    it('forget clears any pending applied rects for that window', () => {
+        const sync = new GeometrySync(area);
+        const win = fakeWindow('w1');
+        const rect = { x: 0, y: 0, width: 300, height: 1080 };
+
+        sync.apply(win, rect, 0);
+        sync.forget('w1');
+
+        expect(sync.isEcho('w1', rect)).toBe(false);
     });
 });
