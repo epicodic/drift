@@ -90,7 +90,7 @@ export class Strip {
     private verticalOffsetY = 0;
 
     constructor(
-        private readonly area: Rect,
+        private area: Rect,
         private readonly settings: Settings,
         timer: Timer,
         private readonly workspaceAdapter: WorkspaceAdapter,
@@ -109,6 +109,19 @@ export class Strip {
             },
         );
         this.motionTimer = this.ticker.subscribe();
+    }
+
+    /** Re-derives grid height, viewport width, and the virtual->real coordinate origin from a
+     * changed work area (a panel/dock resizing, or the initial KWin startup race with panel
+     * strut registration — see `WorkspaceAdapter.workingArea`), then re-renders every window
+     * at the new geometry instantly — this is a correction, not a user-facing layout change,
+     * so it shouldn't ease into place over `animationDurationMs` like a normal resize. */
+    updateArea(area: Rect): void {
+        this.area = area;
+        this.grid.setHeight(Math.max(1, area.height - this.settings.bottomMargin));
+        this.viewport.setViewportWidth(area.width);
+        this.geometrySync.setArea(area);
+        this.render(undefined, true);
     }
 
     /** `verticalOffsetY` is sticky, not defaulted: passing a value both applies it immediately

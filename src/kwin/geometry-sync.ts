@@ -31,7 +31,11 @@ export class GeometrySync {
     private static readonly MAX_PENDING_PER_WINDOW = 8;
     private readonly pending = new Map<string, Rect[]>();
 
-    constructor(private readonly area: Rect) {}
+    constructor(private area: Rect) {}
+
+    setArea(area: Rect): void {
+        this.area = area;
+    }
 
     apply(window: WindowAdapter, virtualRect: Rect, viewportOffsetX: number, viewportOffsetY = 0): void {
         const real = toRealRect(virtualRect, this.area, viewportOffsetX, viewportOffsetY);

@@ -151,6 +151,16 @@ export class Column {
         }
     }
 
+    /** Scales every tile's height by `factor`, keeping their relative sizes — used when the
+     * grid's overall height changes (a panel/dock resizing, or correcting the initial KWin
+     * startup race with panel strut registration) so a column created under the old height
+     * still ends up filling the new one, instead of only new columns picking it up. */
+    rescaleHeight(factor: number): void {
+        for (const tile of this.stack) {
+            tile.height *= factor;
+        }
+    }
+
     /** Resizes one tile, taking the delta from its neighbor on the moved edge's side —
      * heights always sum to the column's fixed total, there is no "grow the column"
      * option vertically the way `Grid.resizeColumn` has horizontally. A no-op if there

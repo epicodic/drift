@@ -160,6 +160,28 @@ function fakeWindow(
 }
 
 describe('Strip', () => {
+    it('updateArea resizes the grid height and re-renders windows at the new height', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1');
+        strip.addWindow(win.adapter);
+        win.setFrameGeometry.mockClear();
+
+        strip.updateArea({ x: 0, y: 0, width: AREA.width, height: 900 });
+
+        expect(win.setFrameGeometry).toHaveBeenCalledWith(expect.objectContaining({ height: 900 }));
+    });
+
+    it('updateArea shifts window geometry to a new area origin', () => {
+        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1');
+        strip.addWindow(win.adapter);
+        win.setFrameGeometry.mockClear();
+
+        strip.updateArea({ x: 0, y: 40, width: AREA.width, height: 960 });
+
+        expect(win.setFrameGeometry).toHaveBeenCalledWith(expect.objectContaining({ y: 40 }));
+    });
+
     it('adds an already-minimized window without throwing and still positions it via geometry sync', () => {
         const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1', { minimized: true });

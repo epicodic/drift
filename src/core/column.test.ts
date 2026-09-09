@@ -101,6 +101,26 @@ describe('Column — tile stack', () => {
         expect(() => column.removeTile(9999)).toThrow();
     });
 
+    it('rescaleHeight scales every tile by the given factor, keeping their relative sizes', () => {
+        const column = new Column(1, 300, 900);
+        column.addTile();
+        column.addTile(); // three even tiles of 300 each
+
+        column.rescaleHeight(2 / 3); // e.g. grid height dropped from 900 to 600
+
+        expect(column.tiles().map((t) => t.height)).toEqual([200, 200, 200]);
+    });
+
+    it('rescaleHeight preserves an uneven split, not just an even one', () => {
+        const column = new Column(1, 300, 900);
+        const secondId = column.addTile(); // [450, 450]
+        column.resizeTile(secondId, 600, 'top'); // [300, 600]
+
+        column.rescaleHeight(2); // e.g. grid height doubled
+
+        expect(column.tiles().map((t) => t.height)).toEqual([600, 1200]);
+    });
+
     it('setFocusedTile throws for an unknown tile id', () => {
         const column = new Column(1, 300, 900);
         expect(() => column.setFocusedTile(9999)).toThrow();

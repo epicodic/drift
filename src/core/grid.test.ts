@@ -21,6 +21,37 @@ describe('Grid — screenHeight', () => {
     });
 });
 
+describe('Grid — setHeight', () => {
+    it('changes screenHeight and every column rect built afterward', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const column = grid.addColumn(300);
+
+        grid.setHeight(900);
+
+        expect(grid.screenHeight()).toBe(900);
+        expect(grid.columnRect(column.id).height).toBe(900);
+    });
+
+    it("rescales every existing column's tiles proportionally, not just new columns", () => {
+        const grid = new Grid(1000, GAP);
+        const column = grid.addColumn(300);
+        column.addTile(); // two even 500/500 tiles, predating the resize
+
+        grid.setHeight(500); // half the original height
+
+        expect(column.tiles().map((t) => t.height)).toEqual([250, 250]);
+    });
+
+    it('is a no-op for existing tiles when the height is unchanged', () => {
+        const grid = new Grid(1000, GAP);
+        const column = grid.addColumn(300);
+
+        grid.setHeight(1000);
+
+        expect(column.tiles()[0].height).toBe(1000);
+    });
+});
+
 describe('Grid — debugState', () => {
     it('reports focus, id counter, origin, and columns with widths', () => {
         const grid = new Grid(HEIGHT, GAP);

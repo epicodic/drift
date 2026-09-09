@@ -2,7 +2,7 @@
 // (docs §5); the spike uses the naive combined geometry for the viewport (§7.2).
 // Untestable without a live compositor (docs §8) — kept deliberately thin.
 
-import { Rect } from '../core/coordinates';
+import { combineInsets, insetOf, Rect, shrinkRect } from '../core/coordinates';
 import { WindowAdapter } from './window-adapter';
 
 export interface ScreenInfo {
@@ -14,6 +14,21 @@ export class WorkspaceAdapter {
     /** The full combined area across all outputs, bezels ignored (docs §4, §7.2). */
     combinedGeometry(): Rect {
         return toRect(Workspace.virtualScreenGeometry);
+    }
+
+    /** `combinedGeometry()` shrunk to exclude panels/docks, using KWin's own reserved-strut
+     * accounting (`Workspace.clientArea`) rather than a hand-configured margin. Each screen's
+     * own inset is measured against its raw geometry, and the largest inset on each edge is
+     * applied to the combined area, so the result never overlaps any screen's panel. */
+    workingArea(): Rect {
+        const desktop = Workspace.currentDesktop;
+        const insets = Workspace.screens.map((output) =>
+            insetOf(
+                toRect(output.geometry),
+                toRect(Workspace.clientArea(ClientAreaOption.PlacementArea, output, desktop)),
+            ),
+        );
+        return shrinkRect(this.combinedGeometry(), combineInsets(insets));
     }
 
     currentActivity(): string {

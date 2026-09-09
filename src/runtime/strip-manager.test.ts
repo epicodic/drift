@@ -28,6 +28,7 @@ interface FakeStripStack {
     render: ReturnType<typeof vi.fn>;
     setFocusedColumnWidth: ReturnType<typeof vi.fn>;
     alignFocusedColumn: ReturnType<typeof vi.fn>;
+    updateArea: ReturnType<typeof vi.fn>;
 }
 
 function fakeStripStack(): FakeStripStack {
@@ -37,6 +38,7 @@ function fakeStripStack(): FakeStripStack {
     const render = vi.fn();
     const setFocusedColumnWidth = vi.fn();
     const alignFocusedColumn = vi.fn();
+    const updateArea = vi.fn();
     const stack = {
         addWindow,
         removeWindow,
@@ -44,18 +46,30 @@ function fakeStripStack(): FakeStripStack {
         render,
         setFocusedColumnWidth,
         alignFocusedColumn,
+        updateArea,
     } as unknown as StripStack;
-    return { stack, addWindow, removeWindow, activateWindow, render, setFocusedColumnWidth, alignFocusedColumn };
+    return {
+        stack,
+        addWindow,
+        removeWindow,
+        activateWindow,
+        render,
+        setFocusedColumnWidth,
+        alignFocusedColumn,
+        updateArea,
+    };
 }
 
-function recordingFactory(): { factory: StripStackFactory; created: FakeStripStack[] } {
+function recordingFactory(): { factory: StripStackFactory; created: FakeStripStack[]; createdAreas: Rect[] } {
     const created: FakeStripStack[] = [];
-    const factory: StripStackFactory = () => {
+    const createdAreas: Rect[] = [];
+    const factory: StripStackFactory = (area) => {
         const fake = fakeStripStack();
         created.push(fake);
+        createdAreas.push(area);
         return fake.stack;
     };
-    return { factory, created };
+    return { factory, created, createdAreas };
 }
 
 function fakeWin(id: string): WindowAdapter {
@@ -86,6 +100,30 @@ describe('StripManager', () => {
         expect(created).toHaveLength(2);
         expect(created[0].addWindow).toHaveBeenCalledWith(w1);
         expect(created[1].addWindow).toHaveBeenCalledWith(w2);
+    });
+
+    it('updateArea fans out to every existing strip stack', () => {
+        const { manager, created } = makeManager();
+        manager.addTo('a', 'd1', fakeWin('w1'));
+        manager.addTo('a', 'd2', fakeWin('w2'));
+        const newArea: Rect = { x: 0, y: 40, width: 1280, height: 960 };
+
+        manager.updateArea(newArea);
+
+        expect(created).toHaveLength(2);
+        expect(created[0].updateArea).toHaveBeenCalledWith(newArea);
+        expect(created[1].updateArea).toHaveBeenCalledWith(newArea);
+    });
+
+    it('updateArea remembers the new area for strip stacks created afterward', () => {
+        const { factory, createdAreas } = recordingFactory();
+        const manager = new StripManager(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter('a', 'd1'), factory);
+        const newArea: Rect = { x: 0, y: 40, width: 1280, height: 960 };
+
+        manager.updateArea(newArea);
+        manager.addTo('a', 'd1', fakeWin('w1')); // lazily creates a strip stack AFTER the area update
+
+        expect(createdAreas).toEqual([newArea]);
     });
 
     it('reuses the same strip stack for the same key', () => {

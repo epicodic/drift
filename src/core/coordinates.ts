@@ -70,3 +70,45 @@ export function edgeDirection(pointerY: number, area: Rect, borderWidth: number)
     }
     return null;
 }
+
+/** How far `inner` (e.g. a screen's panel-excluded work area) sits inset from `outer`
+ * (e.g. that screen's raw geometry) on each edge. */
+export interface Inset {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+}
+
+export function insetOf(outer: Rect, inner: Rect): Inset {
+    return {
+        top: inner.y - outer.y,
+        bottom: outer.y + outer.height - (inner.y + inner.height),
+        left: inner.x - outer.x,
+        right: outer.x + outer.width - (inner.x + inner.width),
+    };
+}
+
+/** The largest inset on each edge independently — used to shrink a combined multi-screen
+ * area by whichever screen's panel reserves the most space on that edge, so the shared
+ * area never overlaps any screen's panel. */
+export function combineInsets(insets: readonly Inset[]): Inset {
+    if (insets.length === 0) {
+        throw new Error('combineInsets requires at least one inset');
+    }
+    return insets.reduce((combined, inset) => ({
+        top: Math.max(combined.top, inset.top),
+        bottom: Math.max(combined.bottom, inset.bottom),
+        left: Math.max(combined.left, inset.left),
+        right: Math.max(combined.right, inset.right),
+    }));
+}
+
+export function shrinkRect(rect: Rect, inset: Inset): Rect {
+    return {
+        x: rect.x + inset.left,
+        y: rect.y + inset.top,
+        width: rect.width - inset.left - inset.right,
+        height: rect.height - inset.top - inset.bottom,
+    };
+}
