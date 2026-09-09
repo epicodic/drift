@@ -874,37 +874,149 @@ describe('Strip', () => {
             expect(win2.setFrameGeometry).toHaveBeenCalledWith(expect.objectContaining({ x: 1616 }));
         });
 
-        it('snapColumn settles one column instantly while a separately-animating neighbor keeps sliding', () => {
+        it('animates a column width change instead of jumping to the new width', () => {
             vi.useFakeTimers();
             vi.setSystemTime(0);
             try {
-                const timer = fakeTimer();
-                const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, timer, fakeWorkspaceAdapter());
+                const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
                 const win1 = fakeWindow('w1');
-                const win2 = fakeWindow('w2');
-                const win3 = fakeWindow('w3');
-                strip.addWindow(win1.adapter); // col id 1 @ x=0, focused
-                strip.addWindow(win2.adapter); // col id 2 @ x=808, focused
-                strip.addWindow(win3.adapter); // col id 3 @ x=1616, focused
-                strip.focusLeft();
-                strip.focusLeft(); // focus back to col 1
+                strip.addWindow(win1.adapter); // col1 @ x=0, width 800
+                win1.setFrameGeometry.mockClear();
 
-                const win4 = fakeWindow('w4');
-                strip.addWindow(win4.adapter); // col id 4, inserted right of col 1; pushes col2 -> 1616, col3 -> 2424
-                win2.setFrameGeometry.mockClear();
-                win3.setFrameGeometry.mockClear();
+                strip.increaseColumnWidth();
 
-                strip.snapColumn(2); // settle col2 (win2) instantly; col3 (win3) keeps animating
                 vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs / 2);
                 strip.render();
 
-                expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 1616 }));
-                const [lastCall] = win3.setFrameGeometry.mock.calls.slice(-1);
-                const col3X = (lastCall[0] as { x: number }).x;
-                expect(col3X).toBeGreaterThan(1616); // still mid-flight...
-                expect(col3X).toBeLessThan(2424); // ...not yet at its target
+                const [lastCall] = win1.setFrameGeometry.mock.calls.slice(-1);
+                const width = (lastCall[0] as { width: number }).width;
+                expect(width).toBeGreaterThan(DEFAULT_SETTINGS.defaultColumnWidth);
+                expect(width).toBeLessThan(DEFAULT_SETTINGS.defaultColumnWidth + DEFAULT_SETTINGS.columnWidthStep);
             } finally {
                 vi.useRealTimers();
+            }
+        });
+
+        it("keeps a stacked column's tiles at identical x and width while the column slides", () => {
+            vi.useFakeTimers();
+            vi.setSystemTime(0);
+            try {
+                const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+                const win1 = fakeWindow('w1');
+                const win2 = fakeWindow('w2');
+                const win3 = fakeWindow('w3');
+                strip.addWindow(win1.adapter); // col1
+                strip.addWindow(win2.adapter); // col2
+                strip.focusLeft();
+                strip.absorbRight(); // win2 becomes col1's second tile, flying in from col2's x
+                strip.addWindow(win3.adapter); // new column right of col1
+                // Let the absorb's own fly-in finish, so both tiles start this move at rest.
+                vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs);
+                strip.render();
+                strip.focusFirst();
+                strip.moveWindowRight(); // col1 slides right; both its tiles must move together
+                win1.setFrameGeometry.mockClear();
+                win2.setFrameGeometry.mockClear();
+
+                vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs * 1.5);
+                strip.render();
+
+                const [call1] = win1.setFrameGeometry.mock.calls.slice(-1);
+                const [call2] = win2.setFrameGeometry.mock.calls.slice(-1);
+                const rect1 = call1[0] as { x: number; width: number };
+                const rect2 = call2[0] as { x: number; width: number };
+                expect(rect2.x).toBe(rect1.x);
+                expect(rect2.width).toBe(rect1.width);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('seedMotionFrom drifts a window from the seeded rect into its layout slot', () => {
+            vi.useFakeTimers();
+            vi.setSystemTime(0);
+            try {
+                const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+                const win1 = fakeWindow('w1');
+                strip.addWindow(win1.adapter); // col1 @ x=0
+                win1.setFrameGeometry.mockClear();
+
+                strip.seedMotionFrom(win1.adapter.id, { x: 400 });
+                strip.render();
+
+                expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 400 }));
+
+                vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs / 2);
+                strip.render();
+
+                const [lastCall] = win1.setFrameGeometry.mock.calls.slice(-1);
+                const x = (lastCall[0] as { x: number }).x;
+                expect(x).toBeLessThan(400);
+                expect(x).toBeGreaterThan(0);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('seedMotionFrom leaves omitted channels resting where they were', () => {
+            const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+            const win1 = fakeWindow('w1');
+            strip.addWindow(win1.adapter);
+            win1.setFrameGeometry.mockClear();
+
+            strip.seedMotionFrom(win1.adapter.id, { y: 300 });
+            strip.render();
+
+            expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 0, y: 300 }));
+        });
+
+        describe('keyboard column moves animate instead of jumping', () => {
+            const cases: { name: string; focus: 'first' | 'last'; act: (strip: Strip) => void; targetX: number }[] = [
+                { name: 'moveWindowRight', focus: 'first', act: (s) => s.moveWindowRight(), targetX: 808 },
+                { name: 'moveWindowToEnd', focus: 'first', act: (s) => s.moveWindowToEnd(), targetX: 1616 },
+                { name: 'moveWindowLeft', focus: 'last', act: (s) => s.moveWindowLeft(), targetX: 808 },
+                { name: 'moveWindowToStart', focus: 'last', act: (s) => s.moveWindowToStart(), targetX: 0 },
+            ];
+
+            for (const { name, focus, act, targetX } of cases) {
+                it(`${name} eases the moved column from its old slot to its new one`, () => {
+                    vi.useFakeTimers();
+                    vi.setSystemTime(0);
+                    try {
+                        const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+                        const windows = [fakeWindow('w1'), fakeWindow('w2'), fakeWindow('w3')];
+                        for (const win of windows) {
+                            strip.addWindow(win.adapter); // cols @ x=0, 808, 1616
+                        }
+                        const moved = focus === 'first' ? windows[0] : windows[2];
+                        const startX = focus === 'first' ? 0 : 1616;
+                        if (focus === 'first') {
+                            strip.focusFirst();
+                        } else {
+                            strip.focusLast();
+                        }
+                        moved.setFrameGeometry.mockClear();
+
+                        act(strip);
+
+                        vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs / 2);
+                        strip.render();
+
+                        const [midCall] = moved.setFrameGeometry.mock.calls.slice(-1);
+                        const midX = (midCall[0] as { x: number }).x;
+                        expect(midX).toBeGreaterThan(Math.min(startX, targetX));
+                        expect(midX).toBeLessThan(Math.max(startX, targetX));
+
+                        vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs);
+                        strip.render();
+
+                        expect(moved.setFrameGeometry).toHaveBeenLastCalledWith(
+                            expect.objectContaining({ x: targetX }),
+                        );
+                    } finally {
+                        vi.useRealTimers();
+                    }
+                });
             }
         });
 
