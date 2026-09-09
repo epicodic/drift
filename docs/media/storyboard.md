@@ -129,10 +129,10 @@ or include it deliberately if you want the GIF to show the hide behavior too —
 
 ### Scene K — `debug-console.gif`
 
-**Setup:** continue from any prior state, five columns.
-**Action:** `Meta+Shift+D` to open the console, `Meta+Right` a couple of times so the console's live values
-visibly update, `Meta+Shift+D` to close it.
-**IN:** the `Meta+Shift+D` that opens it. **OUT:** the `Meta+Shift+D` that closes it.
+**Setup:** continue from any prior state, five columns. Enable `debugConsoleEnabled` in the settings dialog's
+Debug tab beforehand and restart the script, so the console overlay is already showing when the scene starts.
+**Action:** `Meta+Right` a couple of times so the console's live values visibly update.
+**IN:** just before the first `Meta+Right`. **OUT:** just after the last value update settles.
 **Target length:** 6-8s.
 
 ### Scene L — `undock-redock.gif`

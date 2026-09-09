@@ -43,12 +43,6 @@ export const SETTINGS_DEFINITIONS: AnySettingsDefinition[] = [
     { name: 'shortcutFocusLeft', type: 'String', default: 'Meta+Left', shortcut: { label: 'Focus Column Left' } },
     { name: 'shortcutFocusRight', type: 'String', default: 'Meta+Right', shortcut: { label: 'Focus Column Right' } },
     {
-        name: 'shortcutToggleDebugConsole',
-        type: 'String',
-        default: 'Meta+Shift+D',
-        shortcut: { label: 'Toggle Debug Console' },
-    },
-    {
         name: 'shortcutCycleAlignLeft',
         type: 'String',
         default: 'Meta+Shift+Left',
@@ -180,6 +174,7 @@ export const SETTINGS_DEFINITIONS: AnySettingsDefinition[] = [
     { name: 'focusFlashDurationMs', type: 'UInt', default: 300 },
     { name: 'focusFlashOpacity', type: 'Double', default: 0.5 },
     { name: 'undockKeepAbove', type: 'Bool', default: true },
+    { name: 'debugConsoleEnabled', type: 'Bool', default: false },
     { name: 'shortcutToggleFloating', type: 'String', default: 'Meta+Space', shortcut: { label: 'Toggle Floating' } },
     { name: 'windowRules', type: 'String', default: DEFAULT_WINDOW_RULES },
 ];

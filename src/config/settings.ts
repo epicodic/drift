@@ -18,8 +18,6 @@ export interface Settings {
     shortcutFocusLeft: string;
     /** Shortcut sequence for focusing the column to the right. */
     shortcutFocusRight: string;
-    /** Shortcut sequence for toggling the debug console. */
-    shortcutToggleDebugConsole: string;
     /** Shortcut sequence for cycling the focused column's align/focus leftward. */
     shortcutCycleAlignLeft: string;
     /** Shortcut sequence for cycling the focused column's align/focus rightward. */
@@ -140,6 +138,9 @@ export interface Settings {
     /** Whether an undocked window is kept above still-docked windows (docs:
      * 2026-09-06-manual-undock-redock-design). */
     undockKeepAbove: boolean;
+    /** Whether the on-screen debug console overlay is created at all. Off by default — it's a
+     * developer tool, not user-facing. Takes effect on restart, like every other setting here. */
+    debugConsoleEnabled: boolean;
     /** Shortcut sequence for toggling the active window between docked and floating. */
     shortcutToggleFloating: string;
     /** Raw JSON array of window rules, matched by resourceClass/caption to override a newly
