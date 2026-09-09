@@ -36,7 +36,7 @@ export class StripStack {
     private draggedWindowId: string | null = null;
 
     constructor(
-        private readonly area: Rect,
+        private area: Rect,
         private readonly settings: Settings,
         timer: Timer,
         private readonly workspaceAdapter: WorkspaceAdapter,
@@ -88,6 +88,15 @@ export class StripStack {
 
     render(): void {
         this.activeStrip().render();
+    }
+
+    /** Fans a changed work area out to every strip this stack already owns, and remembers it
+     * for any strip created lazily afterward (see `Strip.updateArea`). */
+    updateArea(area: Rect): void {
+        this.area = area;
+        for (const strip of this.strips.values()) {
+            strip.updateArea(area);
+        }
     }
 
     /** Activates `win` wherever it is, paging to its strip first if it isn't the active one —

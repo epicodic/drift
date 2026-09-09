@@ -23,7 +23,7 @@ export class StripManager {
     private readonly ownerByWindow = new Map<string, string>();
 
     constructor(
-        private readonly area: Rect,
+        private area: Rect,
         private readonly settings: Settings,
         private readonly timer: Timer,
         private readonly workspaceAdapter: WorkspaceAdapter,
@@ -96,6 +96,15 @@ export class StripManager {
 
     renderActive(): void {
         this.activeStripStack().render();
+    }
+
+    /** Fans a changed work area out to every strip stack already created, and remembers it
+     * for any strip stack created lazily afterward (see `StripStack.updateArea`). */
+    updateArea(area: Rect): void {
+        this.area = area;
+        for (const stack of this.stacks.values()) {
+            stack.updateArea(area);
+        }
     }
 
     prune(validActivities: ReadonlySet<string>, validDesktops: ReadonlySet<string>): void {

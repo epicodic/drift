@@ -81,6 +81,7 @@ interface FakeStrip {
     setSkipTaskbar: ReturnType<typeof vi.fn>;
     setFocusedColumnWidth: ReturnType<typeof vi.fn>;
     alignFocusedColumn: ReturnType<typeof vi.fn>;
+    updateArea: ReturnType<typeof vi.fn>;
 }
 
 function fakeStrip(): FakeStrip {
@@ -123,19 +124,22 @@ function fakeStrip(): FakeStrip {
         setSkipTaskbar: vi.fn(),
         setFocusedColumnWidth: vi.fn(),
         alignFocusedColumn: vi.fn(),
+        updateArea: vi.fn(),
     };
     const strip = { ...fns } as unknown as Strip;
     return { strip, ...fns };
 }
 
-function recordingFactory(): { factory: StripFactory; created: FakeStrip[] } {
+function recordingFactory(): { factory: StripFactory; created: FakeStrip[]; createdAreas: Rect[] } {
     const created: FakeStrip[] = [];
-    const factory: StripFactory = () => {
+    const createdAreas: Rect[] = [];
+    const factory: StripFactory = (area) => {
         const fake = fakeStrip();
         created.push(fake);
+        createdAreas.push(area);
         return fake.strip;
     };
-    return { factory, created };
+    return { factory, created, createdAreas };
 }
 
 /** Pulls the `StripDragHooks` StripStack passed into a `fake.addWindow` call, so a test can
@@ -161,6 +165,30 @@ describe('StripStack', () => {
     it('creates strip 0 eagerly', () => {
         const { created } = makeStack();
         expect(created).toHaveLength(1);
+    });
+
+    it('updateArea fans out to every existing strip', () => {
+        const { stack, created } = makeStack();
+        created[0].isEmpty.mockReturnValue(false); // keeps strip 0 alive once we leave it
+        stack.stripDown(); // creates a second strip
+        const newArea: Rect = { x: 0, y: 40, width: 1280, height: 960 };
+
+        stack.updateArea(newArea);
+
+        expect(created).toHaveLength(2);
+        expect(created[0].updateArea).toHaveBeenCalledWith(newArea);
+        expect(created[1].updateArea).toHaveBeenCalledWith(newArea);
+    });
+
+    it('updateArea remembers the new area for strips created afterward', () => {
+        const { factory, createdAreas } = recordingFactory();
+        const stack = new StripStack(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter(), factory);
+        const newArea: Rect = { x: 0, y: 40, width: 1280, height: 960 };
+
+        stack.updateArea(newArea);
+        stack.stripDown(); // lazily creates a second strip AFTER the area update
+
+        expect(createdAreas).toEqual([AREA, newArea]);
     });
 
     it('routes addWindow to the active strip (strip 0 initially)', () => {

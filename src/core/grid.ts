@@ -23,7 +23,7 @@ export class Grid {
     private originX = 0;
 
     constructor(
-        private readonly height: number,
+        private height: number,
         private readonly gap: number = 0,
     ) {}
 
@@ -31,12 +31,27 @@ export class Grid {
         return this.ordered.slice();
     }
 
-    /** The strip's constant screen height — every column's rect uses this same value
-     * (see `columnRect`), so a consumer needing the real aspect ratio without an
-     * existing column (the minimap's live thumbnails) can read it directly
-     * (docs: 2026-09-01-minimap-thumbnails-design). */
+    /** The strip's screen height — every column's rect uses this same value (see
+     * `columnRect`), so a consumer needing the real aspect ratio without an existing
+     * column (the minimap's live thumbnails) can read it directly (docs:
+     * 2026-09-01-minimap-thumbnails-design). Normally constant for the life of the
+     * grid; `setHeight` exists only for the work area changing after startup (a
+     * panel/dock resizing, or the initial KWin startup race with panel registration). */
     screenHeight(): number {
         return this.height;
+    }
+
+    /** Also rescales every existing column's tiles proportionally (see `Column.rescaleHeight`)
+     * so already-tiled windows fill the new height too, not just columns created afterward. */
+    setHeight(height: number): void {
+        if (height === this.height) {
+            return;
+        }
+        const factor = height / this.height;
+        this.height = height;
+        for (const column of this.ordered) {
+            column.rescaleHeight(factor);
+        }
     }
 
     focusedColumn(): Column | null {

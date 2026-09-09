@@ -3,6 +3,8 @@
 // script. Contains coordination only — no layout, camera, or geometry math.
 
 import type { Settings } from '../config/settings';
+import { rectsEqualRounded, type Rect } from '../core/coordinates';
+import { debug } from '../debug';
 import { createDebugConsole } from '../kwin/debug-console';
 import { createFocusFlashOverlay, type FocusFlashOverlay } from '../kwin/focus-flash-overlay';
 import { createMinimapOverlay, type MinimapOverlay } from '../kwin/minimap-overlay';
@@ -20,19 +22,29 @@ import { initWorkspaceSignals } from './workspace-signals';
 // QML objects are constructed.
 // const SHORTCUT_CONFLICT_CHECK_DELAY_MS = 1000; // disabled, see start()
 
+// How often to re-check WorkspaceAdapter.workingArea() against a panel/dock's reserved
+// strut. Needed because there's no KWin signal for "a client area changed" — a panel
+// resizing in place fires nothing, and even a startup-time area (KWin may not have
+// finished registering a panel's strut yet when this script's Controller is first
+// constructed) only self-corrects on the next check. Cheap: one clientArea() read per
+// screen, only applied downstream when the result actually differs from last time.
+const WORKING_AREA_RECHECK_MS = 1000;
+
 export class Controller {
     private readonly workspaceAdapter = new WorkspaceAdapter();
     private readonly stripManager: StripManager;
     private readonly windowManager: WindowManager;
     private readonly minimapOverlay: MinimapOverlay;
     private readonly focusFlashOverlay: FocusFlashOverlay;
+    private readonly areaRecheckTimer: { start(intervalMs: number, onTick: () => void): void; stop(): void };
+    private area: Rect;
 
     constructor(
         private readonly root: QmlObject,
         private readonly settings: Settings,
         private readonly scriptUiDirUrl: string,
     ) {
-        const area = this.workspaceAdapter.combinedGeometry();
+        this.area = this.workspaceAdapter.workingArea();
         // Create the debug console before the animation timer, matching the original init() order.
         if (settings.debugConsoleEnabled) {
             createDebugConsole(root);
@@ -47,8 +59,9 @@ export class Controller {
             settings.focusFlashOpacity,
             settings.focusFlashEnabled,
         );
-        this.stripManager = new StripManager(area, settings, createQmlTimer(root), this.workspaceAdapter);
+        this.stripManager = new StripManager(this.area, settings, createQmlTimer(root), this.workspaceAdapter);
         this.windowManager = new WindowManager(this.stripManager, settings);
+        this.areaRecheckTimer = createQmlTimer(root);
     }
 
     start(): void {
@@ -86,6 +99,7 @@ export class Controller {
             decreaseWindowHeight: () => this.stripManager.activeStripStack().decreaseWindowHeight(),
             toggleFloating: () => this.windowManager.toggleFloating(this.workspaceAdapter.activeWindow()),
         });
+        this.areaRecheckTimer.start(WORKING_AREA_RECHECK_MS, () => this.recheckWorkingArea());
         void this.scriptUiDirUrl; // only used by the disabled conflict check above
         console.log('Drift: initialized');
     }
@@ -99,5 +113,19 @@ export class Controller {
             return;
         }
         this.minimapOverlay.show(snapshot, this.workspaceAdapter.screenGeometryAtCursor());
+    }
+
+    /** Re-reads `workingArea()` and, only if it actually changed, pushes the correction through
+     * every strip (see `StripManager.updateArea`). Covers both the KWin startup race (a panel's
+     * strut not yet registered when this script's Controller was first constructed) and a
+     * panel/dock resizing live, since neither fires a signal we can listen for instead. */
+    private recheckWorkingArea(): void {
+        const area = this.workspaceAdapter.workingArea();
+        if (rectsEqualRounded(area, this.area)) {
+            return;
+        }
+        debug(`workingArea changed: ${JSON.stringify(this.area)} -> ${JSON.stringify(area)}`);
+        this.area = area;
+        this.stripManager.updateArea(area);
     }
 }

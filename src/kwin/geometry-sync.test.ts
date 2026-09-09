@@ -133,6 +133,16 @@ describe('GeometrySync', () => {
         expect(sync.isEcho('w1', rect)).toBe(false); // already consumed, no duplicate entries remained
     });
 
+    it('setArea changes the origin used by later apply() calls', () => {
+        const sync = new GeometrySync(area);
+        const win = fakeWindow('w1');
+
+        sync.setArea({ x: 0, y: 40, width: 1920, height: 1000 });
+        sync.apply(win, { x: 0, y: 0, width: 300, height: 1000 }, 0);
+
+        expect(sync.isEcho('w1', { x: 0, y: 40, width: 300, height: 1000 })).toBe(true);
+    });
+
     it('forget clears any pending applied rects for that window', () => {
         const sync = new GeometrySync(area);
         const win = fakeWindow('w1');

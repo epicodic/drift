@@ -6,6 +6,9 @@ import {
     verticalResizedEdge,
     rectsEqualRounded,
     edgeDirection,
+    insetOf,
+    combineInsets,
+    shrinkRect,
 } from './coordinates';
 
 describe('virtualWidth', () => {
@@ -115,5 +118,64 @@ describe('edgeDirection', () => {
 
     it('reports "below" when the pointer is clamped exactly at the bottom edge', () => {
         expect(edgeDirection(1100, area, 0)).toBe('below');
+    });
+});
+
+describe('insetOf', () => {
+    it('is all zeros when inner equals outer', () => {
+        const rect = { x: 0, y: 0, width: 1920, height: 1080 };
+        expect(insetOf(rect, rect)).toEqual({ top: 0, bottom: 0, left: 0, right: 0 });
+    });
+
+    it('measures a bottom panel as a bottom inset only', () => {
+        const outer = { x: 0, y: 0, width: 1920, height: 1080 };
+        const inner = { x: 0, y: 0, width: 1920, height: 1040 }; // 40px bottom panel
+        expect(insetOf(outer, inner)).toEqual({ top: 0, bottom: 40, left: 0, right: 0 });
+    });
+
+    it('measures a top panel as a top inset only', () => {
+        const outer = { x: 0, y: 0, width: 1920, height: 1080 };
+        const inner = { x: 0, y: 24, width: 1920, height: 1056 }; // 24px top panel
+        expect(insetOf(outer, inner)).toEqual({ top: 24, bottom: 0, left: 0, right: 0 });
+    });
+
+    it('measures insets on every edge at once', () => {
+        const outer = { x: 100, y: 200, width: 1920, height: 1080 };
+        const inner = { x: 110, y: 224, width: 1890, height: 1030 };
+        expect(insetOf(outer, inner)).toEqual({ top: 24, bottom: 26, left: 10, right: 20 });
+    });
+});
+
+describe('combineInsets', () => {
+    it('throws for an empty list', () => {
+        expect(() => combineInsets([])).toThrow();
+    });
+
+    it('returns the single inset unchanged', () => {
+        const inset = { top: 0, bottom: 40, left: 0, right: 0 };
+        expect(combineInsets([inset])).toEqual(inset);
+    });
+
+    it('takes the largest inset on each edge independently', () => {
+        const bottomPanel = { top: 0, bottom: 40, left: 0, right: 0 };
+        const topPanel = { top: 24, bottom: 0, left: 0, right: 0 };
+        expect(combineInsets([bottomPanel, topPanel])).toEqual({ top: 24, bottom: 40, left: 0, right: 0 });
+    });
+});
+
+describe('shrinkRect', () => {
+    it('leaves the rect unchanged for a zero inset', () => {
+        const rect = { x: 0, y: 0, width: 1920, height: 1080 };
+        expect(shrinkRect(rect, { top: 0, bottom: 0, left: 0, right: 0 })).toEqual(rect);
+    });
+
+    it('moves the origin in and shrinks width/height by the inset', () => {
+        const rect = { x: 0, y: 0, width: 1920, height: 1080 };
+        expect(shrinkRect(rect, { top: 24, bottom: 40, left: 10, right: 20 })).toEqual({
+            x: 10,
+            y: 24,
+            width: 1890,
+            height: 1016,
+        });
     });
 });
