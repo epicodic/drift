@@ -94,6 +94,10 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.undockKeepAbove).toBe(true);
     });
 
+    it('disables the debug console by default', () => {
+        expect(DEFAULT_SETTINGS.debugConsoleEnabled).toBe(false);
+    });
+
     it('uses Meta+Space to toggle floating', () => {
         expect(DEFAULT_SETTINGS.shortcutToggleFloating).toBe('Meta+Space');
     });

@@ -150,9 +150,8 @@ KWin only (re)loads a script's QML/JS on a full restart or a fresh login — see
 | Shortcut | Action |
 |---|---|
 | `Meta+Space` | Toggle the active window between docked (tiled) and floating (undock/redock) |
-| `Meta+Shift+D` | Toggle the live debug console |
 
-Every shortcut, plus the column gap, default width, animation timing, and minimap/focus-flash behavior, is configurable from the script's **Configure...** dialog in System Settings.
+Every shortcut, plus the column gap, default width, animation timing, and minimap/focus-flash behavior, is configurable from the script's **Configure...** dialog in System Settings. The live debug console overlay isn't bound to a shortcut — enable it from the dialog's **Debug** tab instead.
 
 ## How it works
 

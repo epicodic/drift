@@ -152,9 +152,10 @@ Implementation: [algorithms.md § Focus-Flash Opacity Envelope](algorithms.md#fo
 <!-- MEDIA: docs/media/debug-console.gif -->
 <p align="center"><img src="media/debug-console.gif" alt="The on-screen debug console overlay" width="720"></p>
 
-`Meta+Shift+D` toggles an on-screen overlay showing exactly what Drift's model currently thinks the layout and
-camera state are — column order, widths, tile stacks, viewport offset — scoped to the active strip. Useful for
-understanding a surprising layout decision or for bug reports.
+Enabling `debugConsoleEnabled` in the **Debug** tab of the settings dialog (and restarting the script) shows an
+on-screen overlay of exactly what Drift's model currently thinks the layout and camera state are — column order,
+widths, tile stacks, viewport offset — scoped to the active strip. Useful for understanding a surprising layout
+decision or for bug reports. Off by default, since it's a developer tool rather than a user-facing feature.
 
 ## Floating
 

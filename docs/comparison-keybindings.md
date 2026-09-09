@@ -65,7 +65,7 @@ Empty cells mean the project has no equivalent (by design, or not yet built).
 | Take/drop window (grab, then navigate, then drop) | — | `Super+T` | — | — |  |
 | Toggle scratch/floating layer visibility | — | `Ctrl+Super+Escape` (attach/detach), `Super+Escape` (toggle recent) | — | — |  |
 | Show hotkey list | `Mod+Shift+/` | — | — | — |  |
-| Toggle debug console (Drift dev tool) | — | — | — | `Meta+Shift+D` | `Meta+Shift+D` |
+| Toggle debug console (Drift dev tool) | — | — | — | `Meta+Shift+D` | Settings dialog (`debugConsoleEnabled`), no shortcut |
 
 ## Observations for a future keybinding decision
 

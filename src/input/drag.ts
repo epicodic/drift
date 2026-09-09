@@ -350,9 +350,9 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
         renderStackPreview(location, target);
     };
 
-    // TEMPORARY DEBUG INSTRUMENTATION: writes to the OSD debug console (Meta+Shift+D)
-    // to diagnose reports of drag behavior mismatching expectations. Remove once no
-    // further live-testing rounds are needed.
+    // TEMPORARY DEBUG INSTRUMENTATION: writes to the OSD debug console (enable
+    // debugConsoleEnabled in the settings dialog's Debug tab) to diagnose reports of
+    // drag behavior mismatching expectations. Remove once no further live-testing rounds are needed.
     const tick = (): void => {
         try {
             tickInner();

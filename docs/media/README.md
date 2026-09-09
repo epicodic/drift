@@ -29,7 +29,7 @@ download link, not a player, in most Markdown viewers. GIF is the one format gua
 | `focus-flash.gif` | Focus-flash highlight | Alt-tab or focus-shortcut between two windows, showing the glow pulse hug the newly-focused window's edge. |
 | `undock-redock.gif` | Undock / redock | `Meta+Space` on a tiled window to pop it out floating-above, then `Meta+Space` again to redock it back into the strip. |
 | `settings-dialog.gif` | Settings dialog | Open System Settings → Window Management → KWin Scripts → Drift → Configure..., showing the tabbed settings. |
-| `debug-console.gif` | Live debug console | `Meta+Shift+D` toggling the on-screen layout/camera overlay while windows move. |
+| `debug-console.gif` | Live debug console | With `debugConsoleEnabled` on in the settings dialog's Debug tab, the on-screen layout/camera overlay updating live while windows move. |
 | `multi-monitor.gif` | Multi-monitor | Focus-cycle across the boundary between two screens, showing the strip scroll continuously from one screen's columns into the other's. Needs two real or virtual outputs — optional/lowest priority if you don't have one handy. |
 
 Referenced sizes in the docs assume a max width of ~800px for the hero clip and ~720px for per-feature clips —

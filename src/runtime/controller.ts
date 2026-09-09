@@ -3,7 +3,7 @@
 // script. Contains coordination only — no layout, camera, or geometry math.
 
 import type { Settings } from '../config/settings';
-import { createDebugConsole, type DebugConsole } from '../kwin/debug-console';
+import { createDebugConsole } from '../kwin/debug-console';
 import { createFocusFlashOverlay, type FocusFlashOverlay } from '../kwin/focus-flash-overlay';
 import { createMinimapOverlay, type MinimapOverlay } from '../kwin/minimap-overlay';
 import { createQmlTimer } from '../kwin/qml-timer';
@@ -24,7 +24,6 @@ export class Controller {
     private readonly workspaceAdapter = new WorkspaceAdapter();
     private readonly stripManager: StripManager;
     private readonly windowManager: WindowManager;
-    private readonly debugConsole: DebugConsole;
     private readonly minimapOverlay: MinimapOverlay;
     private readonly focusFlashOverlay: FocusFlashOverlay;
 
@@ -35,7 +34,9 @@ export class Controller {
     ) {
         const area = this.workspaceAdapter.combinedGeometry();
         // Create the debug console before the animation timer, matching the original init() order.
-        this.debugConsole = createDebugConsole(root);
+        if (settings.debugConsoleEnabled) {
+            createDebugConsole(root);
+        }
         this.minimapOverlay = createMinimapOverlay(root, settings.minimapAutoHideMs, settings.minimapShowThumbnails);
         this.focusFlashOverlay = createFocusFlashOverlay(
             root,
@@ -57,7 +58,6 @@ export class Controller {
         registerShortcuts(this.root, this.settings, {
             focusLeft: () => this.focusAndShowMinimap((stack) => stack.focusLeft()),
             focusRight: () => this.focusAndShowMinimap((stack) => stack.focusRight()),
-            toggleDebugConsole: () => this.debugConsole.toggle(),
             cycleAlignLeft: () => this.stripManager.activeStripStack().cycleAlignLeft(),
             cycleAlignRight: () => this.stripManager.activeStripStack().cycleAlignRight(),
             shiftViewportLeft: () => this.stripManager.activeStripStack().shiftViewportLeft(),

@@ -42,18 +42,9 @@ PlasmaCore.Dialog {
     }
 }`;
 
-export interface DebugConsole {
-    toggle(): void;
-}
-
-export function createDebugConsole(parent: QmlObject): DebugConsole {
+export function createDebugConsole(parent: QmlObject): void {
     const overlay = Qt.createQmlObject(CONSOLE_QML, parent) as QmlDebugOverlay;
     setDebugSink((text) => {
         overlay.lines = text;
     });
-    return {
-        toggle(): void {
-            overlay.visible = !overlay.visible;
-        },
-    };
 }

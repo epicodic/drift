@@ -8,7 +8,6 @@ import { debug } from '../debug';
 export interface ShortcutActions {
     focusLeft(): void;
     focusRight(): void;
-    toggleDebugConsole(): void;
     cycleAlignLeft(): void;
     cycleAlignRight(): void;
     shiftViewportLeft(): void;
@@ -46,13 +45,6 @@ export function registerShortcuts(parent: QmlObject, settings: Settings, actions
         'Drift: Focus Column Right',
         settings.shortcutFocusRight,
         actions.focusRight,
-    );
-    createShortcut(
-        parent,
-        'DriftToggleDebugConsole',
-        'Drift: Toggle Debug Console',
-        settings.shortcutToggleDebugConsole,
-        actions.toggleDebugConsole,
     );
     createShortcut(
         parent,
