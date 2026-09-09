@@ -45,7 +45,7 @@ It returns that neighbor's index once its threshold is crossed, or `excludeId`'s
 Because both thresholds are read from the real, undisturbed layout, the two directions stay symmetric: penetrating a neighbor by the configured fraction costs the same distance whether that neighbor is to the left or to the right.
 Checking only the *immediate* neighbor, rather than voting across every other column at once, keeps each reorder step a single swap — consecutive ticks during a fast drag simply keep re-evaluating against whatever the new immediate neighbor becomes after each swap.
 
-On `interactiveMoveResizeFinished`, the order has already settled live; the dragged window itself then eases from its actual drop position into its resolved slot (see "Layout-Change Position Animation" below) rather than snapping there, while its neighbor keeps whatever slide it was already mid-flight on — via `Strip.seedReorderRelease` when the live swap left its home column standalone, or via `Strip.seedStackRelease` (y/height only) when nothing ever committed and it's simply settling back into its own still-multi-tile stack.
+On `interactiveMoveResizeFinished`, the order has already settled live; the dragged window is then seeded at its actual drop rect via `Strip.seedMotionFrom` and eases into its resolved slot across all four dimensions (see "Layout-Change Position Animation" below) rather than snapping there, while its neighbor keeps whatever slide it was already mid-flight on.
 
 ## Drag-to-Stack Hover Resolution
 
@@ -88,16 +88,30 @@ Animating to that offset is a plain, injectable-clock interpolation, split into 
 
 ## Layout-Change Position Animation
 
-Source: [`AxisMotion`](../src/viewport/axis-motion.ts) in `axis-motion.ts`, driven by [`Strip.render`](../src/runtime/strip.ts) in `strip.ts`, sharing a `Timer` with the camera's `Animator` via [`SharedTicker`](../src/viewport/shared-ticker.ts). `Strip` owns three independent `AxisMotion` instances: one for a column's real x (keyed by column id), and two for a tile's real y/height (keyed by window id, since a tile id is only stable within one column — a stack move reassigns it in the target column).
+Source: [`AxisMotion`](../src/viewport/axis-motion.ts) in `axis-motion.ts`, driven by [`Strip.render`](../src/runtime/strip.ts) in `strip.ts`, sharing a `Timer` with the camera's `Animator` via [`SharedTicker`](../src/viewport/shared-ticker.ts).
+`Strip` owns four independent `AxisMotion` instances, one per rect dimension: x, y, width, and height.
+All four are keyed by *window* id, never column id.
+A tile id is only stable within one column, since a stack move reassigns it in the target column.
+Window keying is also what lets a single window be seeded independently — for a drag release or a keyboard move — without disturbing the siblings sharing its column.
+Tiles of the same column resolve identical x and width targets from the layout, so a stack still moves as one.
 
-Whenever a column's logical x changes for a reason other than the user actively dragging or resizing it — adding, removing, or minimizing/restoring a window, a resize pushing a neighbor, a drag-reorder settling on release, or (for the tile y/height case) a stack composition change — `AxisMotion` animates the real value from wherever it currently visually is to the new logical value, using the same eased duration as the camera (`settings.animationDurationMs` / `easeOutCubic`). This covers stacking a window into a column, removing one from a stack, and reordering within a stack, live-hover preview and commit alike.
-A column/tile is never animated on its own first appearance (add, restore, returning from fullscreen): `AxisMotion` snaps a never-seen-before id straight to its target, so only *already-visible* neighbors slide.
+Whenever a window's logical rect changes for a reason other than the user actively dragging or resizing it — adding, removing, or minimizing/restoring a window, a resize pushing a neighbor, a keyboard column move, a drag-reorder settling on release, or a stack composition change — `AxisMotion` animates the real value from wherever it currently visually is to the new logical value, using the same eased duration as the camera (`settings.animationDurationMs` / `easeOutCubic`).
+This covers stacking a window into a column, removing one from a stack, and reordering within a stack, live-hover preview and commit alike.
+Because width is an animated channel too, a keyboard column resize eases rather than jumping.
+A window is never animated on its own first appearance (add, restore, returning from fullscreen): `AxisMotion` snaps a never-seen-before id straight to its target, so only *already-visible* neighbors slide.
+
+Keyboard column moves (`moveWindowLeft`/`moveWindowRight`/`moveWindowToStart`/`moveWindowToEnd`) need no special casing at all.
+They mutate the grid and re-render, and the moved column eases from wherever it was last drawn.
 
 Border-drag resize stays fully instant: `Strip.render`'s `instant` flag makes `AxisMotion` snap straight to the target instead of animating for those frames.
-The dragged window's own release is *not* forced instant: `Strip.seedReorderRelease`/`Strip.seedStackRelease` seed its motion at its actual drop position right before the commit's render, so it eases from wherever it was dropped into its resolved slot instead of snapping there — for both a reorder settle and a stack commit. The one exception is a cross-column stack drop's horizontal position, which still snaps to the target column's x (`seedStackRelease` only seeds y/height) — a deliberate simplification, since every tile in a column shares one animated x.
-`Strip` forgets a column's or tile's motion state whenever it is hidden (minimized) or excluded (fullscreen), so that restoring it later snaps to its new position instead of animating in from a stale pre-hide value. It deliberately does *not* forget a tile's y/height motion when the tile moves into or out of a stack (`absorbRight`/`commitTileIntoStack`): its old position is exactly the intended starting point for the stack-entry animation.
+`Strip.seedMotionFrom(windowId, rect)` is the general primitive for everything else: it rests any subset of a window's four channels at a given start value, so the next `render` eases from there into whatever the layout resolves.
+`Strip.seedMotionFromCurrentGeometry(win)` is the common case, seeding from the window's own live on-screen rect.
+Drag release uses it so a dropped window eases from exactly where it was let go, in all four dimensions including a cross-column stack drop's x and width.
+A window rule's width goes the other way, seeding the *target* width so the rule applies instantly — it is part of the window's first appearance, which never animates.
+`Strip` forgets a window's motion state whenever it is hidden (minimized) or excluded (fullscreen), so that restoring it later snaps to its new position instead of animating in from a stale pre-hide value.
+It deliberately does *not* forget motion when a window moves into or out of a stack (`absorbRight`/`commitTileIntoStack`): its old rect is exactly the intended starting point for the stack-entry animation.
 
-`SharedTicker` exists because a `Strip` is only ever given one real `Timer`, but the camera pan and the per-column/per-tile motions are independent animations that may need to tick at once.
+`SharedTicker` exists because a `Strip` is only ever given one real `Timer`, but the camera pan and the per-window motions are independent animations that may need to tick at once.
 It hands out independent `Timer`-shaped handles that share one real timer, starting it when any handle is active and stopping it only once every handle has stopped.
 
 ## Align-Cycle Phase Stepping

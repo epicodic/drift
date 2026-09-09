@@ -12,7 +12,7 @@ import type { Settings } from '../config/settings';
 import { debug, setDebugState } from '../debug';
 import { debugCamera, debugRows } from '../debug/snapshot';
 import { registerDragReorder, type DragReorderDeps } from '../input/drag';
-import { GeometrySync } from '../kwin/geometry-sync';
+import { GeometrySync, toVirtualX } from '../kwin/geometry-sync';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import { buildMinimapSnapshot, type MinimapSnapshot } from '../ui/minimap';
@@ -64,11 +64,16 @@ export class Strip {
     private readonly viewport: Viewport;
     private readonly geometrySync: GeometrySync;
     private readonly animator: Animator;
-    private readonly columnMotion = new AxisMotion<number>();
+    // All four channels are keyed by WINDOW id, never column id: a tile id is only stable
+    // within one column, and window keying is what lets a single window be seeded
+    // independently for a drag release or a keyboard move without disturbing the siblings
+    // sharing its column (docs: 2026-09-08-window-motion-primitive-design).
+    private readonly tileXMotion = new AxisMotion<string>();
     private readonly tileYMotion = new AxisMotion<string>();
+    private readonly tileWidthMotion = new AxisMotion<string>();
     private readonly tileHeightMotion = new AxisMotion<string>();
     private readonly ticker: SharedTicker;
-    private readonly columnMotionTimer: Timer;
+    private readonly motionTimer: Timer;
     private readonly registry = new ColumnRegistry();
     // Tracks fullscreen/minimized state per TILE (not per column, since a stacked column
     // can have one tile fullscreen/minimized while its siblings stay visible underneath),
@@ -103,7 +108,7 @@ export class Strip {
                 this.render();
             },
         );
-        this.columnMotionTimer = this.ticker.subscribe();
+        this.motionTimer = this.ticker.subscribe();
     }
 
     /** `verticalOffsetY` is sticky, not defaulted: passing a value both applies it immediately
@@ -148,28 +153,6 @@ export class Strip {
                 }
                 continue;
             }
-            // Mirrors the pre-Task-7 per-column early-continue exactly (generalized across a
-            // stack's tiles): only skip columnMotion tracking entirely when EVERY tile is
-            // excluded — a lone fullscreen tile must not silently re-establish (and then
-            // mid-animate) the column's tracked x while nothing is actually being drawn for
-            // it, or exiting fullscreen would animate from a stale position instead of
-            // snapping straight to wherever the column moved to in the meantime.
-            const allTilesExcluded = column.tiles().every((tile) => {
-                const tileWin = this.registry.get(column.id, tile.id);
-                const key = this.tileKey(column.id, tile.id);
-                return !tileWin || tileWin.id === excludeWindowId || this.fullScreenTiles.has(key);
-            });
-            if (allTilesExcluded) {
-                continue;
-            }
-            const targetX = columnRect.x;
-            let x: number;
-            if (instant) {
-                this.columnMotion.snapTo(column.id, targetX);
-                x = targetX;
-            } else {
-                x = this.columnMotion.update(column.id, targetX, Date.now(), this.settings.animationDurationMs);
-            }
             const previewRects =
                 stackPreview && column.id === stackPreview.enteringColumnId
                     ? column.previewRectsWithGapAt(
@@ -191,75 +174,88 @@ export class Strip {
                     continue;
                 }
                 const targetRect = previewRects?.get(tile.id) ?? column.tileRect(tile.id, columnRect);
+                let x: number;
                 let y: number;
+                let width: number;
                 let height: number;
                 if (instant) {
+                    this.tileXMotion.snapTo(win.id, columnRect.x);
                     this.tileYMotion.snapTo(win.id, targetRect.y);
+                    this.tileWidthMotion.snapTo(win.id, targetRect.width);
                     this.tileHeightMotion.snapTo(win.id, targetRect.height);
+                    x = columnRect.x;
                     y = targetRect.y;
+                    width = targetRect.width;
                     height = targetRect.height;
                 } else {
-                    y = this.tileYMotion.update(win.id, targetRect.y, Date.now(), this.settings.animationDurationMs);
-                    height = this.tileHeightMotion.update(
-                        win.id,
-                        targetRect.height,
-                        Date.now(),
-                        this.settings.animationDurationMs,
-                    );
+                    const now = Date.now();
+                    const duration = this.settings.animationDurationMs;
+                    x = this.tileXMotion.update(win.id, columnRect.x, now, duration);
+                    y = this.tileYMotion.update(win.id, targetRect.y, now, duration);
+                    width = this.tileWidthMotion.update(win.id, targetRect.width, now, duration);
+                    height = this.tileHeightMotion.update(win.id, targetRect.height, now, duration);
                 }
                 this.geometrySync.apply(
                     win,
-                    Object.assign({}, targetRect, { x, y, height }),
+                    Object.assign({}, targetRect, { x, y, width, height }),
                     this.viewport.offset(),
                     this.verticalOffsetY,
                 );
             }
         }
-        if (this.columnMotion.isAnimating() || this.tileYMotion.isAnimating() || this.tileHeightMotion.isAnimating()) {
+        if (
+            this.tileXMotion.isAnimating() ||
+            this.tileYMotion.isAnimating() ||
+            this.tileWidthMotion.isAnimating() ||
+            this.tileHeightMotion.isAnimating()
+        ) {
             // Preserve excludeWindowId and stackPreview: a live drag-reorder must keep skipping
             // the dragged window's own geometry across continuation ticks, not just the first,
             // and a live stack-hover preview must not flicker back to committed rects for one
             // frame while a column-position animation is still in flight. verticalOffsetY is
             // intentionally still omitted here — it's sticky via `this.verticalOffsetY` (see
             // render()'s own doc comment), so omitting it is safe.
-            this.columnMotionTimer.start(ANIMATION_TICK_MS, () =>
+            this.motionTimer.start(ANIMATION_TICK_MS, () =>
                 this.render(excludeWindowId, false, undefined, stackPreview),
             );
         } else {
-            this.columnMotionTimer.stop();
+            this.motionTimer.stop();
         }
         setDebugState(
             formatDebugState(debugRows(this.grid, this.registry), debugCamera(this.viewport), this.grid.debugState()),
         );
     }
 
-    /** Forces `columnId`'s position animation to rest at its current logical x with no
-     * easing — used to settle the dragged column instantly on drag-reorder release
-     * while its neighbors keep animating (docs: 2026-08-31-drag-reorder-live-preview). */
-    snapColumn(columnId: number): void {
-        this.columnMotion.snapTo(columnId, this.grid.columnRect(columnId).x);
+    /** Seeds `windowId`'s motion channels to start from `rect`, in virtual strip coordinates
+     * (area-relative y). The next `render()` eases from there into whatever the layout
+     * resolves for that window; omitted fields leave that channel resting where it already
+     * was, which is how a caller animates only some dimensions (docs:
+     * 2026-09-08-window-motion-primitive-design). */
+    seedMotionFrom(windowId: string, rect: Partial<Rect>): void {
+        if (rect.x !== undefined) {
+            this.tileXMotion.snapTo(windowId, rect.x);
+        }
+        if (rect.y !== undefined) {
+            this.tileYMotion.snapTo(windowId, rect.y);
+        }
+        if (rect.width !== undefined) {
+            this.tileWidthMotion.snapTo(windowId, rect.width);
+        }
+        if (rect.height !== undefined) {
+            this.tileHeightMotion.snapTo(windowId, rect.height);
+        }
     }
 
-    /** Seeds a just-finished drag-reorder's column at its actual drop position (real
-     * x/y/height, already converted to virtual/area-relative coordinates by the caller)
-     * instead of hard-snapping to the resolved slot — the very next `render()` then
-     * eases it in rather than jumping there. Replaces the previous unconditional
-     * `snapColumn`-to-final-slot on a reorder release (docs:
-     * 2026-09-07-stack-and-release-motion-design). */
-    seedReorderRelease(windowId: string, columnId: number, virtualX: number, virtualY: number, height: number): void {
-        this.columnMotion.snapTo(columnId, virtualX);
-        this.tileYMotion.snapTo(windowId, virtualY);
-        this.tileHeightMotion.snapTo(windowId, height);
-    }
-
-    /** Same idea as `seedReorderRelease`, for a stack drop: seeds the dropped tile's
-     * actual drop y/height so the next `render()` eases it into its resolved stack slot.
-     * Column x is deliberately left untouched — a cross-column drop's horizontal
-     * position still snaps to the target column's x (docs:
-     * 2026-09-07-stack-and-release-motion-design). */
-    seedStackRelease(windowId: string, virtualY: number, height: number): void {
-        this.tileYMotion.snapTo(windowId, virtualY);
-        this.tileHeightMotion.snapTo(windowId, height);
+    /** `seedMotionFrom` seeded from the window's own current on-screen geometry — "wherever
+     * it is right now, drift it to where the layout says it belongs." */
+    seedMotionFromCurrentGeometry(win: WindowAdapter): void {
+        const real = win.frameGeometry();
+        this.seedMotionFrom(win.id, {
+            x: toVirtualX(real.x, this.area, this.viewport.offset()),
+            y: real.y - this.area.y,
+            width: real.width,
+            height: real.height,
+        });
     }
 
     /** Which (column, tile) a window is currently registered under — used by drag
@@ -293,6 +289,30 @@ export class Strip {
 
     private tileKey(columnId: number, tileId: number): string {
         return `${columnId}:${tileId}`;
+    }
+
+    /** Drops all four motion channels for `windowId`, so its next appearance snaps instead
+     * of animating from a stale pre-hide value. */
+    private forgetMotion(windowId: string): void {
+        this.tileXMotion.forget(windowId);
+        this.tileYMotion.forget(windowId);
+        this.tileWidthMotion.forget(windowId);
+        this.tileHeightMotion.forget(windowId);
+    }
+
+    /** `forgetMotion` for every window currently registered in `columnId`. Call it before
+     * removing or hiding the column, while it is still resolvable. */
+    private forgetColumnMotion(columnId: number): void {
+        const column = this.grid.column(columnId);
+        if (column === null) {
+            return;
+        }
+        for (const tile of column.tiles()) {
+            const win = this.registry.get(columnId, tile.id);
+            if (win) {
+                this.forgetMotion(win.id);
+            }
+        }
     }
 
     minimapSnapshot(): MinimapSnapshot {
@@ -384,15 +404,7 @@ export class Strip {
                                 this.settings.columnDragDwellMs,
                                 onFire,
                             ),
-                        seedReorderRelease: (
-                            windowId: string,
-                            columnId: number,
-                            virtualX: number,
-                            virtualY: number,
-                            height: number,
-                        ) => this.seedReorderRelease(windowId, columnId, virtualX, virtualY, height),
-                        seedStackRelease: (windowId: string, virtualY: number, height: number) =>
-                            this.seedStackRelease(windowId, virtualY, height),
+                        seedMotionFrom: (windowId: string, rect: Partial<Rect>) => this.seedMotionFrom(windowId, rect),
                         commitTileIntoStack: (
                             fromColumnId: number,
                             fromTileId: number,
@@ -418,8 +430,7 @@ export class Strip {
             this.registry.deleteTile(location.columnId, location.tileId);
             column.removeTile(location.tileId);
             this.geometrySync.forget(win.id);
-            this.tileYMotion.forget(win.id);
-            this.tileHeightMotion.forget(win.id);
+            this.forgetMotion(win.id);
             this.fullScreenTiles.delete(this.tileKey(location.columnId, location.tileId));
             this.minimizedTiles.delete(this.tileKey(location.columnId, location.tileId));
             this.render();
@@ -471,8 +482,7 @@ export class Strip {
         this.registry.deleteColumn(columnId);
         for (const win of windows) {
             this.geometrySync.forget(win.id);
-            this.tileYMotion.forget(win.id);
-            this.tileHeightMotion.forget(win.id);
+            this.forgetMotion(win.id);
         }
         this.fullScreenTiles.forEach((key) => {
             if (key.startsWith(`${columnId}:`)) {
@@ -484,7 +494,6 @@ export class Strip {
                 this.minimizedTiles.delete(key);
             }
         });
-        this.columnMotion.forget(columnId);
         this.grid.removeColumn(columnId);
         this.render();
         this.revealFocused();
@@ -541,7 +550,6 @@ export class Strip {
             return;
         }
         this.grid.moveColumn(focused.id, currentIndex - 1);
-        this.snapColumn(focused.id);
         this.render();
         this.revealFocused();
     }
@@ -556,7 +564,6 @@ export class Strip {
             return;
         }
         this.grid.moveColumn(focused.id, currentIndex + 1);
-        this.snapColumn(focused.id);
         this.render();
         this.revealFocused();
     }
@@ -574,7 +581,6 @@ export class Strip {
             return;
         }
         this.grid.moveColumn(focused.id, 0);
-        this.snapColumn(focused.id);
         this.render();
         this.revealFocused();
     }
@@ -591,7 +597,6 @@ export class Strip {
             return;
         }
         this.grid.moveColumn(focused.id, lastIndex);
-        this.snapColumn(focused.id);
         this.render();
         this.revealFocused();
     }
@@ -709,7 +714,6 @@ export class Strip {
         this.registry.moveWindow(result.fromColumnId, result.fromTileId, focused.id, result.toTileId);
         this.fullScreenTiles.delete(this.tileKey(result.fromColumnId, result.fromTileId));
         this.minimizedTiles.delete(this.tileKey(result.fromColumnId, result.fromTileId));
-        this.columnMotion.forget(result.fromColumnId);
         this.render();
         this.revealFocused();
     }
@@ -741,7 +745,6 @@ export class Strip {
         this.registry.moveWindow(fromColumnId, fromTileId, toColumnId, toTileId);
         this.fullScreenTiles.delete(this.tileKey(fromColumnId, fromTileId));
         this.minimizedTiles.delete(this.tileKey(fromColumnId, fromTileId));
-        this.columnMotion.forget(fromColumnId);
     }
 
     /** Focus-stepping only moves Drift's own notion of the focused column (`Grid`) —
@@ -771,6 +774,14 @@ export class Strip {
             return;
         }
         focused.setWidth(width);
+        // Rest the width channel at the new value so the rule applies instantly: a window
+        // rule is part of the window's first appearance, which never animates.
+        for (const tile of focused.tiles()) {
+            const win = this.registry.get(focused.id, tile.id);
+            if (win) {
+                this.seedMotionFrom(win.id, { width });
+            }
+        }
         this.render();
     }
 
@@ -877,8 +888,8 @@ export class Strip {
                 this.grid.column(columnId)?.resizeTile(tileId, height, edge);
             },
             hideColumn: (columnId) => {
+                this.forgetColumnMotion(columnId);
                 this.grid.hideColumn(columnId);
-                this.columnMotion.forget(columnId);
             },
             showColumn: (columnId) => this.grid.showColumn(columnId),
             hideTile: (columnId, tileId) => {
@@ -887,13 +898,12 @@ export class Strip {
                     this.minimizedTiles.add(this.tileKey(columnId, tileId));
                     const win = this.registry.get(columnId, tileId);
                     if (win) {
-                        this.tileYMotion.forget(win.id);
-                        this.tileHeightMotion.forget(win.id);
+                        this.forgetMotion(win.id);
                     }
                     return;
                 }
+                this.forgetColumnMotion(columnId);
                 this.grid.hideColumn(columnId);
-                this.columnMotion.forget(columnId);
             },
             showTile: (columnId, tileId) => {
                 const column = this.grid.column(columnId);
@@ -907,11 +917,9 @@ export class Strip {
                 const key = this.tileKey(columnId, tileId);
                 if (fullScreen) {
                     this.fullScreenTiles.add(key);
-                    this.columnMotion.forget(columnId);
                     const win = this.registry.get(columnId, tileId);
                     if (win) {
-                        this.tileYMotion.forget(win.id);
-                        this.tileHeightMotion.forget(win.id);
+                        this.forgetMotion(win.id);
                     }
                 } else {
                     this.fullScreenTiles.delete(key);
