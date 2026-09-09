@@ -26,12 +26,12 @@ uninstall:
 	kpackagetool6 --type=KWin/Script --remove=$(SCRIPT_NAME)
 
 package: build
-	tar -czf ./$(SCRIPT_NAME)_$(subst .,_,$(VERSION)).tar.gz ./$(SCRIPT_NAME)
+	zip -r ./$(SCRIPT_NAME)_$(subst .,_,$(VERSION)).kwinscript ./$(SCRIPT_NAME)
 
 clean:
 	rm -f ./drift/contents/code/main.js
 	rm -f ./drift/contents/shaders/*.qsb
-	rm -f ./drift_*.tar.gz
+	rm -f ./drift_*.kwinscript
 
 enable:
 	@echo "Enabling $(SCRIPT_NAME)..."
@@ -61,7 +61,7 @@ help:
 	@echo "  test           - Run tests"
 	@echo "  install        - Build and install the script via kpackagetool6"
 	@echo "  uninstall      - Uninstall the script"
-	@echo "  package        - Build and tar up the script for distribution"
+	@echo "  package        - Build a KWin script archive for distribution"
 	@echo "  clean          - Remove build artifacts"
 	@echo "  enable         - Enable the script in KWin"
 	@echo "  disable        - Disable the script in KWin"
