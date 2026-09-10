@@ -95,6 +95,18 @@ export class Animator {
         this.onUpdate(this.animation.valueAt(elapsed));
     }
 
+    /** Halts the in-flight animation exactly where it currently is, without forcing it to
+     * its target — unlike `finish()`, which snaps to the target on natural completion. For
+     * when something else (e.g. a live drag) needs to take over control of the animated
+     * value immediately, mid-flight. No-op if nothing is animating. */
+    stop(): void {
+        if (this.animation === null) {
+            return;
+        }
+        this.animation = null;
+        this.timer.stop();
+    }
+
     private finish(value: number): void {
         this.animation = null;
         this.timer.stop();
