@@ -448,6 +448,8 @@ export class Strip {
                         ) => this.render(excludeWindowId, instant, verticalOffsetY, stackPreview),
                         reorderThresholdFraction: this.settings.reorderThresholdFraction,
                         stackOverlapFraction: this.settings.stackOverlapFraction,
+                        dragPanEnabled: this.settings.dragPanEnabled,
+                        dragPanVerticalTolerancePx: this.settings.dragPanVerticalTolerancePx,
                         createStackDwell: (onFire: (key: string) => void) =>
                             new EdgeDwell<string>(
                                 this.ticker.subscribe(),

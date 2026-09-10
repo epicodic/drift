@@ -24,6 +24,11 @@ const SETTINGS = {
     leftMargin: 0,
     rightMargin: 0,
     verticalGap: 0,
+    // Every existing drag test here simulates a purely-horizontal drag (constant y) and
+    // asserts it triggers an immediate reorder/stack — exactly the case drag-pan (docs:
+    // 2026-09-10-drag-viewport-pan-design) repurposes into panning. Keep those tests
+    // exercising reorder/stack logic only; drag-pan itself is covered by drag-pan.test.ts.
+    dragPanEnabled: false,
 };
 const INSTANT_SETTINGS = { ...SETTINGS, animationDurationMs: 0 };
 

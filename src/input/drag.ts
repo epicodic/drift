@@ -20,6 +20,7 @@ import { StackPreview } from '../runtime/strip';
 import { EdgeDwell } from '../viewport/edge-dwell';
 import { Viewport } from '../viewport/viewport';
 import { resolveStackTarget, stackTargetIndex, StackCandidate, StackTarget } from './drag-hover';
+import { dragPanBlend } from './drag-pan';
 
 /** The dragged tile's resolved stack landing spot, ready to commit on release —
  * `columnId`/`slot` identify the target column and tile-list index. */
@@ -51,6 +52,13 @@ export interface DragReorderDeps {
     /** Minimum horizontal overlap a candidate tile needs before it's considered for
      * stacking (`settings.stackOverlapFraction`) — see `resolveStackTarget`. */
     stackOverlapFraction: number;
+    /** Whether an almost-purely-horizontal drag pans the viewport instead of reordering
+     * (`settings.dragPanEnabled`) — see `dragPanBlend` (docs:
+     * 2026-09-10-drag-viewport-pan-design). */
+    dragPanEnabled: boolean;
+    /** Cumulative vertical drag movement, in pixels, at which drag-pan fades to 0
+     * (`settings.dragPanVerticalTolerancePx`) — see `dragPanBlend`. */
+    dragPanVerticalTolerancePx: number;
     render(excludeWindowId?: string, instant?: boolean, verticalOffsetY?: undefined, stackPreview?: StackPreview): void;
     /** Builds a dwell timer armed on a resolved stack target's compound key
      * (`` `${columnId}:${tileId}:${direction}` ``), firing `onFire` once hovered past
@@ -129,11 +137,23 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
      * dwell has actually FIRED for — null while merely hovering, before the dwell elapses.
      * Only a fired key shows a preview. */
     let armedStackKey: string | null = null;
+    /** The dragged window's real (screen) y at the start of the current drag — the baseline
+     * `dragPanBlend`'s cumulative `dyTotal` is measured against. Seeded here (not just in
+     * `onInteractiveMoveResizeStarted`) so an `initiallyDragging` connection — created
+     * mid-drag by a cross-strip reparent — has a sane starting value even though it never
+     * sees that signal fire (docs: 2026-09-10-drag-viewport-pan-design). */
+    let startY = win.frameGeometry().y;
+    /** The dragged window's real (screen) x as of the last tick — this tick's raw
+     * horizontal delta (`dxTick`) is measured against it. */
+    let lastX = win.frameGeometry().x;
 
     const disconnectStarted = win.onInteractiveMoveResizeStarted(() => {
         dragging = win.isInteractiveMove();
         debug(`drag started: win=${win.id} isInteractiveMove=${dragging}`);
         if (dragging) {
+            const rect = win.frameGeometry();
+            startY = rect.y;
+            lastX = rect.x;
             deps.onDragStarted?.(win);
         }
     });
@@ -271,11 +291,26 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
             return;
         }
 
+        // Pan step: absorb some/all of this tick's raw horizontal movement into the
+        // viewport instead of leaving it as real (reorder/stack-triggering) movement. Must
+        // run before winEdges/resolveCurrentTarget below, since both read the window's
+        // virtual position, which this changes via viewport.offset() (docs:
+        // 2026-09-10-drag-viewport-pan-design).
+        const raw = win.frameGeometry();
+        if (deps.dragPanEnabled) {
+            const dyTotal = Math.abs(raw.y - startY);
+            const dxTick = raw.x - lastX;
+            const blend = dragPanBlend(dyTotal, deps.dragPanVerticalTolerancePx);
+            if (dxTick !== 0 && blend > 0) {
+                deps.viewport.scrollBy(-blend * dxTick);
+            }
+        }
+        lastX = raw.x;
+
         const winEdges = windowEdgesVirtualX(win, deps.area, deps.viewport.offset());
         const homeColumn = requireColumn(deps.grid, location.columnId);
         const homeIndex = deps.grid.indexOf(location.columnId);
 
-        const raw = win.frameGeometry();
         debug(
             `drag tick: win=${win.id} loc=col${location.columnId}/tile${location.tileId} ` +
                 `winEdges=(${winEdges.left.toFixed(0)},${winEdges.right.toFixed(0)}) ` +
