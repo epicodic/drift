@@ -32,6 +32,14 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.stackOverlapFraction).toBe(0.5);
     });
 
+    it('defaults dragPanEnabled to true', () => {
+        expect(DEFAULT_SETTINGS.dragPanEnabled).toBe(true);
+    });
+
+    it('defaults dragPanVerticalTolerancePx to 40', () => {
+        expect(DEFAULT_SETTINGS.dragPanVerticalTolerancePx).toBe(40);
+    });
+
     it('defaults the strip-drag edge border to 2px', () => {
         expect(DEFAULT_SETTINGS.stripDragEdgeBorderPx).toBe(2);
     });

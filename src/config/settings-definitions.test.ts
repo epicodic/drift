@@ -8,7 +8,7 @@ describe('SETTINGS_DEFINITIONS', () => {
     it('has exactly one entry per known setting, with no duplicate names', () => {
         const names = SETTINGS_DEFINITIONS.map((def) => def.name);
         expect(new Set(names).size).toBe(names.length);
-        expect(names.length).toBe(55);
+        expect(names.length).toBe(57);
     });
 
     it("each entry's default value type matches its declared kcfg type", () => {

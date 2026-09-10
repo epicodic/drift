@@ -126,6 +126,12 @@ export interface Settings {
      * between the dragged window and a candidate tile before that tile is considered for
      * stacking at all (docs: 2026-09-07-drag-reorder-stack-refinement-design). */
     stackOverlapFraction: number;
+    /** Whether an almost-purely-horizontal drag pans the viewport instead of reordering the
+     * dragged window's column (docs: 2026-09-10-drag-viewport-pan-design). */
+    dragPanEnabled: boolean;
+    /** Cumulative vertical drag movement, in pixels, at which drag-pan fades to 0 and today's
+     * reorder/stack behavior takes over fully (docs: 2026-09-10-drag-viewport-pan-design). */
+    dragPanVerticalTolerancePx: number;
     /** How long the minimap overlay stays visible after the last focus-step press, in milliseconds. */
     minimapAutoHideMs: number;
     /** Whether the minimap's column boxes show a live preview of each window's content
