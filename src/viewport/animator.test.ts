@@ -147,4 +147,47 @@ describe('Animator', () => {
         expect(updates).toEqual([]);
         expect(animator.isAnimating()).toBe(false);
     });
+
+    it('stop() halts the timer without emitting an update, leaving the value wherever it was', () => {
+        const timer = new FakeTimer();
+        let clock = 0;
+        const updates: number[] = [];
+        const animator = new Animator(
+            timer,
+            () => clock,
+            16,
+            (value) => updates.push(value),
+        );
+
+        animator.animate(0, 100, 200);
+        clock = 100;
+        timer.fire(); // mid-flight: updates has one value, ~87.5
+        const midFlightUpdateCount = updates.length;
+
+        animator.stop();
+
+        expect(animator.isAnimating()).toBe(false);
+        expect(timer.stopped).toBe(true);
+        expect(updates.length).toBe(midFlightUpdateCount); // no extra update from stop() itself
+
+        // A further tick must be inert: stop() actually cleared the timer's callback.
+        timer.fire();
+        expect(updates.length).toBe(midFlightUpdateCount);
+    });
+
+    it('stop() is a no-op when nothing is animating', () => {
+        const timer = new FakeTimer();
+        const updates: number[] = [];
+        const animator = new Animator(
+            timer,
+            () => 0,
+            16,
+            (value) => updates.push(value),
+        );
+
+        animator.stop();
+
+        expect(animator.isAnimating()).toBe(false);
+        expect(updates).toEqual([]);
+    });
 });

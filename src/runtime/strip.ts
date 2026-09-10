@@ -434,41 +434,50 @@ export class Strip {
         signals.add(
             registerDragReorder(
                 win,
-                Object.assign(
-                    {
-                        grid: this.grid,
-                        registry: this.registry,
-                        viewport: this.viewport,
-                        area: this.area,
-                        render: (
-                            excludeWindowId?: string,
-                            instant?: boolean,
-                            verticalOffsetY?: undefined,
-                            stackPreview?: StackPreview,
-                        ) => this.render(excludeWindowId, instant, verticalOffsetY, stackPreview),
-                        reorderThresholdFraction: this.settings.reorderThresholdFraction,
-                        stackOverlapFraction: this.settings.stackOverlapFraction,
-                        dragPanEnabled: this.settings.dragPanEnabled,
-                        dragPanVerticalTolerancePx: this.settings.dragPanVerticalTolerancePx,
-                        createStackDwell: (onFire: (key: string) => void) =>
-                            new EdgeDwell<string>(
-                                this.ticker.subscribe(),
-                                () => Date.now(),
-                                ANIMATION_TICK_MS,
-                                this.settings.columnDragDwellMs,
-                                onFire,
-                            ),
-                        seedMotionFrom: (windowId: string, rect: Partial<Rect>) => this.seedMotionFrom(windowId, rect),
-                        commitTileIntoStack: (
-                            fromColumnId: number,
-                            fromTileId: number,
-                            toColumnId: number,
-                            slot: number,
-                        ) => this.commitTileIntoStack(fromColumnId, fromTileId, toColumnId, slot),
-                        revealFocused: () => this.revealFocused(),
+                {
+                    grid: this.grid,
+                    registry: this.registry,
+                    viewport: this.viewport,
+                    area: this.area,
+                    render: (
+                        excludeWindowId?: string,
+                        instant?: boolean,
+                        verticalOffsetY?: undefined,
+                        stackPreview?: StackPreview,
+                    ) => this.render(excludeWindowId, instant, verticalOffsetY, stackPreview),
+                    reorderThresholdFraction: this.settings.reorderThresholdFraction,
+                    stackOverlapFraction: this.settings.stackOverlapFraction,
+                    dragPanEnabled: this.settings.dragPanEnabled,
+                    dragPanVerticalTolerancePx: this.settings.dragPanVerticalTolerancePx,
+                    createStackDwell: (onFire: (key: string) => void) =>
+                        new EdgeDwell<string>(
+                            this.ticker.subscribe(),
+                            () => Date.now(),
+                            ANIMATION_TICK_MS,
+                            this.settings.columnDragDwellMs,
+                            onFire,
+                        ),
+                    seedMotionFrom: (windowId: string, rect: Partial<Rect>) => this.seedMotionFrom(windowId, rect),
+                    commitTileIntoStack: (fromColumnId: number, fromTileId: number, toColumnId: number, slot: number) =>
+                        this.commitTileIntoStack(fromColumnId, fromTileId, toColumnId, slot),
+                    revealFocused: () => this.revealFocused(),
+                    // Always stop any in-flight reveal-animation the instant a real drag
+                    // starts, regardless of what (if anything) stripDragHooks itself does —
+                    // composed explicitly rather than via Object.assign, which would let
+                    // stripDragHooks.onDragStarted silently replace this instead of both
+                    // running. Guards against the same class of bug addWindow's own comment
+                    // above describes (a real Animator pan fighting a live interactive move),
+                    // but via a different trigger: clicking a partially-off-screen window to
+                    // start dragging it activates it first, and activateWindow() unconditionally
+                    // calls revealFocused(), which can kick off a real animated pan of its own
+                    // (docs: 2026-09-10-drag-viewport-pan-design).
+                    onDragStarted: (draggedWin: WindowAdapter) => {
+                        this.animator.stop();
+                        stripDragHooks?.onDragStarted?.(draggedWin);
                     },
-                    stripDragHooks,
-                ),
+                    onDragTick: (draggedWin: WindowAdapter) => stripDragHooks?.onDragTick?.(draggedWin),
+                    onDragFinished: () => stripDragHooks?.onDragFinished?.(),
+                },
                 initiallyDragging,
             ),
         );
