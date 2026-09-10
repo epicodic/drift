@@ -1215,6 +1215,25 @@ describe('Strip — revealFocused multi-monitor alignment', () => {
         // Realigned fully onto the right screen: real x = 908 - (-92) = 1000
         expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 1000 }));
     });
+
+    it('holds the left and right margins when two columns together are wider than the screen', () => {
+        const marginSettings = { ...INSTANT_SETTINGS, leftMargin: 8, rightMargin: 8 };
+        const screens: ScreenInfo[] = [{ name: 's1', geometry: { x: 0, y: 0, width: 1280, height: 1000 } }];
+        const strip = new Strip(AREA, marginSettings, fakeTimer(), fakeWorkspaceAdapter(screens));
+        const win1 = fakeWindow('w1', { width: 700 });
+        const win2 = fakeWindow('w2', { width: 700 });
+
+        strip.addWindow(win1.adapter); // col1 @ virtualX=0
+        strip.addWindow(win2.adapter); // col2 @ virtualX=708, focused — combined width 1408 > the 1264px usable area
+
+        // Right margin held: col2's real right edge sits at area.x + area.width = 8 + 1264 = 1272.
+        expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 572 }));
+
+        strip.focusLeft();
+
+        // Left margin held: col1's real left edge sits at area.x = 8.
+        expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 8 }));
+    });
 });
 
 describe('Strip — absorb/expel', () => {
