@@ -38,6 +38,7 @@ function fakeDeps(overrides: Partial<WindowEventDeps> = {}): WindowEventDeps {
         render: vi.fn(),
         revealFocused: vi.fn(),
         isFullScreenGeometry: () => false,
+        seedMotionFromCurrentGeometry: vi.fn(),
         ...overrides,
     };
 }
@@ -87,6 +88,24 @@ describe('onWindowGeometryChanged', () => {
         onWindowGeometryChanged(win, { x: 300, y: 0, width: 800, height: 600 }, deps);
 
         expect(deps.revealFocused).toHaveBeenCalledTimes(1);
+    });
+
+    it('excludes the resized window from render on a non-interactive geometry jump (e.g. maximize), so Drift never animates its own frame on top of the compositor', () => {
+        const deps = fakeDeps();
+        const win = fakeWindow('w1', { x: 0, y: 0, width: 1920, height: 1080 });
+
+        onWindowGeometryChanged(win, { x: 300, y: 0, width: 800, height: 600 }, deps);
+
+        expect(deps.render).toHaveBeenCalledWith('w1');
+    });
+
+    it('resyncs the resized window motion state to its real geometry after a non-interactive jump, so a later render does not snap it back', () => {
+        const deps = fakeDeps();
+        const win = fakeWindow('w1', { x: 0, y: 0, width: 1920, height: 1080 });
+
+        onWindowGeometryChanged(win, { x: 300, y: 0, width: 800, height: 600 }, deps);
+
+        expect(deps.seedMotionFromCurrentGeometry).toHaveBeenCalledWith(win);
     });
 
     it('skips the resize if the geometry already covers the output (entering fullscreen)', () => {

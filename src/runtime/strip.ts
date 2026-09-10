@@ -979,6 +979,7 @@ export class Strip {
             render: (excludeWindowId, instant) => this.render(excludeWindowId, instant),
             revealFocused: () => this.revealFocused(),
             isFullScreenGeometry: (win) => this.workspaceAdapter.isFullScreenGeometry(win),
+            seedMotionFromCurrentGeometry: (win) => this.seedMotionFromCurrentGeometry(win),
         };
     }
 }
