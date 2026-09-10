@@ -8,6 +8,7 @@ import type { StripDragHooks, Strip } from './strip';
 import { StripStack, type StripFactory } from './strip-stack';
 
 const AREA: Rect = { x: 0, y: 0, width: 1280, height: 1000 };
+const SETTINGS = { ...DEFAULT_SETTINGS, topMargin: 0, bottomMargin: 0, leftMargin: 0, rightMargin: 0 };
 
 class ManualTimer implements Timer {
     private onTick: (() => void) | null = null;
@@ -153,11 +154,11 @@ function fakeWin(id: string, rect: Rect = { x: 0, y: 0, width: 400, height: 1000
     return { id, setSkipTaskbar: vi.fn(), frameGeometry: () => rect } as unknown as WindowAdapter;
 }
 
-function makeStack(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
+function makeStack(settingsOverride: Partial<typeof SETTINGS> = {}) {
     const { factory, created } = recordingFactory();
     const timer = fakeTimer();
     const workspaceAdapter = fakeWorkspaceAdapter();
-    const stack = new StripStack(AREA, { ...DEFAULT_SETTINGS, ...settingsOverride }, timer, workspaceAdapter, factory);
+    const stack = new StripStack(AREA, { ...SETTINGS, ...settingsOverride }, timer, workspaceAdapter, factory);
     return { stack, created, timer, workspaceAdapter };
 }
 
@@ -182,7 +183,7 @@ describe('StripStack', () => {
 
     it('updateArea remembers the new area for strips created afterward', () => {
         const { factory, createdAreas } = recordingFactory();
-        const stack = new StripStack(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter(), factory);
+        const stack = new StripStack(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter(), factory);
         const newArea: Rect = { x: 0, y: 40, width: 1280, height: 960 };
 
         stack.updateArea(newArea);
@@ -238,7 +239,7 @@ describe('StripStack', () => {
             return fakeStrip().strip;
         };
 
-        new StripStack(AREA, DEFAULT_SETTINGS, rawTimer, fakeWorkspaceAdapter(), factory);
+        new StripStack(AREA, SETTINGS, rawTimer, fakeWorkspaceAdapter(), factory);
 
         expect(receivedTimers).toHaveLength(1);
         expect(receivedTimers[0]).not.toBe(rawTimer);

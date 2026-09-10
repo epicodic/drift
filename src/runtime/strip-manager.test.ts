@@ -8,6 +8,7 @@ import type { StripStack } from './strip-stack';
 import { StripManager, type StripStackFactory } from './strip-manager';
 
 const AREA: Rect = { x: 0, y: 0, width: 1280, height: 1000 };
+const SETTINGS = { ...DEFAULT_SETTINGS, topMargin: 0, bottomMargin: 0, leftMargin: 0, rightMargin: 0 };
 
 function fakeTimer(): Timer {
     return { start: () => {}, stop: () => {} };
@@ -78,13 +79,7 @@ function fakeWin(id: string): WindowAdapter {
 
 function makeManager(activity = 'a', desktop = 'd1') {
     const { factory, created } = recordingFactory();
-    const manager = new StripManager(
-        AREA,
-        DEFAULT_SETTINGS,
-        fakeTimer(),
-        fakeWorkspaceAdapter(activity, desktop),
-        factory,
-    );
+    const manager = new StripManager(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter(activity, desktop), factory);
     return { manager, created };
 }
 
@@ -117,7 +112,7 @@ describe('StripManager', () => {
 
     it('updateArea remembers the new area for strip stacks created afterward', () => {
         const { factory, createdAreas } = recordingFactory();
-        const manager = new StripManager(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter('a', 'd1'), factory);
+        const manager = new StripManager(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter('a', 'd1'), factory);
         const newArea: Rect = { x: 0, y: 40, width: 1280, height: 960 };
 
         manager.updateArea(newArea);

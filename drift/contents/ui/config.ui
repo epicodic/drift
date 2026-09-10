@@ -33,14 +33,14 @@
                                     </property>
                                     <layout class="QFormLayout" name="formLayout_layout">
                                         <item row="0" column="0">
-                                            <widget class="QLabel" name="label_columnGap">
+                                            <widget class="QLabel" name="label_horizontalGap">
                                                 <property name="text">
-                                                    <string>Column gap:</string>
+                                                    <string>Horizontal gap:</string>
                                                 </property>
                                             </widget>
                                         </item>
                                         <item row="0" column="1">
-                                            <widget class="QSpinBox" name="kcfg_columnGap">
+                                            <widget class="QSpinBox" name="kcfg_horizontalGap">
                                                 <property name="toolTip">
                                                     <string>Horizontal gap between columns</string>
                                                 </property>
@@ -56,13 +56,36 @@
                                             </widget>
                                         </item>
                                         <item row="1" column="0">
+                                            <widget class="QLabel" name="label_verticalGap">
+                                                <property name="text">
+                                                    <string>Vertical gap:</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="1" column="1">
+                                            <widget class="QSpinBox" name="kcfg_verticalGap">
+                                                <property name="toolTip">
+                                                    <string>Vertical gap between tiles stacked within a column</string>
+                                                </property>
+                                                <property name="suffix">
+                                                    <string> px</string>
+                                                </property>
+                                                <property name="maximum">
+                                                    <number>999</number>
+                                                </property>
+                                                <property name="value">
+                                                    <number>8</number>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="2" column="0">
                                             <widget class="QLabel" name="label_defaultColumnWidth">
                                                 <property name="text">
                                                     <string>Default column width:</string>
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="1" column="1">
+                                        <item row="2" column="1">
                                             <widget class="QSpinBox" name="kcfg_defaultColumnWidth">
                                                 <property name="toolTip">
                                                     <string>Width given to a newly opened window's column</string>
@@ -81,17 +104,17 @@
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="2" column="0">
-                                            <widget class="QLabel" name="label_bottomMargin">
+                                        <item row="3" column="0">
+                                            <widget class="QLabel" name="label_topMargin">
                                                 <property name="text">
-                                                    <string>Bottom margin:</string>
+                                                    <string>Top margin:</string>
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="2" column="1">
-                                            <widget class="QSpinBox" name="kcfg_bottomMargin">
+                                        <item row="3" column="1">
+                                            <widget class="QSpinBox" name="kcfg_topMargin">
                                                 <property name="toolTip">
-                                                    <string>Space reserved at the bottom of the screen, e.g. to keep a taskbar visible</string>
+                                                    <string>Space reserved at the top of the screen</string>
                                                 </property>
                                                 <property name="suffix">
                                                     <string> px</string>
@@ -100,11 +123,80 @@
                                                     <number>999</number>
                                                 </property>
                                                 <property name="value">
-                                                    <number>0</number>
+                                                    <number>8</number>
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="3" column="1">
+                                        <item row="4" column="0">
+                                            <widget class="QLabel" name="label_bottomMargin">
+                                                <property name="text">
+                                                    <string>Bottom margin:</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="4" column="1">
+                                            <widget class="QSpinBox" name="kcfg_bottomMargin">
+                                                <property name="toolTip">
+                                                    <string>Space reserved at the bottom of the screen</string>
+                                                </property>
+                                                <property name="suffix">
+                                                    <string> px</string>
+                                                </property>
+                                                <property name="maximum">
+                                                    <number>999</number>
+                                                </property>
+                                                <property name="value">
+                                                    <number>8</number>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="5" column="0">
+                                            <widget class="QLabel" name="label_leftMargin">
+                                                <property name="text">
+                                                    <string>Left margin:</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="5" column="1">
+                                            <widget class="QSpinBox" name="kcfg_leftMargin">
+                                                <property name="toolTip">
+                                                    <string>Space reserved at the left of the screen</string>
+                                                </property>
+                                                <property name="suffix">
+                                                    <string> px</string>
+                                                </property>
+                                                <property name="maximum">
+                                                    <number>999</number>
+                                                </property>
+                                                <property name="value">
+                                                    <number>8</number>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="6" column="0">
+                                            <widget class="QLabel" name="label_rightMargin">
+                                                <property name="text">
+                                                    <string>Right margin:</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="6" column="1">
+                                            <widget class="QSpinBox" name="kcfg_rightMargin">
+                                                <property name="toolTip">
+                                                    <string>Space reserved at the right of the screen</string>
+                                                </property>
+                                                <property name="suffix">
+                                                    <string> px</string>
+                                                </property>
+                                                <property name="maximum">
+                                                    <number>999</number>
+                                                </property>
+                                                <property name="value">
+                                                    <number>8</number>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="7" column="1">
                                             <widget class="QCheckBox" name="kcfg_undockKeepAbove">
                                                 <property name="toolTip">
                                                     <string>Keep an undocked (floating) window above still-docked windows</string>

@@ -7,13 +7,21 @@ import { SETTINGS_DEFINITIONS } from './settings-definitions';
 
 export interface Settings {
     /** Horizontal gap between columns, in pixels. */
-    columnGap: number;
+    horizontalGap: number;
+    /** Vertical gap between tiles stacked within a column, in pixels. */
+    verticalGap: number;
     /** Width given to a newly opened window's column, in pixels. */
     defaultColumnWidth: number;
     /** Duration of a focus-scroll animation, in milliseconds. */
     animationDurationMs: number;
-    /** Space reserved at the bottom of the screen (e.g. for a panel), in pixels. */
+    /** Space reserved at the top of the screen, in pixels. */
+    topMargin: number;
+    /** Space reserved at the bottom of the screen, in pixels. */
     bottomMargin: number;
+    /** Space reserved at the left of the screen, in pixels. */
+    leftMargin: number;
+    /** Space reserved at the right of the screen, in pixels. */
+    rightMargin: number;
     /** Shortcut sequence for focusing the column to the left. */
     shortcutFocusLeft: string;
     /** Shortcut sequence for focusing the column to the right. */

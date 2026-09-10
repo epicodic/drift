@@ -695,3 +695,24 @@ describe('Grid — moveTileIntoColumn', () => {
         expect(() => grid.moveTileIntoColumn(a.id, tileId, a.id, 1)).toThrow();
     });
 });
+
+describe('Grid — vertical gap', () => {
+    it('forwards rowGap to newly added columns', () => {
+        const grid = new Grid(920, GAP, 20); // rowGap = 20
+        const column = grid.addColumn(300);
+
+        column.addTile();
+
+        expect(column.tiles().map((t) => t.height)).toEqual([450, 450]); // (920 - 20) / 2
+    });
+
+    it('setHeight rescales a column accounting for its own rowGap', () => {
+        const grid = new Grid(920, GAP, 20); // rowGap = 20
+        const column = grid.addColumn(300);
+        column.addTile(); // [450, 450]
+
+        grid.setHeight(1820); // doubles the 900 tile-height budget to 1800
+
+        expect(column.tiles().map((t) => t.height)).toEqual([900, 900]);
+    });
+});

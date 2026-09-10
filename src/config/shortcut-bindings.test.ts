@@ -36,9 +36,9 @@ describe('buildShortcutBindingsScript', () => {
 
     it('skips non-shortcut definitions', () => {
         const script = buildShortcutBindingsScript([
-            { name: 'columnGap', type: 'UInt', default: 8 },
+            { name: 'horizontalGap', type: 'UInt', default: 8 },
         ] as SettingsDefinition[]);
-        expect(script).not.toContain('columnGap');
+        expect(script).not.toContain('horizontalGap');
     });
 
     it('wraps the rows in a DRIFT_BINDINGS shell assignment', () => {

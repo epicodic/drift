@@ -10,7 +10,22 @@ const AREA: Rect = { x: 0, y: 0, width: 1280, height: 1000 };
 const WIDE_AREA: Rect = { x: 0, y: 0, width: 5000, height: 1000 };
 const FAKE_OUTPUT: Output = { name: 'output-1', geometry: { x: 0, y: 0, width: 1920, height: 1080 } };
 const MULTI_MONITOR_AREA: Rect = { x: 0, y: 0, width: 2000, height: 1000 };
-const INSTANT_SETTINGS = { ...DEFAULT_SETTINGS, animationDurationMs: 0 };
+// Also zeroes verticalGap: this is the first task to wire settings.verticalGap into Grid at all
+// (Strip's Grid construction previously only ever passed 2 args, so rowGap was always 0
+// regardless of settings) — every existing stacked-tile height assertion in this file was
+// written against that always-0 rowGap and breaks otherwise. horizontalGap is deliberately left
+// at its DEFAULT_SETTINGS value (8): it was already effectively wired (via the old, now-renamed
+// settings.columnGap) and every existing column-position assertion already bakes in that gap
+// (e.g. col2 @ x=808 = 800 + 8).
+const SETTINGS = {
+    ...DEFAULT_SETTINGS,
+    topMargin: 0,
+    bottomMargin: 0,
+    leftMargin: 0,
+    rightMargin: 0,
+    verticalGap: 0,
+};
+const INSTANT_SETTINGS = { ...SETTINGS, animationDurationMs: 0 };
 
 class ManualTimer implements Timer {
     private onTick: (() => void) | null = null;
@@ -161,7 +176,7 @@ function fakeWindow(
 
 describe('Strip', () => {
     it('updateArea resizes the grid height and re-renders windows at the new height', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1');
         strip.addWindow(win.adapter);
         win.setFrameGeometry.mockClear();
@@ -172,7 +187,7 @@ describe('Strip', () => {
     });
 
     it('updateArea shifts window geometry to a new area origin', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1');
         strip.addWindow(win.adapter);
         win.setFrameGeometry.mockClear();
@@ -183,7 +198,7 @@ describe('Strip', () => {
     });
 
     it('adds an already-minimized window without throwing and still positions it via geometry sync', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1', { minimized: true });
 
         expect(() => strip.addWindow(win.adapter)).not.toThrow();
@@ -191,7 +206,7 @@ describe('Strip', () => {
     });
 
     it('applies real geometry to a newly added window', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1');
 
         strip.addWindow(win.adapter);
@@ -200,7 +215,7 @@ describe('Strip', () => {
     });
 
     it('tears down every window signal when the window is removed', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1');
         strip.addWindow(win.adapter);
 
@@ -216,7 +231,7 @@ describe('Strip', () => {
     });
 
     it('ignores removal of a window it never registered', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const ghost = fakeWindow('ghost');
 
         expect(() => strip.removeWindow(ghost.adapter)).not.toThrow();
@@ -224,7 +239,7 @@ describe('Strip', () => {
     });
 
     it('stops writing geometry to a window after it is removed', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1');
         strip.addWindow(win.adapter);
         strip.removeWindow(win.adapter);
@@ -236,7 +251,7 @@ describe('Strip', () => {
     });
 
     it('activates a known window and focus stepping do not throw', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1');
         strip.addWindow(win.adapter);
 
@@ -246,7 +261,7 @@ describe('Strip', () => {
     });
 
     it('reports a minimap snapshot with the focused column flagged', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1');
         strip.addWindow(win.adapter);
 
@@ -257,7 +272,7 @@ describe('Strip', () => {
     });
 
     it('reports the reveal animation target offset immediately, not the stale pre-move offset', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win1 = fakeWindow('w1');
         const win2 = fakeWindow('w2');
         strip.addWindow(win1.adapter); // col1 @ x=0, width 800 — fits, no scroll
@@ -269,7 +284,7 @@ describe('Strip', () => {
     });
 
     it('activates the window of the column focus moves to', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win1 = fakeWindow('w1');
         const win2 = fakeWindow('w2');
         strip.addWindow(win1.adapter);
@@ -285,7 +300,7 @@ describe('Strip', () => {
     });
 
     it('never writes geometry to a fullscreen window on render', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1', { fullScreen: true });
         strip.addWindow(win.adapter);
         win.setFrameGeometry.mockClear();
@@ -296,7 +311,7 @@ describe('Strip', () => {
     });
 
     it('stops writing geometry once fullScreenChanged reports the window entered fullscreen, even via an unrelated render()', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1');
         strip.addWindow(win.adapter);
         win.setIsFullScreen(true);
@@ -309,7 +324,7 @@ describe('Strip', () => {
     });
 
     it('resumes writing geometry once fullScreenChanged reports the window left fullscreen', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1');
         strip.addWindow(win.adapter);
         win.setIsFullScreen(true);
@@ -327,7 +342,7 @@ describe('Strip', () => {
         // Regresssion guard: fullscreen tracking must be driven by the dedicated fullScreenChanged
         // signal, not by re-reading window.fullScreen from an unrelated render() call — KWin's own
         // docs warn the property can only reliably be observed via its notify signal.
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1');
         strip.addWindow(win.adapter);
         win.setIsFullScreen(true);
@@ -344,7 +359,7 @@ describe('Strip', () => {
         // Regression guard for the allTilesExcluded check in render(): a fullscreen tile must
         // only exclude ITSELF from geometry sync, not silently freeze/skip its still-visible
         // sibling in the same stack (docs: 2026-09-03-vertical-tiling-design).
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const top = fakeWindow('top');
         const bottom = fakeWindow('bottom');
         strip.addWindow(top.adapter);
@@ -371,7 +386,7 @@ describe('Strip', () => {
     });
 
     it('renders a window shifted by the vertical offset passed to render()', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1');
         strip.addWindow(win.adapter);
         win.setFrameGeometry.mockClear();
@@ -382,7 +397,7 @@ describe('Strip', () => {
     });
 
     it('defaults render() to no vertical offset', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1');
         strip.addWindow(win.adapter);
         win.setFrameGeometry.mockClear();
@@ -399,7 +414,7 @@ describe('Strip', () => {
         // the third argument. Before the fix, render()'s third parameter defaulted to 0, so any such
         // internal-only call silently reset the strip's already-visible windows back to y=0, right on
         // top of whatever strip was actually on screen.
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win1 = fakeWindow('w1');
         strip.addWindow(win1.adapter);
         strip.render(undefined, true, 1000); // park this strip off-screen, as StripStack does for an inactive strip
@@ -414,7 +429,7 @@ describe('Strip', () => {
     });
 
     it('detachFocusedColumn removes the focused column and returns its window', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win1 = fakeWindow('w1');
         const win2 = fakeWindow('w2');
         strip.addWindow(win1.adapter); // focused
@@ -427,13 +442,13 @@ describe('Strip', () => {
     });
 
     it('detachFocusedColumn returns an empty array when the strip has no columns', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
 
         expect(strip.detachFocusedColumn()).toEqual([]);
     });
 
     it('isEmpty reflects whether any window is registered', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         expect(strip.isEmpty()).toBe(true);
 
         const win = fakeWindow('w1');
@@ -445,7 +460,7 @@ describe('Strip', () => {
     });
 
     it('excludes the newly-added window from its own trailing render when added mid-drag', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const existing = fakeWindow('existing', { width: 400 });
         strip.addWindow(existing.adapter);
         existing.setFrameGeometry.mockClear();
@@ -458,7 +473,7 @@ describe('Strip', () => {
     });
 
     it('does not exclude the newly-added window when added normally (regression)', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1', { width: 400 });
 
         strip.addWindow(win.adapter);
@@ -476,7 +491,7 @@ describe('Strip', () => {
         vi.setSystemTime(0);
         try {
             const timer = fakeTimer();
-            const strip = new Strip(AREA, DEFAULT_SETTINGS, timer, fakeWorkspaceAdapter());
+            const strip = new Strip(AREA, SETTINGS, timer, fakeWorkspaceAdapter());
             const existing1 = fakeWindow('existing1', { width: 800 });
             const existing2 = fakeWindow('existing2', { width: 800 });
             strip.addWindow(existing1.adapter); // col1 @ x=0, focused
@@ -484,7 +499,7 @@ describe('Strip', () => {
 
             // Let existing2's own reveal-pan settle fully first, so any later geometry write on
             // "dragged" can only come from the mid-drag add's own (would-be) reveal, not this one.
-            vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs);
+            vi.setSystemTime(SETTINGS.animationDurationMs);
             timer.fire();
 
             const dragged = fakeWindow('dragged', { width: 400 });
@@ -492,7 +507,7 @@ describe('Strip', () => {
             dragged.setFrameGeometry.mockClear();
 
             // Advance further in case a wrongly-called revealFocused() started a new pan animation.
-            vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs * 2);
+            vi.setSystemTime(SETTINGS.animationDurationMs * 2);
             timer.fire();
 
             expect(dragged.setFrameGeometry).not.toHaveBeenCalled();
@@ -502,7 +517,7 @@ describe('Strip', () => {
     });
 
     it('still reveals the focused column when a window is added normally (regression)', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const revealFocusedSpy = vi.spyOn(strip, 'revealFocused');
         const win = fakeWindow('w1', { width: 400 });
 
@@ -512,7 +527,7 @@ describe('Strip', () => {
     });
 
     it('seeds an already-dragging connection when added mid-drag, so a geometry tick reorders without a Started signal', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const existing = fakeWindow('existing', { width: 400 });
         strip.addWindow(existing.adapter);
         const dragged = fakeWindow('dragged', { width: 400 });
@@ -532,7 +547,7 @@ describe('Strip', () => {
     });
 
     it('invokes the supplied strip-drag hooks on start/tick/finish', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1', { width: 400 });
         const onDragStarted = vi.fn();
         const onDragTick = vi.fn();
@@ -550,7 +565,7 @@ describe('Strip', () => {
     });
 
     it('reveals the dragged column when the drag finishes, in case reordering pushed it out of the viewport (regression)', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1', { width: 400 });
         strip.addWindow(win.adapter);
         const revealFocusedSpy = vi.spyOn(strip, 'revealFocused');
@@ -563,7 +578,7 @@ describe('Strip', () => {
     });
 
     it('does not invoke onDragTick when the window is not currently dragging (regression)', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1', { width: 400 });
         const onDragTick = vi.fn();
         strip.addWindow(win.adapter, false, { onDragTick });
@@ -574,7 +589,7 @@ describe('Strip', () => {
     });
 
     it('setSkipTaskbar toggles every window currently in the strip', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win1 = fakeWindow('w1');
         const win2 = fakeWindow('w2');
         strip.addWindow(win1.adapter);
@@ -822,7 +837,7 @@ describe('Strip', () => {
             vi.setSystemTime(0);
             try {
                 const timer = fakeTimer();
-                const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, timer, fakeWorkspaceAdapter());
+                const strip = new Strip(WIDE_AREA, SETTINGS, timer, fakeWorkspaceAdapter());
                 const win1 = fakeWindow('w1');
                 const win2 = fakeWindow('w2');
                 strip.addWindow(win1.adapter); // col1 @ x=0, focused
@@ -836,7 +851,7 @@ describe('Strip', () => {
                 // first frame: col2 hasn't jumped yet, still at its previous position
                 expect(win2.setFrameGeometry).toHaveBeenCalledWith(expect.objectContaining({ x: 808 }));
 
-                vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs);
+                vi.setSystemTime(SETTINGS.animationDurationMs);
                 timer.fire();
 
                 // settled at its new, pushed-right position
@@ -851,7 +866,7 @@ describe('Strip', () => {
             vi.setSystemTime(0);
             try {
                 const timer = fakeTimer();
-                const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, timer, fakeWorkspaceAdapter());
+                const strip = new Strip(WIDE_AREA, SETTINGS, timer, fakeWorkspaceAdapter());
                 const win1 = fakeWindow('w1');
                 const win2 = fakeWindow('w2');
                 strip.addWindow(win1.adapter); // col1 @ x=0, focused
@@ -867,7 +882,7 @@ describe('Strip', () => {
                 win3.setFrameGeometry.mockClear();
 
                 // animation-continuation tick, still mid-drag: win3 must stay excluded
-                vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs / 2);
+                vi.setSystemTime(SETTINGS.animationDurationMs / 2);
                 timer.fire();
 
                 expect(win3.setFrameGeometry).not.toHaveBeenCalled();
@@ -878,7 +893,7 @@ describe('Strip', () => {
         });
 
         it('renders a column at its exact logical position when instant=true, bypassing animation', () => {
-            const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+            const strip = new Strip(WIDE_AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
             const win1 = fakeWindow('w1');
             const win2 = fakeWindow('w2');
             strip.addWindow(win1.adapter);
@@ -900,20 +915,20 @@ describe('Strip', () => {
             vi.useFakeTimers();
             vi.setSystemTime(0);
             try {
-                const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+                const strip = new Strip(WIDE_AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
                 const win1 = fakeWindow('w1');
                 strip.addWindow(win1.adapter); // col1 @ x=0, width 800
                 win1.setFrameGeometry.mockClear();
 
                 strip.increaseColumnWidth();
 
-                vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs / 2);
+                vi.setSystemTime(SETTINGS.animationDurationMs / 2);
                 strip.render();
 
                 const [lastCall] = win1.setFrameGeometry.mock.calls.slice(-1);
                 const width = (lastCall[0] as { width: number }).width;
-                expect(width).toBeGreaterThan(DEFAULT_SETTINGS.defaultColumnWidth);
-                expect(width).toBeLessThan(DEFAULT_SETTINGS.defaultColumnWidth + DEFAULT_SETTINGS.columnWidthStep);
+                expect(width).toBeGreaterThan(SETTINGS.defaultColumnWidth);
+                expect(width).toBeLessThan(SETTINGS.defaultColumnWidth + SETTINGS.columnWidthStep);
             } finally {
                 vi.useRealTimers();
             }
@@ -923,7 +938,7 @@ describe('Strip', () => {
             vi.useFakeTimers();
             vi.setSystemTime(0);
             try {
-                const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+                const strip = new Strip(WIDE_AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
                 const win1 = fakeWindow('w1');
                 const win2 = fakeWindow('w2');
                 const win3 = fakeWindow('w3');
@@ -933,14 +948,14 @@ describe('Strip', () => {
                 strip.absorbRight(); // win2 becomes col1's second tile, flying in from col2's x
                 strip.addWindow(win3.adapter); // new column right of col1
                 // Let the absorb's own fly-in finish, so both tiles start this move at rest.
-                vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs);
+                vi.setSystemTime(SETTINGS.animationDurationMs);
                 strip.render();
                 strip.focusFirst();
                 strip.moveWindowRight(); // col1 slides right; both its tiles must move together
                 win1.setFrameGeometry.mockClear();
                 win2.setFrameGeometry.mockClear();
 
-                vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs * 1.5);
+                vi.setSystemTime(SETTINGS.animationDurationMs * 1.5);
                 strip.render();
 
                 const [call1] = win1.setFrameGeometry.mock.calls.slice(-1);
@@ -958,7 +973,7 @@ describe('Strip', () => {
             vi.useFakeTimers();
             vi.setSystemTime(0);
             try {
-                const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+                const strip = new Strip(WIDE_AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
                 const win1 = fakeWindow('w1');
                 strip.addWindow(win1.adapter); // col1 @ x=0
                 win1.setFrameGeometry.mockClear();
@@ -968,7 +983,7 @@ describe('Strip', () => {
 
                 expect(win1.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 400 }));
 
-                vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs / 2);
+                vi.setSystemTime(SETTINGS.animationDurationMs / 2);
                 strip.render();
 
                 const [lastCall] = win1.setFrameGeometry.mock.calls.slice(-1);
@@ -981,7 +996,7 @@ describe('Strip', () => {
         });
 
         it('seedMotionFrom leaves omitted channels resting where they were', () => {
-            const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+            const strip = new Strip(WIDE_AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
             const win1 = fakeWindow('w1');
             strip.addWindow(win1.adapter);
             win1.setFrameGeometry.mockClear();
@@ -1005,7 +1020,7 @@ describe('Strip', () => {
                     vi.useFakeTimers();
                     vi.setSystemTime(0);
                     try {
-                        const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+                        const strip = new Strip(WIDE_AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
                         const windows = [fakeWindow('w1'), fakeWindow('w2'), fakeWindow('w3')];
                         for (const win of windows) {
                             strip.addWindow(win.adapter); // cols @ x=0, 808, 1616
@@ -1021,7 +1036,7 @@ describe('Strip', () => {
 
                         act(strip);
 
-                        vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs / 2);
+                        vi.setSystemTime(SETTINGS.animationDurationMs / 2);
                         strip.render();
 
                         const [midCall] = moved.setFrameGeometry.mock.calls.slice(-1);
@@ -1029,7 +1044,7 @@ describe('Strip', () => {
                         expect(midX).toBeGreaterThan(Math.min(startX, targetX));
                         expect(midX).toBeLessThan(Math.max(startX, targetX));
 
-                        vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs);
+                        vi.setSystemTime(SETTINGS.animationDurationMs);
                         strip.render();
 
                         expect(moved.setFrameGeometry).toHaveBeenLastCalledWith(
@@ -1043,7 +1058,7 @@ describe('Strip', () => {
         });
 
         it('snaps a column back into place after fullscreen instead of animating from its pre-fullscreen position', () => {
-            const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+            const strip = new Strip(WIDE_AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
             const win1 = fakeWindow('w1');
             const win2 = fakeWindow('w2');
             strip.addWindow(win1.adapter); // col1 @ 0
@@ -1061,6 +1076,31 @@ describe('Strip', () => {
             expect(win2.setFrameGeometry).toHaveBeenLastCalledWith(expect.objectContaining({ x: 1616 }));
         });
     });
+
+    it('insets the grid, viewport, and geometry sync by the configured margins', () => {
+        const marginSettings = { ...SETTINGS, topMargin: 10, bottomMargin: 20, leftMargin: 30, rightMargin: 40 };
+        const strip = new Strip(AREA, marginSettings, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1');
+
+        strip.addWindow(win.adapter);
+
+        // AREA is { x: 0, y: 0, width: 1280, height: 1000 }; margins carve 30px off the left
+        // and 10px off the top, and the column fills the remaining height (1000 - 10 - 20 = 970).
+        expect(win.setFrameGeometry).toHaveBeenCalledWith(expect.objectContaining({ x: 30, y: 10, height: 970 }));
+    });
+
+    it('re-applies margins to the new area on updateArea', () => {
+        const marginSettings = { ...SETTINGS, topMargin: 10, bottomMargin: 20, leftMargin: 30, rightMargin: 40 };
+        const strip = new Strip(AREA, marginSettings, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1');
+        strip.addWindow(win.adapter);
+        win.setFrameGeometry.mockClear();
+
+        strip.updateArea({ x: 100, y: 200, width: 1280, height: 1000 });
+
+        // New area origin (100, 200) plus the same left/top margins (30, 10).
+        expect(win.setFrameGeometry).toHaveBeenCalledWith(expect.objectContaining({ x: 130, y: 210, height: 970 }));
+    });
 });
 
 describe('Strip — stack motion animation', () => {
@@ -1069,7 +1109,7 @@ describe('Strip — stack motion animation', () => {
         vi.setSystemTime(0);
         try {
             const timer = fakeTimer();
-            const strip = new Strip(AREA, DEFAULT_SETTINGS, timer, fakeWorkspaceAdapter());
+            const strip = new Strip(AREA, SETTINGS, timer, fakeWorkspaceAdapter());
             const left = fakeWindow('left');
             const right = fakeWindow('right');
             strip.addWindow(left.adapter);
@@ -1082,7 +1122,7 @@ describe('Strip — stack motion animation', () => {
             // first frame: right hasn't jumped yet, still at its previous standalone y/height
             expect(right.setFrameGeometry).toHaveBeenCalledWith(expect.objectContaining({ y: 0, height: AREA.height }));
 
-            vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs);
+            vi.setSystemTime(SETTINGS.animationDurationMs);
             timer.fire();
 
             const settled = right.setFrameGeometry.mock.calls.slice(-1)[0][0] as { y: number; height: number };
@@ -1094,7 +1134,7 @@ describe('Strip — stack motion animation', () => {
     });
 
     it('renders a stacked tile at its exact logical y/height when instant=true, bypassing animation', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const left = fakeWindow('left');
         const right = fakeWindow('right');
         strip.addWindow(left.adapter);
@@ -1111,7 +1151,7 @@ describe('Strip — stack motion animation', () => {
     });
 
     it('snaps a stack tile back into place after fullscreen instead of animating from its pre-fullscreen position', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const a = fakeWindow('a');
         const b = fakeWindow('b');
         strip.addWindow(a.adapter);
@@ -1137,7 +1177,7 @@ describe('Strip — stack motion animation', () => {
     });
 
     it('snaps a minimized stack tile back into place after restore instead of animating from its pre-minimize position', () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const a = fakeWindow('a');
         const b = fakeWindow('b');
         strip.addWindow(a.adapter);
@@ -1327,7 +1367,7 @@ describe('Strip — reorder release eases into place', () => {
         try {
             const timer = new ManualTimer();
             const workspaceAdapter = fakeWorkspaceAdapter();
-            const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, timer, workspaceAdapter);
+            const strip = new Strip(WIDE_AREA, SETTINGS, timer, workspaceAdapter);
             const a = fakeWindow('a', { width: 640 });
             const b = fakeWindow('b', { width: 640 });
             strip.addWindow(a.adapter); // col a @ x=0
@@ -1348,7 +1388,7 @@ describe('Strip — reorder release eases into place', () => {
             const rightAfterRelease = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as { x: number };
             expect(rightAfterRelease.x).toBe(dropX);
 
-            vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs);
+            vi.setSystemTime(SETTINGS.animationDurationMs);
             timer.fire();
 
             const settled = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as { x: number };
@@ -1365,7 +1405,7 @@ describe('Strip — reorder release eases into place', () => {
         // case location.columnId can still be the tile's original multi-tile stack column, and
         // seeding its shared x from the dragged tile's own (slightly off) live position would
         // corrupt every sibling's x for one frame.
-        const strip = new Strip(WIDE_AREA, DEFAULT_SETTINGS, new ManualTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(WIDE_AREA, SETTINGS, new ManualTimer(), fakeWorkspaceAdapter());
         const a = fakeWindow('a', { width: 640 });
         const b = fakeWindow('b', { width: 640 });
         const c = fakeWindow('c', { width: 640 });
@@ -1407,12 +1447,7 @@ describe('Strip — stack release eases into place', () => {
         try {
             const workspaceAdapter = fakeWorkspaceAdapter();
             const timer = new ManualTimer();
-            const strip = new Strip(
-                WIDE_AREA,
-                { ...DEFAULT_SETTINGS, columnDragDwellMs: 100 },
-                timer,
-                workspaceAdapter,
-            );
+            const strip = new Strip(WIDE_AREA, { ...SETTINGS, columnDragDwellMs: 100 }, timer, workspaceAdapter);
             const a = fakeWindow('a', { width: 640 });
             const b = fakeWindow('b', { width: 640 });
             strip.addWindow(a.adapter);
@@ -1443,7 +1478,7 @@ describe('Strip — stack release eases into place', () => {
             expect(rightAfterRelease.y).toBe(100);
             expect(rightAfterRelease.height).toBe(1000);
 
-            vi.setSystemTime(100 + DEFAULT_SETTINGS.animationDurationMs);
+            vi.setSystemTime(100 + SETTINGS.animationDurationMs);
             timer.fire();
 
             const settled = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as { y: number; height: number };
@@ -1460,12 +1495,7 @@ describe('Strip — stack release eases into place', () => {
         try {
             const workspaceAdapter = fakeWorkspaceAdapter();
             const timer = new ManualTimer();
-            const strip = new Strip(
-                WIDE_AREA,
-                { ...DEFAULT_SETTINGS, columnDragDwellMs: 100 },
-                timer,
-                workspaceAdapter,
-            );
+            const strip = new Strip(WIDE_AREA, { ...SETTINGS, columnDragDwellMs: 100 }, timer, workspaceAdapter);
             const a = fakeWindow('a', { width: 640 });
             const b = fakeWindow('b', { width: 640 });
             strip.addWindow(a.adapter); // col A
@@ -1476,7 +1506,7 @@ describe('Strip — stack release eases into place', () => {
             // Let the absorb's own eased transition finish before dragging, so the rects below
             // reflect the stack's actual settled geometry: a (y=0,h=500) on top, b (y=500,h=500)
             // on the bottom.
-            vi.setSystemTime(DEFAULT_SETTINGS.animationDurationMs);
+            vi.setSystemTime(SETTINGS.animationDurationMs);
             timer.fire();
 
             const aRect = a.setFrameGeometry.mock.calls.slice(-1)[0][0] as {
@@ -1502,7 +1532,7 @@ describe('Strip — stack release eases into place', () => {
             b.setFrameGeometryValue({ x: bRect.x, y: 100, width: bRect.width, height: bRect.height });
             b.triggerFrameGeometryChanged({ x: bRect.x, y: bRect.y, width: bRect.width, height: bRect.height }); // arms the dwell
 
-            const dwellFiresAt = DEFAULT_SETTINGS.animationDurationMs + 100;
+            const dwellFiresAt = SETTINGS.animationDurationMs + 100;
             vi.setSystemTime(dwellFiresAt);
             timer.fire(); // dwell elapses, resolves+previews the same-column stack target
 
@@ -1517,7 +1547,7 @@ describe('Strip — stack release eases into place', () => {
             expect(rightAfterRelease.y).toBe(100);
             expect(rightAfterRelease.height).toBe(bRect.height);
 
-            vi.setSystemTime(dwellFiresAt + DEFAULT_SETTINGS.animationDurationMs);
+            vi.setSystemTime(dwellFiresAt + SETTINGS.animationDurationMs);
             timer.fire();
 
             const settled = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as { y: number; height: number };
@@ -2086,7 +2116,7 @@ describe('Strip — increaseWindowHeight/decreaseWindowHeight', () => {
 
 describe('Strip.setFocusedColumnWidth', () => {
     it("resizes the focused column's window and re-renders", () => {
-        const strip = new Strip(AREA, DEFAULT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
         const win = fakeWindow('w1', { width: 400 });
         strip.addWindow(win.adapter);
 

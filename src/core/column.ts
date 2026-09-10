@@ -32,6 +32,7 @@ export class Column {
         public readonly id: number,
         width: number,
         height: number,
+        private readonly rowGap: number = 0,
     ) {
         assertPositiveWidth(width);
         assertPositiveHeight(height);
@@ -82,8 +83,9 @@ export class Column {
      * `insertTileAt(tiles.length)`. Does not change which tile is focused. Returns
      * the new tile's id (docs: 2026-09-03-drag-to-stack-design). */
     insertTileAt(index: number): number {
-        const totalHeight = this.stack.reduce((sum, tile) => sum + tile.height, 0);
-        const evenHeight = totalHeight / (this.stack.length + 1);
+        const totalHeight = this.totalHeight();
+        const newCount = this.stack.length + 1;
+        const evenHeight = (totalHeight - this.rowGap * (newCount - 1)) / newCount;
         for (const tile of this.stack) {
             tile.height = evenHeight;
         }
@@ -139,25 +141,32 @@ export class Column {
         if (this.stack.length <= 1) {
             throw new Error('Cannot remove the last tile in a column');
         }
+        const totalHeight = this.totalHeight();
         const index = this.requireTileIndex(id);
-        const [removed] = this.stack.splice(index, 1);
-        const remainingHeight = this.stack.reduce((sum, tile) => sum + tile.height, 0);
-        const scale = (remainingHeight + removed.height) / remainingHeight;
+        this.stack.splice(index, 1);
+        const newBudget = totalHeight - this.rowGap * (this.stack.length - 1);
+        const remainingHeight = this.heightSum();
         for (const tile of this.stack) {
-            tile.height *= scale;
+            tile.height = (tile.height * newBudget) / remainingHeight;
         }
         if (this.focusedTile === id) {
             this.focusedTile = this.stack[Math.min(index, this.stack.length - 1)].id;
         }
     }
 
-    /** Scales every tile's height by `factor`, keeping their relative sizes — used when the
-     * grid's overall height changes (a panel/dock resizing, or correcting the initial KWin
-     * startup race with panel strut registration) so a column created under the old height
-     * still ends up filling the new one, instead of only new columns picking it up. */
-    rescaleHeight(factor: number): void {
+    /** Rescales every tile to fit `newHeight` (the column's new total height budget),
+     * keeping their relative proportions. The right per-tile factor depends on this column's
+     * own tile count (more tiles means more gaps eating into the budget), so this takes the
+     * new absolute height rather than a precomputed factor. Multiplies each tile's height by
+     * `newBudget` before dividing by `oldBudget`, rather than precomputing and reusing a
+     * `factor = newBudget / oldBudget` — the combined form avoids compounding a rounding
+     * error from that intermediate division into every tile (e.g. `300 * (920 / 600)` drifts
+     * to `460.00000000000006`, while `(300 * 920) / 600` lands on the exact `460`). */
+    rescaleHeight(newHeight: number): void {
+        const oldBudget = this.heightSum();
+        const newBudget = newHeight - this.rowGap * (this.stack.length - 1);
         for (const tile of this.stack) {
-            tile.height *= factor;
+            tile.height = (tile.height * newBudget) / oldBudget;
         }
     }
 
@@ -226,12 +235,12 @@ export class Column {
     }
 
     /** Derives a tile's y/height sub-rect from the column's own full rect (from
-     * `Grid.columnRect`). Tiles sit back to back with no vertical gap this pass. */
+     * `Grid.columnRect`), spacing stacked tiles apart by `rowGap`. */
     tileRect(id: number, columnRect: Rect): Rect {
         const index = this.requireTileIndex(id);
         let y = columnRect.y;
         for (let i = 0; i < index; i++) {
-            y += this.stack[i].height;
+            y += this.stack[i].height + this.rowGap;
         }
         return {
             x: columnRect.x,
@@ -265,15 +274,15 @@ export class Column {
         let cursor = 0;
         for (let slot = 0; slot <= others.length; slot++) {
             if (slot === index) {
-                y += gapHeight;
+                y += gapHeight + this.rowGap;
                 continue;
             }
             const tileIndex = cursor++;
             const tile = others[tileIndex];
             const isTrailingNeighbor = index === others.length && tileIndex === others.length - 1;
-            const height = isTrailingNeighbor ? Math.max(0, tile.height - gapHeight) : tile.height;
+            const height = isTrailingNeighbor ? Math.max(0, tile.height - gapHeight - this.rowGap) : tile.height;
             result.set(tile.id, { x: columnRect.x, y, width: columnRect.width, height });
-            y += tile.height;
+            y += tile.height + this.rowGap;
         }
         return result;
     }
@@ -293,7 +302,7 @@ export class Column {
                 continue;
             }
             result.set(tile.id, { x: columnRect.x, y, width: columnRect.width, height: tile.height });
-            y += tile.height;
+            y += tile.height + this.rowGap;
         }
         return result;
     }
@@ -318,6 +327,17 @@ export class Column {
         }
         this.focusedTile = this.stack[target].id;
         return true;
+    }
+
+    /** Sum of every tile's own height, excluding gaps. */
+    private heightSum(): number {
+        return this.stack.reduce((sum, tile) => sum + tile.height, 0);
+    }
+
+    /** The column's total height budget, including the gaps between its stacked tiles —
+     * derived rather than stored, since the tile heights are the only persisted state. */
+    private totalHeight(): number {
+        return this.heightSum() + this.rowGap * (this.stack.length - 1);
     }
 
     private requireTileIndex(id: number): number {

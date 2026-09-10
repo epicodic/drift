@@ -179,8 +179,9 @@ Implementation: [`2026-09-06-manual-undock-redock-design.md`](agents/specs/2026-
 <p align="center"><img src="media/settings-dialog.gif" alt="Drift's Configure... settings dialog" width="720"></p>
 
 System Settings → Window Management → KWin Scripts → Drift → **Configure...** exposes every behavioral knob:
-column gap, default column width, animation duration, viewport shift step, bottom margin, minimap auto-hide
-timing and thumbnails, and the focus-flash appearance/timing settings. Shortcuts are deliberately excluded from
+horizontal gap, vertical gap, default column width, animation duration, viewport shift step, top margin,
+bottom margin, left margin, right margin, minimap auto-hide timing and thumbnails, and the focus-flash
+appearance/timing settings. Shortcuts are deliberately excluded from
 this dialog — they're real KGlobalAccel global shortcuts, rebound from System Settings → Shortcuts instead, the
 same convention Karousel uses.
 Implementation: [`2026-08-31-settings-dialog-design.md`](agents/specs/2026-08-31-settings-dialog-design.md).
