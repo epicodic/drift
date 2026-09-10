@@ -164,15 +164,17 @@ describe('Column — tile stack', () => {
         const topId = column.tiles()[0].id;
         const bottomId = column.addTile(); // 450 / 450
 
-        column.resizeTile(bottomId, 500, 'top');
+        const changed = column.resizeTile(bottomId, 500, 'top');
+        expect(changed).toBe(true);
         expect(column.tiles().map((t) => t.height)).toEqual([400, 500]);
         expect(column.tiles().map((t) => t.id)).toEqual([topId, bottomId]);
     });
 
-    it('resizeTile is a no-op when there is no neighbor on the moved edge side', () => {
+    it('resizeTile is a no-op and returns false when there is no neighbor on the moved edge side', () => {
         const column = new Column(1, 300, 900);
         const onlyId = column.tiles()[0].id;
-        column.resizeTile(onlyId, 700, 'top'); // no tile above the first one
+        const changed = column.resizeTile(onlyId, 700, 'top'); // no tile above the first one
+        expect(changed).toBe(false);
         expect(column.tiles()[0].height).toBe(900);
     });
 
