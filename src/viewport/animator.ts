@@ -12,6 +12,11 @@ export function easeOutCubic(t: number): number {
     return 1 - remaining * remaining * remaining;
 }
 
+/** Smoothstep: zero slope at both ends, for motion that should start and stop at rest. */
+export function smoothstep(t: number): number {
+    return t * t * (3 - 2 * t);
+}
+
 export class Animation {
     constructor(
         private readonly from: number,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Animation, Animator, easeOutCubic, Timer } from './animator';
+import { Animation, Animator, easeOutCubic, smoothstep, Timer } from './animator';
 
 describe('easeOutCubic', () => {
     it('is pinned at both ends', () => {
@@ -9,6 +9,25 @@ describe('easeOutCubic', () => {
 
     it('is ahead of linear in the middle (fast start, slow end)', () => {
         expect(easeOutCubic(0.5)).toBeGreaterThan(0.5);
+    });
+});
+
+describe('smoothstep', () => {
+    it('is pinned at both ends', () => {
+        expect(smoothstep(0)).toBe(0);
+        expect(smoothstep(1)).toBe(1);
+    });
+
+    it('is symmetric around the midpoint', () => {
+        expect(smoothstep(0.5)).toBeCloseTo(0.5);
+    });
+
+    it('has zero slope at both ends', () => {
+        const epsilon = 1e-5;
+        const slopeAtStart = (smoothstep(epsilon) - smoothstep(0)) / epsilon;
+        const slopeAtEnd = (smoothstep(1) - smoothstep(1 - epsilon)) / epsilon;
+        expect(slopeAtStart).toBeCloseTo(0, 3);
+        expect(slopeAtEnd).toBeCloseTo(0, 3);
     });
 });
 
