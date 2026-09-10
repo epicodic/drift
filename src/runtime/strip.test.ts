@@ -81,6 +81,8 @@ interface FakeWindow {
     triggerFrameGeometryChanged(oldGeometry: Rect): void;
     startDrag(): void;
     finishDrag(): void;
+    startResize(): void;
+    finishResize(): void;
 }
 
 function fakeWindow(
@@ -99,12 +101,13 @@ function fakeWindow(
     let isFullScreen = options.fullScreen ?? false;
     let isMinimized = options.minimized ?? false;
     let isInteractiveMove = false;
+    let isInteractiveResize = false;
     let currentRect: Rect = { x: 0, y: 0, width: options.width ?? 800, height: 1000 };
     let fullScreenHandler: (() => void) | undefined;
     let minimizedHandler: (() => void) | undefined;
     let moveStartedHandler: (() => void) | undefined;
-    let moveFinishedHandler: (() => void) | undefined;
     const frameGeometryHandlers: ((oldGeometry: Rect) => void)[] = [];
+    const moveFinishedHandlers: (() => void)[] = [];
     const adapter = {
         id,
         caption: id,
@@ -116,7 +119,7 @@ function fakeWindow(
         output: () => FAKE_OUTPUT,
         isMinimized: () => isMinimized,
         isFullScreen: () => isFullScreen,
-        isInteractiveResize: () => false,
+        isInteractiveResize: () => isInteractiveResize,
         isInteractiveMove: () => isInteractiveMove,
         onFrameGeometryChanged: (handler: (oldGeometry: Rect) => void) => {
             frameGeometryHandlers.push(handler);
@@ -135,7 +138,7 @@ function fakeWindow(
             return disconnects.moveStarted;
         },
         onInteractiveMoveResizeFinished: (handler: () => void) => {
-            moveFinishedHandler = handler;
+            moveFinishedHandlers.push(handler);
             return disconnects.moveFinished;
         },
     } as unknown as WindowAdapter;
@@ -169,7 +172,20 @@ function fakeWindow(
             moveStartedHandler?.();
         },
         finishDrag: () => {
-            moveFinishedHandler?.();
+            for (const handler of moveFinishedHandlers) {
+                handler();
+            }
+        },
+        startResize: () => {
+            isInteractiveResize = true;
+        },
+        finishResize: () => {
+            isInteractiveResize = false;
+            // KWin fires the same interactiveMoveResizeFinished signal for a border resize
+            // as for a move drag.
+            for (const handler of moveFinishedHandlers) {
+                handler();
+            }
         },
     };
 }
@@ -227,7 +243,9 @@ describe('Strip', () => {
         expect(win.disconnects.minimized).toHaveBeenCalledTimes(1);
         expect(win.disconnects.fullScreen).toHaveBeenCalledTimes(1);
         expect(win.disconnects.moveStarted).toHaveBeenCalledTimes(1);
-        expect(win.disconnects.moveFinished).toHaveBeenCalledTimes(1);
+        // Two independent onInteractiveMoveResizeFinished subscribers: wireTile's own
+        // post-resize motion reseed, and drag.ts's live drag-reorder finish handling.
+        expect(win.disconnects.moveFinished).toHaveBeenCalledTimes(2);
     });
 
     it('ignores removal of a window it never registered', () => {
@@ -248,6 +266,31 @@ describe('Strip', () => {
         strip.render();
 
         expect(win.setFrameGeometry).not.toHaveBeenCalled();
+    });
+
+    it('keeps a window at its live-resized width once the border-drag ends and something else renders', () => {
+        // Reproduces: resize window A's border, then switch focus to window B (which reveals B
+        // and re-renders every window, including A, without excluding it) — A's width must not
+        // snap back to its pre-resize value.
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const a = fakeWindow('a', { width: 400 });
+        strip.addWindow(a.adapter);
+        const b = fakeWindow('b');
+        strip.addWindow(b.adapter);
+
+        // Live border-drag resize of `a` from 400 to 800, as KWin reports it while dragging.
+        a.startResize();
+        a.setFrameGeometryValue({ x: 0, y: 0, width: 800, height: 1000 });
+        a.triggerFrameGeometryChanged({ x: 0, y: 0, width: 400, height: 1000 });
+        a.finishResize();
+
+        a.setFrameGeometry.mockClear();
+
+        // Some later, unrelated full render — e.g. triggered by switching focus to `b` and
+        // revealing it — must not exclude `a` and must keep it at its resized width.
+        strip.render();
+
+        expect(a.setFrameGeometry).toHaveBeenCalledWith(expect.objectContaining({ width: 800 }));
     });
 
     it('activates a known window and focus stepping do not throw', () => {

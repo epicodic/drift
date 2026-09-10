@@ -424,6 +424,13 @@ export class Strip {
         signals.add(win.onFrameGeometryChanged((oldReal) => onWindowGeometryChanged(win, oldReal, this.eventDeps())));
         signals.add(win.onMinimizedChanged(() => onMinimizedChanged(win, this.eventDeps())));
         signals.add(win.onFullScreenChanged(() => onFullScreenChanged(win, this.eventDeps())));
+        // A live border-drag resize excludes this window from render()'s tile loop (see
+        // onWindowGeometryChanged's isInteractiveResize branch), so its motion channels never
+        // track the resize while it's in progress. Once the drag ends, snap them to the window's
+        // real final geometry — otherwise the next unrelated render() (e.g. switching focus and
+        // revealing another window) sees a stale pre-resize target and visibly snaps the width
+        // back before re-animating it forward (docs: reported width-restore-on-switch bug).
+        signals.add(win.onInteractiveMoveResizeFinished(() => this.seedMotionFromCurrentGeometry(win)));
         signals.add(
             registerDragReorder(
                 win,
