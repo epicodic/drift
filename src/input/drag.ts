@@ -20,7 +20,7 @@ import { StackPreview } from '../runtime/strip';
 import { EdgeDwell } from '../viewport/edge-dwell';
 import { Viewport } from '../viewport/viewport';
 import { resolveStackTarget, stackTargetIndex, StackCandidate, StackTarget } from './drag-hover';
-import { dragPanBlend } from './drag-pan';
+import { dragPanShouldPan } from './drag-pan';
 
 /** The dragged tile's resolved stack landing spot, ready to commit on release —
  * `columnId`/`slot` identify the target column and tile-list index. */
@@ -53,11 +53,12 @@ export interface DragReorderDeps {
      * stacking (`settings.stackOverlapFraction`) — see `resolveStackTarget`. */
     stackOverlapFraction: number;
     /** Whether an almost-purely-horizontal drag pans the viewport instead of reordering
-     * (`settings.dragPanEnabled`) — see `dragPanBlend` (docs:
+     * (`settings.dragPanEnabled`) — see `dragPanShouldPan` (docs:
      * 2026-09-10-drag-viewport-pan-design). */
     dragPanEnabled: boolean;
-    /** Cumulative vertical drag movement, in pixels, at which drag-pan fades to 0
-     * (`settings.dragPanVerticalTolerancePx`) — see `dragPanBlend`. */
+    /** Cumulative vertical drag movement, in pixels, past which drag-pan stops and today's
+     * reorder/stack behavior applies (`settings.dragPanVerticalTolerancePx`) — see
+     * `dragPanShouldPan`. */
     dragPanVerticalTolerancePx: number;
     render(excludeWindowId?: string, instant?: boolean, verticalOffsetY?: undefined, stackPreview?: StackPreview): void;
     /** Builds a dwell timer armed on a resolved stack target's compound key
@@ -138,7 +139,7 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
      * Only a fired key shows a preview. */
     let armedStackKey: string | null = null;
     /** The dragged window's real (screen) y at the start of the current drag — the baseline
-     * `dragPanBlend`'s cumulative `dyTotal` is measured against. Seeded here (not just in
+     * `dragPanShouldPan`'s cumulative `dyTotal` is measured against. Seeded here (not just in
      * `onInteractiveMoveResizeStarted`) so an `initiallyDragging` connection — created
      * mid-drag by a cross-strip reparent — has a sane starting value even though it never
      * sees that signal fire (docs: 2026-09-10-drag-viewport-pan-design). */
@@ -291,18 +292,20 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
             return;
         }
 
-        // Pan step: absorb some/all of this tick's raw horizontal movement into the
-        // viewport instead of leaving it as real (reorder/stack-triggering) movement. Must
-        // run before winEdges/resolveCurrentTarget below, since both read the window's
-        // virtual position, which this changes via viewport.offset() (docs:
-        // 2026-09-10-drag-viewport-pan-design).
+        // Pan step: while dragPanShouldPan holds, redirect this tick's raw horizontal
+        // movement into the viewport instead of leaving it as real (reorder/stack-triggering)
+        // movement. Must run before winEdges/resolveCurrentTarget below, since both read the
+        // window's virtual position, which this changes via viewport.offset() (docs:
+        // 2026-09-10-drag-viewport-pan-design). Uses setOffset, not the clamped scrollBy —
+        // panning is allowed past the strip's content bounds (e.g. dragging the first column
+        // further right); revealFocused() on release (see finishedInner) already animates the
+        // viewport back into a valid, clamped position, so no clamping is needed here.
         const raw = win.frameGeometry();
         if (deps.dragPanEnabled) {
             const dyTotal = Math.abs(raw.y - startY);
             const dxTick = raw.x - lastX;
-            const blend = dragPanBlend(dyTotal, deps.dragPanVerticalTolerancePx);
-            if (dxTick !== 0 && blend > 0) {
-                deps.viewport.scrollBy(-blend * dxTick);
+            if (dxTick !== 0 && dragPanShouldPan(dyTotal, deps.dragPanVerticalTolerancePx)) {
+                deps.viewport.setOffset(deps.viewport.offset() - dxTick);
             }
         }
         lastX = raw.x;
