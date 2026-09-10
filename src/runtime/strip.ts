@@ -129,9 +129,9 @@ export class Strip {
     }
 
     /** Insets `area` by the four configured margins — the single place every coordinate
-     * consumer (Grid, Viewport, GeometrySync, and by extension drag math and screenBounds,
-     * which all read `this.area`) gets its origin from, so they agree on where the grid
-     * actually starts. */
+     * consumer (Grid, Viewport, GeometrySync, and by extension drag math and
+     * marginedScreenBounds, which all read `this.area`) gets its origin from, so they
+     * agree on where the grid actually starts. */
     private marginedArea(area: Rect): Rect {
         return shrinkRect(area, {
             top: this.settings.topMargin,
@@ -303,18 +303,33 @@ export class Strip {
         const rect = this.grid.columnRect(focused.id);
         this.animator.animate(
             this.viewport.offset(),
-            this.viewport.offsetToRevealOnScreen(rect.x, rect.width, this.screenBounds()),
+            this.viewport.offsetToRevealOnScreen(rect.x, rect.width, this.marginedScreenBounds()),
             this.settings.animationDurationMs,
         );
     }
 
-    /** Physical screens in strip-relative coordinates, sorted left-to-right. Read fresh on
-     * every call rather than cached, consistent with `isFullScreenGeometry`'s live reads. */
-    private screenBounds(): ScreenBounds[] {
-        return this.workspaceAdapter
+    /** Physical screens in strip-relative coordinates, sorted left-to-right, clipped to the
+     * margin-inset visible area at the strip's outer edges. A monitor's raw geometry extends
+     * into the left/right margin (or past the strip's own content width) at the strip's two
+     * ends — without clipping, `offsetToRevealOnScreen` and align-cycle would treat that
+     * margin-reserved space as available and slide content into it. Interior monitor
+     * boundaries (the bezel between two adjacent screens) are left untouched: margins only
+     * apply at the strip's absolute edges, not between screens. Read fresh on every call
+     * rather than cached, consistent with `isFullScreenGeometry`'s live reads. */
+    private marginedScreenBounds(): ScreenBounds[] {
+        const screens = this.workspaceAdapter
             .screens()
             .map((screen) => ({ left: screen.geometry.x - this.area.x, width: screen.geometry.width }))
             .sort((a, b) => a.left - b.left);
+        const viewportWidth = this.viewport.viewportWidth();
+        return screens.map((screen, index) => {
+            const left = index === 0 ? Math.max(screen.left, 0) : screen.left;
+            const right =
+                index === screens.length - 1
+                    ? Math.min(screen.left + screen.width, viewportWidth)
+                    : screen.left + screen.width;
+            return { left, width: right - left };
+        });
     }
 
     private tileKey(columnId: number, tileId: number): string {
@@ -827,7 +842,7 @@ export class Strip {
             return;
         }
         const rect = this.grid.columnRect(focused.id);
-        const screens = this.screenBounds();
+        const screens = this.marginedScreenBounds();
         const offset = this.viewport.offset();
         const screenIndex = currentScreenIndex(rect.x, rect.width, offset, screens);
         const screen = screenIndex === null ? { left: 0, width: this.viewport.viewportWidth() } : screens[screenIndex];
@@ -882,7 +897,7 @@ export class Strip {
             return;
         }
         const rect = this.grid.columnRect(focused.id);
-        const screens = this.screenBounds();
+        const screens = this.marginedScreenBounds();
         const offset = this.viewport.offset();
 
         const screenIndex = currentScreenIndex(rect.x, rect.width, offset, screens);
