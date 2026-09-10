@@ -149,12 +149,12 @@ obvious, then `Meta+Space` again (redocks next to whatever is currently focused)
 Record this on its own — it's a System Settings window, not the tiled desktop, so it doesn't chain from the
 scenes above.
 **Setup:** System Settings → Window Management → KWin Scripts → Drift → **Configure...**.
-**Action:** the dialog has five tabs — **Layout** (gap, default width, bottom margin, undock-keep-above),
+**Action:** the dialog has five tabs — **Layout** (gaps, default width, margins, undock-keep-above),
 **Behavior** (Scrolling: animation duration and viewport shift step; Resizing: column-width and window-height
 steps; Dragging: drag-dwell timings), **Visual Feedback** (a Minimap group, and a checkable Focus Flash group
 whose border/blur/duration/opacity fields gray out when unchecked), **Shortcuts** (an informational label plus
 the path to `setup-shortcuts.sh`, not editable), and **Window Rules** (a JSON editor). Open on Layout, drag the
-column-gap spinbox up/down once so a visible number changes, switch to Visual Feedback and toggle the Focus
+horizontal-gap spinbox up/down once so a visible number changes, switch to Visual Feedback and toggle the Focus
 Flash checkbox off/on to show its fields gray out, switch to Shortcuts to show the info label, then close.
 **IN:** the dialog finishing its open-animation. **OUT:** just before it closes.
 **Target length:** 10-15s.

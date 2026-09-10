@@ -86,7 +86,7 @@ Every feature below has a short demo and more detail in **[docs/features.md](doc
 - **Undock / redock** — pop a single window out of the strip into normal floating-above behavior with one shortcut, and put it back later without losing your place.
 
 **Configuration**
-- **Settings dialog** — column gap, default width, animation timing, minimap/focus-flash behavior, and more, all from the script's **Configure...** dialog in System Settings.
+- **Settings dialog** — horizontal/vertical gaps, margins, default width, animation timing, minimap/focus-flash behavior, and more, all from the script's **Configure...** dialog in System Settings.
 - **Fully remappable shortcuts** — every binding below is a real KGlobalAccel shortcut, rebindable from System Settings → Shortcuts like any other.
 
 Not there yet?
@@ -151,7 +151,7 @@ KWin only (re)loads a script's QML/JS on a full restart or a fresh login — see
 |---|---|
 | `Meta+Space` | Toggle the active window between docked (tiled) and floating (undock/redock) |
 
-Every shortcut, plus the column gap, default width, animation timing, and minimap/focus-flash behavior, is configurable from the script's **Configure...** dialog in System Settings. The live debug console overlay isn't bound to a shortcut — enable it from the dialog's **Debug** tab instead.
+Every shortcut, plus the horizontal/vertical gaps, margins, default width, animation timing, and minimap/focus-flash behavior, is configurable from the script's **Configure...** dialog in System Settings. The live debug console overlay isn't bound to a shortcut — enable it from the dialog's **Debug** tab instead.
 
 ## How it works
 

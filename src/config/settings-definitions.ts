@@ -36,10 +36,14 @@ export interface SettingsDefinition<K extends keyof Settings = keyof Settings> {
 export type AnySettingsDefinition = { [K in keyof Settings]: SettingsDefinition<K> }[keyof Settings];
 
 export const SETTINGS_DEFINITIONS: AnySettingsDefinition[] = [
-    { name: 'columnGap', type: 'UInt', default: 8 },
+    { name: 'horizontalGap', type: 'UInt', default: 8 },
+    { name: 'verticalGap', type: 'UInt', default: 8 },
     { name: 'defaultColumnWidth', type: 'UInt', default: 800 },
     { name: 'animationDurationMs', type: 'UInt', default: 200 },
-    { name: 'bottomMargin', type: 'UInt', default: 0 },
+    { name: 'topMargin', type: 'UInt', default: 8 },
+    { name: 'bottomMargin', type: 'UInt', default: 8 },
+    { name: 'leftMargin', type: 'UInt', default: 8 },
+    { name: 'rightMargin', type: 'UInt', default: 8 },
     { name: 'shortcutFocusLeft', type: 'String', default: 'Meta+Left', shortcut: { label: 'Focus Column Left' } },
     { name: 'shortcutFocusRight', type: 'String', default: 'Meta+Right', shortcut: { label: 'Focus Column Right' } },
     {

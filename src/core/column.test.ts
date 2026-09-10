@@ -101,12 +101,12 @@ describe('Column — tile stack', () => {
         expect(() => column.removeTile(9999)).toThrow();
     });
 
-    it('rescaleHeight scales every tile by the given factor, keeping their relative sizes', () => {
+    it('rescaleHeight scales every tile to fit the new height, keeping their relative sizes', () => {
         const column = new Column(1, 300, 900);
         column.addTile();
         column.addTile(); // three even tiles of 300 each
 
-        column.rescaleHeight(2 / 3); // e.g. grid height dropped from 900 to 600
+        column.rescaleHeight(600); // e.g. grid height dropped from 900 to 600
 
         expect(column.tiles().map((t) => t.height)).toEqual([200, 200, 200]);
     });
@@ -116,9 +116,22 @@ describe('Column — tile stack', () => {
         const secondId = column.addTile(); // [450, 450]
         column.resizeTile(secondId, 600, 'top'); // [300, 600]
 
-        column.rescaleHeight(2); // e.g. grid height doubled
+        column.rescaleHeight(1800); // e.g. grid height doubled
 
         expect(column.tiles().map((t) => t.height)).toEqual([600, 1200]);
+    });
+
+    it('rescaleHeight avoids floating-point drift when the scale ratio is a repeating fraction', () => {
+        // oldBudget=600, newBudget=920 → 920/600 repeats in binary. Precomputing
+        // factor = newBudget / oldBudget and then doing tile.height *= factor yields
+        // 300 * (920 / 600) = 460.00000000000006 for each tile; computing
+        // (tile.height * newBudget) / oldBudget directly lands on the exact 460.
+        const column = new Column(1, 300, 620, 20); // rowGap = 20
+        column.addTile(); // [300, 300] — (620 - 20) / 2
+
+        column.rescaleHeight(940); // newBudget = 940 - 20 = 920
+
+        expect(column.tiles().map((t) => t.height)).toEqual([460, 460]);
     });
 
     it('setFocusedTile throws for an unknown tile id', () => {
@@ -268,6 +281,92 @@ describe('Column — tile stack', () => {
         expect(column.tileRect(first.id, columnRect)).toEqual({ x: 50, y: 0, width: 300, height: 300 });
         expect(column.tileRect(second.id, columnRect)).toEqual({ x: 50, y: 300, width: 300, height: 300 });
         expect(column.tileRect(third.id, columnRect)).toEqual({ x: 50, y: 600, width: 300, height: 300 });
+    });
+
+    it('tileRect adds the vertical gap between stacked tiles', () => {
+        const column = new Column(1, 300, 940, 20); // rowGap = 20
+        column.addTile();
+        column.addTile(); // three even tiles of 300 each (budget 940 - 2*20 = 900)
+        const columnRect = { x: 50, y: 0, width: 300, height: 940 };
+        const [first, second, third] = column.tiles();
+        expect(column.tileRect(first.id, columnRect)).toEqual({ x: 50, y: 0, width: 300, height: 300 });
+        expect(column.tileRect(second.id, columnRect)).toEqual({ x: 50, y: 320, width: 300, height: 300 });
+        expect(column.tileRect(third.id, columnRect)).toEqual({ x: 50, y: 640, width: 300, height: 300 });
+    });
+
+    it('addTile splits the height budget evenly, minus the vertical gap between tiles', () => {
+        const column = new Column(1, 300, 1020, 20); // rowGap = 20
+        const firstId = column.tiles()[0].id;
+        const secondId = column.addTile();
+        expect(column.tiles().map((t) => t.height)).toEqual([500, 500]); // (1020 - 20) / 2
+        expect(secondId).not.toBe(firstId);
+    });
+
+    it('removeTile redistributes height plus the freed gap to the rest', () => {
+        const column = new Column(1, 300, 940, 20); // rowGap = 20
+        const secondId = column.addTile();
+        column.addTile(); // three even tiles of 300 each
+        column.removeTile(secondId);
+        expect(column.tileCount()).toBe(2);
+        expect(column.tiles().map((t) => t.height)).toEqual([460, 460]); // (940 - 20) / 2
+    });
+
+    it('rescaleHeight scales tiles to fit the new height, accounting for the vertical gap', () => {
+        const column = new Column(1, 300, 940, 20); // rowGap = 20
+        column.addTile();
+        column.addTile(); // three even tiles of 300 each
+
+        column.rescaleHeight(640); // e.g. grid height dropped from 940 to 640
+
+        expect(column.tiles().map((t) => t.height)).toEqual([200, 200, 200]); // budget 600, /3
+    });
+
+    it('rescaleHeight preserves an uneven split, not just an even one, with a vertical gap', () => {
+        const column = new Column(1, 300, 940, 20); // rowGap = 20
+        const secondId = column.addTile(); // [460, 460]
+        column.resizeTile(secondId, 600, 'top'); // [320, 600]
+
+        column.rescaleHeight(1860); // e.g. grid height doubled the tile budget
+
+        expect(column.tiles().map((t) => t.height)).toEqual([640, 1200]);
+    });
+
+    it('previewRectsWithGapAt adds the vertical gap around the reserved preview slot', () => {
+        const column = new Column(1, 300, 920, 20); // rowGap = 20
+        const topId = column.tiles()[0].id;
+        const bottomId = column.addTile(); // top=450, bottom=450
+        const columnRect = { x: 100, y: 0, width: 300, height: 920 };
+
+        const preview = column.previewRectsWithGapAt(1, 200, columnRect); // gap between top and bottom
+
+        expect(preview.get(topId)).toEqual({ x: 100, y: 0, width: 300, height: 450 });
+        expect(preview.get(bottomId)).toEqual({ x: 100, y: 690, width: 300, height: 450 }); // 450 + 20 + 200 + 20
+    });
+
+    it('previewRectsWithGapAt at a trailing index also carves the vertical gap out of the preceding tile', () => {
+        const column = new Column(1, 300, 920, 20); // rowGap = 20
+        const topId = column.tiles()[0].id;
+        const bottomId = column.addTile(); // [450, 450]
+        column.resizeTile(topId, 600); // [600, 300]
+        const columnRect = { x: 0, y: 0, width: 300, height: 920 };
+
+        const preview = column.previewRectsWithGapAt(2, 100, columnRect); // append after bottom
+
+        expect(preview.get(topId)).toEqual({ x: 0, y: 0, width: 300, height: 600 }); // untouched
+        expect(preview.get(bottomId)).toEqual({ x: 0, y: 620, width: 300, height: 180 }); // 300 - 100 - 20
+    });
+
+    it('previewRectsWithoutTile leaves exactly one vertical gap where the excluded tile was', () => {
+        const column = new Column(1, 300, 940, 20); // rowGap = 20
+        const topId = column.tiles()[0].id;
+        const middleId = column.addTile();
+        const bottomId = column.addTile(); // three tiles, 300 each
+
+        const preview = column.previewRectsWithoutTile(middleId, { x: 0, y: 0, width: 300, height: 940 });
+
+        expect(preview.has(middleId)).toBe(false);
+        expect(preview.get(topId)).toEqual({ x: 0, y: 0, width: 300, height: 300 });
+        expect(preview.get(bottomId)).toEqual({ x: 0, y: 320, width: 300, height: 300 }); // 300 + rowGap
     });
 
     it('previewRectsWithGapAt reserves gapHeight at index without mutating the column or resizing tiles', () => {

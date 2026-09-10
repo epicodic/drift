@@ -105,4 +105,16 @@ describe('DEFAULT_SETTINGS', () => {
     it('defaults window rules to the bundled starter set', () => {
         expect(DEFAULT_SETTINGS.windowRules).toBe(DEFAULT_WINDOW_RULES);
     });
+
+    it('defaults every margin to 8px', () => {
+        expect(DEFAULT_SETTINGS.topMargin).toBe(8);
+        expect(DEFAULT_SETTINGS.bottomMargin).toBe(8);
+        expect(DEFAULT_SETTINGS.leftMargin).toBe(8);
+        expect(DEFAULT_SETTINGS.rightMargin).toBe(8);
+    });
+
+    it('defaults the horizontal and vertical gaps to 8px', () => {
+        expect(DEFAULT_SETTINGS.horizontalGap).toBe(8);
+        expect(DEFAULT_SETTINGS.verticalGap).toBe(8);
+    });
 });

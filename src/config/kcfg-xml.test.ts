@@ -4,8 +4,8 @@ import type { SettingsDefinition } from './settings-definitions';
 
 describe('buildKcfgXml', () => {
     it('renders a UInt entry with its default', () => {
-        const xml = buildKcfgXml([{ name: 'columnGap', type: 'UInt', default: 8 }] as SettingsDefinition[]);
-        expect(xml).toContain('<entry name="columnGap" type="UInt">');
+        const xml = buildKcfgXml([{ name: 'horizontalGap', type: 'UInt', default: 8 }] as SettingsDefinition[]);
+        expect(xml).toContain('<entry name="horizontalGap" type="UInt">');
         expect(xml).toContain('<default>8</default>');
     });
 
@@ -29,7 +29,7 @@ describe('buildKcfgXml', () => {
     });
 
     it('wraps entries in the kcfg document structure with a kwinrc kcfgfile', () => {
-        const xml = buildKcfgXml([{ name: 'columnGap', type: 'UInt', default: 8 }] as SettingsDefinition[]);
+        const xml = buildKcfgXml([{ name: 'horizontalGap', type: 'UInt', default: 8 }] as SettingsDefinition[]);
         expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
         expect(xml).toContain('<kcfgfile name="kwinrc" />');
         expect(xml.trim().startsWith('<?xml')).toBe(true);

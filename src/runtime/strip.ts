@@ -3,7 +3,7 @@
 // bookkeeping). Absorbs the render(), revealFocused(), and per-window lifecycle logic
 // that used to live in main.ts's init(). Only runtime/ and main.ts do this wiring.
 
-import type { Rect } from '../core/coordinates';
+import { Rect, shrinkRect } from '../core/coordinates';
 import { formatDebugState } from '../core/debug-format';
 import type { Column } from '../core/column';
 import { Grid } from '../core/grid';
@@ -60,6 +60,9 @@ export interface StackPreview {
 }
 
 export class Strip {
+    // Always the margin-inset content rect (see `marginedArea`), never the raw work area —
+    // every coordinate consumer below is built from this, not from the constructor's `area` param.
+    private area: Rect;
     private readonly grid: Grid;
     private readonly viewport: Viewport;
     private readonly geometrySync: GeometrySync;
@@ -90,14 +93,15 @@ export class Strip {
     private verticalOffsetY = 0;
 
     constructor(
-        private area: Rect,
+        area: Rect,
         private readonly settings: Settings,
         timer: Timer,
         private readonly workspaceAdapter: WorkspaceAdapter,
     ) {
-        this.grid = new Grid(Math.max(1, area.height - settings.bottomMargin), settings.columnGap);
-        this.viewport = new Viewport(area.width);
-        this.geometrySync = new GeometrySync(area);
+        this.area = this.marginedArea(area);
+        this.grid = new Grid(Math.max(1, this.area.height), settings.horizontalGap, settings.verticalGap);
+        this.viewport = new Viewport(Math.max(1, this.area.width));
+        this.geometrySync = new GeometrySync(this.area);
         this.ticker = new SharedTicker(timer, ANIMATION_TICK_MS);
         this.animator = new Animator(
             this.ticker.subscribe(),
@@ -117,11 +121,24 @@ export class Strip {
      * at the new geometry instantly — this is a correction, not a user-facing layout change,
      * so it shouldn't ease into place over `animationDurationMs` like a normal resize. */
     updateArea(area: Rect): void {
-        this.area = area;
-        this.grid.setHeight(Math.max(1, area.height - this.settings.bottomMargin));
-        this.viewport.setViewportWidth(area.width);
-        this.geometrySync.setArea(area);
+        this.area = this.marginedArea(area);
+        this.grid.setHeight(Math.max(1, this.area.height));
+        this.viewport.setViewportWidth(Math.max(1, this.area.width));
+        this.geometrySync.setArea(this.area);
         this.render(undefined, true);
+    }
+
+    /** Insets `area` by the four configured margins — the single place every coordinate
+     * consumer (Grid, Viewport, GeometrySync, and by extension drag math and screenBounds,
+     * which all read `this.area`) gets its origin from, so they agree on where the grid
+     * actually starts. */
+    private marginedArea(area: Rect): Rect {
+        return shrinkRect(area, {
+            top: this.settings.topMargin,
+            bottom: this.settings.bottomMargin,
+            left: this.settings.leftMargin,
+            right: this.settings.rightMargin,
+        });
     }
 
     /** `verticalOffsetY` is sticky, not defaulted: passing a value both applies it immediately

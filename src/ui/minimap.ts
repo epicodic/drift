@@ -98,7 +98,8 @@ export interface StripStackMinimapSnapshot {
     viewport: StripStackMinimapViewport;
     gridHeight: number;
     /** Real-pixel vertical distance between adjacent strips' origins (`StripStack`'s own
-     * `area.height`) — may exceed `gridHeight` (which excludes `settings.bottomMargin`),
+     * `area.height`) — may exceed `gridHeight` (which excludes `settings.topMargin` and
+     * `settings.bottomMargin`),
      * leaving a real gap between strips in the rendered map, matching their on-screen look. */
     stripPitch: number;
 }

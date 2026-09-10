@@ -25,6 +25,7 @@ export class Grid {
     constructor(
         private height: number,
         private readonly gap: number = 0,
+        private readonly rowGap: number = 0,
     ) {}
 
     columns(): readonly Column[] {
@@ -47,10 +48,9 @@ export class Grid {
         if (height === this.height) {
             return;
         }
-        const factor = height / this.height;
         this.height = height;
         for (const column of this.ordered) {
-            column.rescaleHeight(factor);
+            column.rescaleHeight(height);
         }
     }
 
@@ -68,7 +68,7 @@ export class Grid {
 
     /** Adds a column to the right of the focused one (or at the end) and focuses it. */
     addColumn(width: number): Column {
-        const column = new Column(this.nextId++, width, this.height);
+        const column = new Column(this.nextId++, width, this.height, this.rowGap);
         const insertAt = this.focusedColumnId === null ? this.ordered.length : this.indexOf(this.focusedColumnId) + 1;
         this.ordered.splice(insertAt, 0, column);
         this.focusedColumnId = column.id;
