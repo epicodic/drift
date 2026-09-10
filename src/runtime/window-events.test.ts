@@ -29,7 +29,7 @@ function fakeDeps(overrides: Partial<WindowEventDeps> = {}): WindowEventDeps {
         isHidden: () => false,
         isEcho: () => false,
         resizeColumn: vi.fn(),
-        resizeTile: vi.fn(),
+        resizeTile: vi.fn(() => true),
         hideColumn: vi.fn(),
         showColumn: vi.fn(),
         hideTile: vi.fn(),
@@ -169,6 +169,17 @@ describe('onWindowGeometryChanged', () => {
 
             expect(deps.resizeTile).not.toHaveBeenCalled();
             expect(deps.resizeColumn).not.toHaveBeenCalled();
+        });
+
+        it('re-renders without excluding the window when the tile resize is rejected (single-tile column)', () => {
+            const win = fakeWindow('w1', { x: 0, y: 0, width: 300, height: 550 }, { interactiveResize: true });
+            const deps = fakeDeps({ tileOf: () => ({ columnId: 1, tileId: 2 }), resizeTile: vi.fn(() => false) });
+            const oldRect = { x: 0, y: 0, width: 300, height: 500 };
+
+            onWindowGeometryChanged(win, oldRect, deps);
+
+            expect(deps.resizeTile).toHaveBeenCalledWith(1, 2, 550, 'bottom');
+            expect(deps.render).toHaveBeenCalledWith(undefined, true);
         });
 
         it('ignores a pure move (neither width nor height changed)', () => {

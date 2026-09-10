@@ -20,7 +20,9 @@ export interface WindowEventDeps {
     isHidden(columnId: number): boolean;
     isEcho(windowId: string, rect: Rect): boolean;
     resizeColumn(columnId: number, width: number, edge: ResizeEdge): void;
-    resizeTile(columnId: number, tileId: number, height: number, edge: VerticalResizeEdge): void;
+    /** Returns whether the tile actually resized — `false` for a single-tile column, which has
+     * no neighbor to take the height from, and must not be treated as a live-tracking resize. */
+    resizeTile(columnId: number, tileId: number, height: number, edge: VerticalResizeEdge): boolean;
     hideColumn(columnId: number): void;
     showColumn(columnId: number): void;
     /** Hides/shows one tile's window without collapsing the rest of the column's
@@ -69,8 +71,12 @@ export function onWindowGeometryChanged(win: WindowAdapter, oldReal: Rect, deps:
                 `old=(${oldReal.x.toFixed(0)},${oldReal.y.toFixed(0)},${oldReal.width.toFixed(0)},${oldReal.height.toFixed(0)}) ` +
                 `new=(${newReal.x.toFixed(0)},${newReal.y.toFixed(0)},${newReal.width.toFixed(0)},${newReal.height.toFixed(0)})`,
         );
-        deps.resizeTile(location.columnId, location.tileId, Math.round(newReal.height), edge);
-        deps.render(win.id, true);
+        const resized = deps.resizeTile(location.columnId, location.tileId, Math.round(newReal.height), edge);
+        // A rejected resize (e.g. a single-tile column, which has no neighbor to take the
+        // height from) leaves the model untouched while KWin has already applied the drag to
+        // the window's real geometry — don't exclude it here, or nothing snaps it back until
+        // some unrelated render() happens later (docs: reported height-restore bug).
+        deps.render(resized ? win.id : undefined, true);
         return;
     }
     if (win.isInteractiveResize()) {

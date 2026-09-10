@@ -175,19 +175,20 @@ export class Column {
      * option vertically the way `Grid.resizeColumn` has horizontally. A no-op if there
      * is no neighbor on that side (resizing past the top/bottom of the stack); throws
      * if the resize would push either tile to zero or below. */
-    resizeTile(id: number, height: number, edge: VerticalResizeEdge = 'bottom'): void {
+    resizeTile(id: number, height: number, edge: VerticalResizeEdge = 'bottom'): boolean {
         assertPositiveHeight(height);
         const index = this.requireTileIndex(id);
         const neighborIndex = edge === 'top' ? index - 1 : index + 1;
         const neighbor = this.stack[neighborIndex];
         if (neighbor === undefined) {
-            return;
+            return false;
         }
         const delta = height - this.stack[index].height;
         const neighborHeight = neighbor.height - delta;
         assertPositiveHeight(neighborHeight);
         this.stack[index].height = height;
         neighbor.height = neighborHeight;
+        return true;
     }
 
     /** Grows the focused tile by `step`, taking the space from its neighbor below in

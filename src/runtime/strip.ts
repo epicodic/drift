@@ -929,9 +929,8 @@ export class Strip {
             isHidden: (columnId) => this.grid.isHidden(columnId),
             isEcho: (windowId, rect) => this.geometrySync.isEcho(windowId, rect),
             resizeColumn: (columnId, width, edge) => this.grid.resizeColumn(columnId, width, edge),
-            resizeTile: (columnId, tileId, height, edge) => {
-                this.grid.column(columnId)?.resizeTile(tileId, height, edge);
-            },
+            resizeTile: (columnId, tileId, height, edge) =>
+                this.grid.column(columnId)?.resizeTile(tileId, height, edge) ?? false,
             hideColumn: (columnId) => {
                 this.forgetColumnMotion(columnId);
                 this.grid.hideColumn(columnId);
