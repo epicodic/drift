@@ -37,6 +37,11 @@ export interface WindowEventDeps {
     revealFocused(): void;
     /** Whether `win`'s geometry already covers its output's fullscreen area (see workspace-adapter.ts). */
     isFullScreenGeometry(win: WindowAdapter): boolean;
+    /** Resyncs `win`'s tile-motion channels (x/y/width/height) to its actual current frame
+     * geometry — used after a programmatic jump (e.g. maximize) that Drift intentionally leaves
+     * untouched, so a later unrelated render() doesn't see a stale pre-jump target and visibly
+     * snap the window back before re-animating it forward. */
+    seedMotionFromCurrentGeometry(win: WindowAdapter): void;
 }
 
 export function onWindowGeometryChanged(win: WindowAdapter, oldReal: Rect, deps: WindowEventDeps): void {
@@ -99,16 +104,21 @@ export function onWindowGeometryChanged(win: WindowAdapter, oldReal: Rect, deps:
     // for the new size, which is meaningless as a drag direction and would otherwise corrupt the
     // strip's origin — treat it as a right-edge resize that leaves the column's own virtual x
     // untouched.
-    // TEMPORARY: this is the one branch that calls render() with NO excludeWindowId at all —
-    // confirms whether it's firing during a live drag elsewhere (docs:
-    // 2026-09-07-drag-reorder-stack-refinement-design).
     debug(
         `onWindowGeometryChanged: programmatic-jump win=${win.id} col=${columnId} ` +
             `old=(${oldReal.x.toFixed(0)},${oldReal.y.toFixed(0)},${oldReal.width.toFixed(0)},${oldReal.height.toFixed(0)}) ` +
             `new=(${newReal.x.toFixed(0)},${newReal.y.toFixed(0)},${newReal.width.toFixed(0)},${newReal.height.toFixed(0)})`,
     );
     deps.resizeColumn(columnId, Math.round(newReal.width), 'right');
-    deps.render();
+    // Exclude the window itself: the compositor already placed it (this is its own maximize/
+    // quick-tile/snap transition), so Drift must not also animate its frame geometry on top —
+    // doing so fought the compositor's own animation and could leave the window not fully
+    // maximized or visibly shifted (reported bug). Only neighbors pushed by the resize animate.
+    deps.render(win.id);
+    // The excluded tile's motion channels didn't track this jump, so resync them to the window's
+    // real post-jump geometry now — otherwise the next unrelated render() sees a stale pre-jump
+    // target and visibly snaps the window back before re-animating it forward.
+    deps.seedMotionFromCurrentGeometry(win);
     // A programmatic resize (e.g. maximize) can grow a column out of view without any focus
     // change to trigger a reveal — re-check now, not just on the next focus switch.
     deps.revealFocused();
