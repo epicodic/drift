@@ -487,6 +487,45 @@
                                                 </property>
                                             </widget>
                                         </item>
+                                        <item row="5" column="1">
+                                            <widget class="QCheckBox" name="kcfg_dragPanEnabled">
+                                                <property name="toolTip">
+                                                    <string>An almost-purely-horizontal drag pans the viewport instead of reordering the dragged window's column</string>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Pan the viewport on a horizontal drag</string>
+                                                </property>
+                                                <property name="checked">
+                                                    <bool>true</bool>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="6" column="0">
+                                            <widget class="QLabel" name="label_dragPanVerticalTolerancePx">
+                                                <property name="text">
+                                                    <string>Drag-pan vertical tolerance:</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="6" column="1">
+                                            <widget class="QSpinBox" name="kcfg_dragPanVerticalTolerancePx">
+                                                <property name="toolTip">
+                                                    <string>Cumulative vertical drag movement, in pixels, at which drag-pan fades out and reordering takes over fully</string>
+                                                </property>
+                                                <property name="suffix">
+                                                    <string> px</string>
+                                                </property>
+                                                <property name="minimum">
+                                                    <number>0</number>
+                                                </property>
+                                                <property name="maximum">
+                                                    <number>500</number>
+                                                </property>
+                                                <property name="value">
+                                                    <number>40</number>
+                                                </property>
+                                            </widget>
+                                        </item>
                                     </layout>
                                 </widget>
                             </item>
