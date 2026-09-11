@@ -1,7 +1,7 @@
 // Settings and their defaults are defined once in settings-definitions.ts (single source of
 // truth — docs/agents/specs/2026-09-06-settings-consolidation-design.md); this file derives
 // DEFAULT_SETTINGS from it and reads the live values through `KWin.readConfig`, backed by
-// the generated drift/contents/config/main.xml (KConfigXT schema).
+// the generated .build/drift/contents/config/main.xml (KConfigXT schema).
 
 import { SETTINGS_DEFINITIONS } from './settings-definitions';
 

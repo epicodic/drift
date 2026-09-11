@@ -1,7 +1,7 @@
 // The single source of truth for every setting's kcfg schema entry and runtime default —
-// generated build output (drift/contents/config/main.xml via generate-main-xml.ts,
-// drift/contents/bin/shortcut-bindings.generated.sh via generate-shortcut-bindings.ts) and
-// src/config/settings.ts's DEFAULT_SETTINGS/loadSettings() are all derived from this array
+// generated build output (.build/drift/contents/config/main.xml via generate-main-xml.ts,
+// .build/drift/contents/bin/shortcut-bindings.generated.sh via generate-shortcut-bindings.ts) and
+// drift/src/config/settings.ts's DEFAULT_SETTINGS/loadSettings() are all derived from this array
 // instead of duplicating it by hand (docs/agents/specs/2026-09-06-settings-consolidation-design.md).
 
 import { DEFAULT_WINDOW_RULES } from '../core/default-window-rules';

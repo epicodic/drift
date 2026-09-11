@@ -4,7 +4,7 @@ See [`docs/architecture.md`](architecture.md) for the concepts referenced below 
 
 ## Column Layout Math
 
-Source: [`virtualWidth`, `columnRect`](../src/core/coordinates.ts) in `coordinates.ts`, and `Grid`'s private `layoutOffsets`/`layoutWidths` in [`grid.ts`](../src/core/grid.ts).
+Source: [`virtualWidth`, `columnRect`](../drift/src/core/coordinates.ts) in `coordinates.ts`, and `Grid`'s private `layoutOffsets`/`layoutWidths` in [`grid.ts`](../drift/src/core/grid.ts).
 
 A column's virtual position is never stored — it is always recomputed from the ordered list of column widths.
 `layoutOffsets()` walks the columns left to right and accumulates: each column's offset is the running cursor, and the cursor advances by that column's width plus `gap` (a hidden column contributes a fixed, tiny `HIDDEN_COLUMN_WIDTH` and no trailing gap, so a run of hidden columns fits inside the single surrounding gap).
@@ -20,7 +20,7 @@ Because both are pure derivations from the current column list, adding, removing
 
 ## Resize-Edge Detection
 
-Source: [`resizedEdge`](../src/core/coordinates.ts) in `coordinates.ts`, called from [`onWindowGeometryChanged`](../src/runtime/window-events.ts) in `window-events.ts`.
+Source: [`resizedEdge`](../drift/src/core/coordinates.ts) in `coordinates.ts`, called from [`onWindowGeometryChanged`](../drift/src/runtime/window-events.ts) in `window-events.ts`.
 
 When a tiled window's frame geometry changes, Drift needs to know whether the user resized it from the left edge or the right edge, because only a left-edge resize should shift the strip's origin (`Grid.resizeColumn`'s `edge` parameter).
 `resizedEdge(oldRect, newRect)` compares the rounded `x` of the old and new geometry: if `x` moved, the left edge moved; otherwise the right edge moved.
@@ -30,7 +30,7 @@ Rounding matters because KWin/Wayland can report fractional geometry for the sam
 
 ## Drag-Reorder Insertion Index
 
-Source: [`Grid.insertionIndexForEdges`](../src/core/grid.ts) in `grid.ts`, driven by [`registerDragReorder`](../src/input/drag.ts) in `drag.ts`.
+Source: [`Grid.insertionIndexForEdges`](../drift/src/core/grid.ts) in `grid.ts`, driven by [`registerDragReorder`](../drift/src/input/drag.ts) in `drag.ts`.
 
 While a window is being interactively moved, Drift never writes its real geometry — it moves freely under the cursor — but the *order* of the other columns updates live.
 On every `frameGeometryChanged` tick during the drag, `registerDragReorder` converts the dragged window's own left and right edges (not the cursor) to virtual x coordinates (`toVirtualX`), then asks `Grid.insertionIndexForEdges` whether it should trade places with its current immediate left or right neighbor.
@@ -49,7 +49,7 @@ On `interactiveMoveResizeFinished`, the order has already settled live; the drag
 
 ## Drag-to-Stack Hover Resolution
 
-Source: [`resolveStackTarget`, `stackTargetIndex`](../src/input/drag-hover.ts) in `drag-hover.ts`, candidates gathered by [`registerDragReorder`](../src/input/drag.ts) in `drag.ts` via `Grid.visibleNeighborColumnIds`/`Column.tileRect`.
+Source: [`resolveStackTarget`, `stackTargetIndex`](../drift/src/input/drag-hover.ts) in `drag-hover.ts`, candidates gathered by [`registerDragReorder`](../drift/src/input/drag.ts) in `drag.ts` via `Grid.visibleNeighborColumnIds`/`Column.tileRect`.
 
 Stacking is resolved purely from the dragged window's own geometry — never the cursor position — using the same measurement axis reorder already uses.
 Every tick that reorder does *not* fire, `registerDragReorder` gathers a list of candidate tiles: the dragged tile's own column's other tiles (if it's currently in a multi-tile stack) plus every tile in both immediate neighbor columns.
@@ -63,15 +63,15 @@ Because `resolveStackTarget`/`stackTargetIndex` take only already-resolved rects
 
 ## Focus-Flash Opacity Envelope
 
-Source: [`flashOpacity`](../src/ui/focus-flash.ts) in `focus-flash.ts`, sampled each tick by [`FocusFlashOverlay`](../src/kwin/focus-flash-overlay.ts) in `focus-flash-overlay.ts`.
+Source: [`flashOpacity`](../drift/src/ui/focus-flash.ts) in `focus-flash.ts`, sampled each tick by [`FocusFlashOverlay`](../drift/src/kwin/focus-flash-overlay.ts) in `focus-flash-overlay.ts`.
 
 `flashOpacity(elapsedMs, durationMs)` is a pure sinusoidal envelope: $\sin(\theta)$ for $\theta = \pi \cdot \text{elapsedMs}/\text{durationMs} \in [0, \pi]$, which ramps smoothly from 0 up to 1 at the envelope's midpoint and back down to 0, rather than a linear fade or an instant on/off. It returns exactly `0` once `elapsedMs` exceeds `durationMs` (so the overlay knows when to stop ticking) and for any non-positive duration.
 
-The glow's actual rendering — the inward-only edge falloff itself — is a separate concern handled entirely in the SDF fragment shader (`drift/contents/shaders/focus_glow.frag`); this function only ever produces the *time-varying* overall opacity multiplier applied on top of that shader's output, keeping the "when" and the "what it looks like" independently testable.
+The glow's actual rendering — the inward-only edge falloff itself — is a separate concern handled entirely in the SDF fragment shader (`drift/shaders/focus_glow.frag`); this function only ever produces the *time-varying* overall opacity multiplier applied on top of that shader's output, keeping the "when" and the "what it looks like" independently testable.
 
 ## Viewport Reveal and Animation Easing
 
-Source: [`Viewport.offsetToReveal`](../src/viewport/viewport.ts) in `viewport.ts` and [`Animation`](../src/viewport/animator.ts)/[`Animator`](../src/viewport/animator.ts) in `animator.ts`.
+Source: [`Viewport.offsetToReveal`](../drift/src/viewport/viewport.ts) in `viewport.ts` and [`Animation`](../drift/src/viewport/animator.ts)/[`Animator`](../drift/src/viewport/animator.ts) in `animator.ts`.
 
 `offsetToReveal(rectX, rectWidth)` computes the minimal scroll offset such that the given rect is fully visible, without scrolling at all if it already is:
 - If the content is narrower than the viewport, no scroll is needed.
@@ -88,7 +88,7 @@ Animating to that offset is a plain, injectable-clock interpolation, split into 
 
 ## Layout-Change Position Animation
 
-Source: [`AxisMotion`](../src/viewport/axis-motion.ts) in `axis-motion.ts`, driven by [`Strip.render`](../src/runtime/strip.ts) in `strip.ts`, sharing a `Timer` with the camera's `Animator` via [`SharedTicker`](../src/viewport/shared-ticker.ts).
+Source: [`AxisMotion`](../drift/src/viewport/axis-motion.ts) in `axis-motion.ts`, driven by [`Strip.render`](../drift/src/runtime/strip.ts) in `strip.ts`, sharing a `Timer` with the camera's `Animator` via [`SharedTicker`](../drift/src/viewport/shared-ticker.ts).
 `Strip` owns four independent `AxisMotion` instances, one per rect dimension: x, y, width, and height.
 All four are keyed by *window* id, never column id.
 A tile id is only stable within one column, since a stack move reassigns it in the target column.
@@ -116,7 +116,7 @@ It hands out independent `Timer`-shaped handles that share one real timer, start
 
 ## Align-Cycle Phase Stepping
 
-Source: [`alignOffsets`/`nextAlignStep`](../src/viewport/align-cycle.ts) in `align-cycle.ts`, driven by `Strip.cycleAlign` in [`strip.ts`](../src/runtime/strip.ts).
+Source: [`alignOffsets`/`nextAlignStep`](../drift/src/viewport/align-cycle.ts) in `align-cycle.ts`, driven by `Strip.cycleAlign` in [`strip.ts`](../drift/src/runtime/strip.ts).
 
 Pressing `cycleAlignLeft`/`cycleAlignRight` never changes which column is focused — it steps the *already-focused* column through three candidate scroll offsets that place it flush against the viewport's left edge, centered, or flush against its right edge.
 `alignOffsets(rectX, rectWidth, viewportWidth)` computes those three offsets directly from the column's rect, deliberately unclamped by content bounds (unlike `offsetToReveal`), so a column can be placed flush against either viewport edge even when the whole strip already fits within it.
@@ -127,7 +127,7 @@ If a column has no room to move within the viewport (`offsets.left === offsets.r
 
 ## Viewport Shift
 
-Source: `Strip.shiftViewport` in [`strip.ts`](../src/runtime/strip.ts).
+Source: `Strip.shiftViewport` in [`strip.ts`](../drift/src/runtime/strip.ts).
 
 `shiftViewportLeft`/`shiftViewportRight` pan the camera by a fixed `settings.viewportShiftStep` without touching focus or the focused column's alignment — a plain `Animator.animate` call from the current offset to `offset ± step`.
 Unlike focus-driven reveals and align-cycle, this is deliberately unclamped: the user can keep panning past either end of the content.

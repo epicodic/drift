@@ -22,72 +22,72 @@ Concepts used across Drift's source, docs, and build tooling, with a short descr
 ## Layout & Coordinates
 
 - **Virtual coordinate system** — Drift's own 1D horizontal coordinate space for column layout, independent of screen pixels.
-- **Grid** — the pure layout model: column order, width, and focus, with no notion of what is currently visible ([`src/core/grid.ts`](../src/core/grid.ts)).
+- **Grid** — the pure layout model: column order, width, and focus, with no notion of what is currently visible ([`drift/src/core/grid.ts`](../drift/src/core/grid.ts)).
 - **Origin (`originX`)** — the virtual x of the strip's leftmost column's left edge; can go negative after a left-edge resize.
-- **`columnRect` / `virtualWidth`** — pure derivations that turn column widths and gap into virtual rects and the strip's total extent ([`src/core/coordinates.ts`](../src/core/coordinates.ts)).
+- **`columnRect` / `virtualWidth`** — pure derivations that turn column widths and gap into virtual rects and the strip's total extent ([`drift/src/core/coordinates.ts`](../drift/src/core/coordinates.ts)).
 - **Resize edge** — whether a width change came from the left or right edge of a window, determined by comparing the old and new rect's `x` (`resizedEdge`).
 - **Echo** — a `frameGeometryChanged` event caused by Drift's own write, distinguished via `GeometrySync.isEcho` so it is not mistaken for a user-driven resize.
 - **Gap** — the fixed spacing kept between adjacent columns in the strip.
 
 ## Runtime & Orchestration
 
-- **Controller** — the root runtime object that composes the whole application ([`src/runtime/controller.ts`](../src/runtime/controller.ts)).
-- **Strip** — one strip: `Grid` + `Viewport` + `Animator` + `GeometrySync` + `ColumnRegistry` ([`src/runtime/strip.ts`](../src/runtime/strip.ts)).
-- **StripStack** — one or more strips for a given activity+desktop; owns strip creation/pruning and the active strip index ([`src/runtime/strip-stack.ts`](../src/runtime/strip-stack.ts)).
-- **StripManager** — creates and prunes one `StripStack` per activity+desktop pair ([`src/runtime/strip-manager.ts`](../src/runtime/strip-manager.ts)).
-- **WindowManager** — routes and reassigns each window to the `StripStack` for its current activity+desktop ([`src/runtime/window-manager.ts`](../src/runtime/window-manager.ts)).
-- **ColumnRegistry** — maps `(columnId, tileId)` pairs to the live `WindowAdapter` tiled there ([`src/runtime/column-registry.ts`](../src/runtime/column-registry.ts)).
-- **window-events** — handlers for KWin window signals (geometry changed, minimized, fullscreen) that dispatch into the grid/viewport ([`src/runtime/window-events.ts`](../src/runtime/window-events.ts)).
-- **workspace-signals** — registers workspace-level KWin signal listeners such as `windowAdded`/`windowRemoved`/`windowActivated` ([`src/runtime/workspace-signals.ts`](../src/runtime/workspace-signals.ts)).
+- **Controller** — the root runtime object that composes the whole application ([`drift/src/runtime/controller.ts`](../drift/src/runtime/controller.ts)).
+- **Strip** — one strip: `Grid` + `Viewport` + `Animator` + `GeometrySync` + `ColumnRegistry` ([`drift/src/runtime/strip.ts`](../drift/src/runtime/strip.ts)).
+- **StripStack** — one or more strips for a given activity+desktop; owns strip creation/pruning and the active strip index ([`drift/src/runtime/strip-stack.ts`](../drift/src/runtime/strip-stack.ts)).
+- **StripManager** — creates and prunes one `StripStack` per activity+desktop pair ([`drift/src/runtime/strip-manager.ts`](../drift/src/runtime/strip-manager.ts)).
+- **WindowManager** — routes and reassigns each window to the `StripStack` for its current activity+desktop ([`drift/src/runtime/window-manager.ts`](../drift/src/runtime/window-manager.ts)).
+- **ColumnRegistry** — maps `(columnId, tileId)` pairs to the live `WindowAdapter` tiled there ([`drift/src/runtime/column-registry.ts`](../drift/src/runtime/column-registry.ts)).
+- **window-events** — handlers for KWin window signals (geometry changed, minimized, fullscreen) that dispatch into the grid/viewport ([`drift/src/runtime/window-events.ts`](../drift/src/runtime/window-events.ts)).
+- **workspace-signals** — registers workspace-level KWin signal listeners such as `windowAdded`/`windowRemoved`/`windowActivated` ([`drift/src/runtime/workspace-signals.ts`](../drift/src/runtime/workspace-signals.ts)).
 
 ## Viewport & Animation
 
-- **Viewport** — a pure "camera": tracks the current scroll offset and visible/content width, never the layout itself ([`src/viewport/viewport.ts`](../src/viewport/viewport.ts)).
+- **Viewport** — a pure "camera": tracks the current scroll offset and visible/content width, never the layout itself ([`drift/src/viewport/viewport.ts`](../drift/src/viewport/viewport.ts)).
 - **`offsetToReveal`** — computes the minimal scroll offset that brings a given rect fully into view.
-- **Animator / Animation** — drives an eased, clock-driven interpolation from a current offset to a target offset ([`src/viewport/animator.ts`](../src/viewport/animator.ts)).
+- **Animator / Animation** — drives an eased, clock-driven interpolation from a current offset to a target offset ([`drift/src/viewport/animator.ts`](../drift/src/viewport/animator.ts)).
 - **`easeOutCubic`** — the default easing function: a fast start with a gentle settle.
-- **AxisMotion** — animates a value (a column's real x, or a tile's real y/height) from wherever it currently sits to its new logical value whenever the layout changes for a reason other than the user actively dragging or resizing it; `Strip` owns three independent instances, keyed by column id (x) or window id (y, height) ([`src/viewport/axis-motion.ts`](../src/viewport/axis-motion.ts)).
-- **SharedTicker** — hands out independent `Timer`-shaped handles that share one real timer, so the camera pan and per-column/per-tile motions can tick independently ([`src/viewport/shared-ticker.ts`](../src/viewport/shared-ticker.ts)).
-- **EdgeDwell** — detects the pointer held past a screen edge (or other identified zone) for a dwell period and fires once, used for strip-flip during cross-strip drag and for drag-to-stack ([`src/viewport/edge-dwell.ts`](../src/viewport/edge-dwell.ts)).
-- **`alignOffsets` / `nextAlignStep`** — computes the three align-cycle candidate offsets and steps between them ([`src/viewport/align-cycle.ts`](../src/viewport/align-cycle.ts)).
+- **AxisMotion** — animates a value (a column's real x, or a tile's real y/height) from wherever it currently sits to its new logical value whenever the layout changes for a reason other than the user actively dragging or resizing it; `Strip` owns three independent instances, keyed by column id (x) or window id (y, height) ([`drift/src/viewport/axis-motion.ts`](../drift/src/viewport/axis-motion.ts)).
+- **SharedTicker** — hands out independent `Timer`-shaped handles that share one real timer, so the camera pan and per-column/per-tile motions can tick independently ([`drift/src/viewport/shared-ticker.ts`](../drift/src/viewport/shared-ticker.ts)).
+- **EdgeDwell** — detects the pointer held past a screen edge (or other identified zone) for a dwell period and fires once, used for strip-flip during cross-strip drag and for drag-to-stack ([`drift/src/viewport/edge-dwell.ts`](../drift/src/viewport/edge-dwell.ts)).
+- **`alignOffsets` / `nextAlignStep`** — computes the three align-cycle candidate offsets and steps between them ([`drift/src/viewport/align-cycle.ts`](../drift/src/viewport/align-cycle.ts)).
 
 ## Input Handling
 
-- **Shortcuts** — global keybindings wired to grid/viewport actions via a QML `ShortcutHandler` ([`src/input/shortcuts.ts`](../src/input/shortcuts.ts)).
-- **Drag reorder** (`registerDragReorder`) — converts a dragged window's own edges to virtual x and asks `Grid.insertionIndexForEdges` whether it should swap with a neighbor past `reorderThresholdFraction` ([`src/input/drag.ts`](../src/input/drag.ts)).
-- **Stack hover** (`resolveStackTarget`) — pure geometry that picks which candidate tile (same-column sibling or neighbor's tile) a drag is aimed at, and above/below it, from horizontal rect overlap and a band on the dragged window's own top-left corner ([`src/input/drag-hover.ts`](../src/input/drag-hover.ts)).
+- **Shortcuts** — global keybindings wired to grid/viewport actions via a QML `ShortcutHandler` ([`drift/src/input/shortcuts.ts`](../drift/src/input/shortcuts.ts)).
+- **Drag reorder** (`registerDragReorder`) — converts a dragged window's own edges to virtual x and asks `Grid.insertionIndexForEdges` whether it should swap with a neighbor past `reorderThresholdFraction` ([`drift/src/input/drag.ts`](../drift/src/input/drag.ts)).
+- **Stack hover** (`resolveStackTarget`) — pure geometry that picks which candidate tile (same-column sibling or neighbor's tile) a drag is aimed at, and above/below it, from horizontal rect overlap and a band on the dragged window's own top-left corner ([`drift/src/input/drag-hover.ts`](../drift/src/input/drag-hover.ts)).
 
 ## KWin & Plasma Integration
 
 - **KWin script** — the plain KWin scripting mechanism Drift runs as, alongside the compositor rather than replacing it.
 - **declarativescript** — the KWin script type (`X-Plasma-API`) that hosts the script's logic inside a QML root, giving access to `Timer`/`ShortcutHandler`/`PlasmaCore.Dialog`.
-- **WindowAdapter** — the only code that wraps a live KWin `Window` ([`src/kwin/window-adapter.ts`](../src/kwin/window-adapter.ts)).
-- **WorkspaceAdapter** — wraps the live KWin `Workspace` global ([`src/kwin/workspace-adapter.ts`](../src/kwin/workspace-adapter.ts)).
-- **GeometrySync** — converts virtual rects to real screen geometry and writes them via `WindowAdapter`, tracking echoes ([`src/kwin/geometry-sync.ts`](../src/kwin/geometry-sync.ts)).
+- **WindowAdapter** — the only code that wraps a live KWin `Window` ([`drift/src/kwin/window-adapter.ts`](../drift/src/kwin/window-adapter.ts)).
+- **WorkspaceAdapter** — wraps the live KWin `Workspace` global ([`drift/src/kwin/workspace-adapter.ts`](../drift/src/kwin/workspace-adapter.ts)).
+- **GeometrySync** — converts virtual rects to real screen geometry and writes them via `WindowAdapter`, tracking echoes ([`drift/src/kwin/geometry-sync.ts`](../drift/src/kwin/geometry-sync.ts)).
 - **`toRealRect` / `toVirtualX`** — pure conversions between virtual layout coordinates and real screen coordinates.
 - **`qmlBase` / `QmlObject`** — the QML root `Item` exposed to the bundle's JS, used as the parent for dynamically created QML objects (`Timer`, `ShortcutHandler`, `Dialog`).
 - **Timer** — a QML `Timer` wrapped behind a small interface, since KWin's `QJSEngine` has no native `setTimeout`/`setInterval`.
 
 ## Debugging & UI
 
-- **Debug console** — an on-screen `PlasmaCore.Dialog` overlay showing the live layout/camera state ([`src/kwin/debug-console.ts`](../src/kwin/debug-console.ts)).
-- **Minimap** — an overview visualization of all columns, tiles, strips, and the current viewport ([`src/ui/minimap.ts`](../src/ui/minimap.ts), [`src/kwin/minimap-overlay.ts`](../src/kwin/minimap-overlay.ts)).
-- **Focus-flash** — a brief glow that hugs the newly-focused window's edge on every focus change, driven by a sinusoidal opacity envelope (`flashOpacity` in [`src/ui/focus-flash.ts`](../src/ui/focus-flash.ts)) and rendered by a custom SDF fragment shader ([`src/kwin/focus-flash-overlay.ts`](../src/kwin/focus-flash-overlay.ts), [`drift/contents/shaders/focus_glow.frag`](../drift/contents/shaders/focus_glow.frag)).
+- **Debug console** — an on-screen `PlasmaCore.Dialog` overlay showing the live layout/camera state ([`drift/src/kwin/debug-console.ts`](../drift/src/kwin/debug-console.ts)).
+- **Minimap** — an overview visualization of all columns, tiles, strips, and the current viewport ([`drift/src/ui/minimap.ts`](../drift/src/ui/minimap.ts), [`drift/src/kwin/minimap-overlay.ts`](../drift/src/kwin/minimap-overlay.ts)).
+- **Focus-flash** — a brief glow that hugs the newly-focused window's edge on every focus change, driven by a sinusoidal opacity envelope (`flashOpacity` in [`drift/src/ui/focus-flash.ts`](../drift/src/ui/focus-flash.ts)) and rendered by a custom SDF fragment shader ([`drift/src/kwin/focus-flash-overlay.ts`](../drift/src/kwin/focus-flash-overlay.ts), [`drift/shaders/focus_glow.frag`](../drift/shaders/focus_glow.frag)).
 - **SDF (signed distance field)** — a shading technique that computes each pixel's distance to a shape's outline rather than sampling/blurring a texture; used by the focus-flash glow so its alpha falls off smoothly from the inside edge without ever blurring (and hue-shifting) actual pixel color.
-- **Snapshot** (`debugRows`/`debugCamera`) — builds the plain data fed into the debug console and minimap from the live `Grid`/`Viewport` ([`src/debug/snapshot.ts`](../src/debug/snapshot.ts)).
-- **Debug sink** — a pluggable output channel for `debug()`/`setDebugState()` log lines ([`src/debug.ts`](../src/debug.ts)).
+- **Snapshot** (`debugRows`/`debugCamera`) — builds the plain data fed into the debug console and minimap from the live `Grid`/`Viewport` ([`drift/src/debug/snapshot.ts`](../drift/src/debug/snapshot.ts)).
+- **Debug sink** — a pluggable output channel for `debug()`/`setDebugState()` log lines ([`drift/src/debug.ts`](../drift/src/debug.ts)).
 
 ## Configuration
 
-- **Settings** — the typed configuration object with defaults, loaded from `kwinrc` via `KWin.readConfig` ([`src/config/settings.ts`](../src/config/settings.ts)).
+- **Settings** — the typed configuration object with defaults, loaded from `kwinrc` via `KWin.readConfig` ([`drift/src/config/settings.ts`](../drift/src/config/settings.ts)).
 - **KConfigXT** — KDE's declarative config-schema mechanism (`config/main.xml` + `ui/config.ui`) that powers the script's "Configure..." dialog in System Settings.
 
 ## Build & Tooling
 
 - **Rollup** — bundles the TypeScript/JavaScript sources into the single plain script (`main.js`) that KWin's `QJSEngine` can load (`rollup.config.mjs`).
-- **Vitest** — the test runner for the JavaScript/TypeScript test suite (`npm test`).
-- **ESLint / Prettier** — JavaScript/TypeScript lint and formatting tools (`npm run lint`).
-- **qmllint** — validates the QML sources as part of `npm run lint`.
+- **Vitest** — the test runner for the JavaScript/TypeScript test suite (`make test`).
+- **ESLint / Prettier** — JavaScript/TypeScript lint and formatting tools (`make lint`).
+- **qmllint** — validates the QML sources as part of `make lint`.
 - **kpackagetool6** — installs or upgrades the built script as a KWin script package (`make install`).
 - **metadata.json** — the KWin script package manifest: name, API type, main QML file, and minimum Plasma version.
 
