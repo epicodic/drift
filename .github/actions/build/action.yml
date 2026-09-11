@@ -1,0 +1,10 @@
+name: Build
+description: Install Qt6/KWin build tooling and run `make build`.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/setup-toolchain
+
+    - name: make build
+      shell: bash
+      run: make build

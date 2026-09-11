@@ -91,11 +91,10 @@ uninstall:
 	kpackagetool6 --type=KWin/Script --remove=$(SCRIPT_NAME)
 
 package: build
-	cd $(BUILD_DIR) && zip -r ../$(SCRIPT_NAME)_$(subst .,_,$(VERSION)).kwinscript ./drift
+	cd $(BUILD_DIR) && zip -r $(SCRIPT_NAME)_$(subst .,_,$(VERSION)).kwinscript ./drift
 
 clean:
 	rm -rf $(BUILD_DIR)
-	rm -f ./drift_*.kwinscript
 	rm -f $(NPM_INSTALL_STAMP)
 
 enable:
