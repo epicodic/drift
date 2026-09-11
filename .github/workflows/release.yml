@@ -16,4 +16,4 @@ jobs:
       - name: Attach package to release
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" drift_*.kwinscript --clobber
+        run: gh release upload "${{ github.event.release.tag_name }}" .build/drift_*.kwinscript --clobber
