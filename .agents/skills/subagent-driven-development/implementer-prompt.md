@@ -76,7 +76,7 @@ Task tool (general-purpose):
     - [ ] C++ checks completed where applicable:
     - [ ] TypeScript, JavaScript, and QML checks completed where applicable:
       - [ ] Changed addon files follow `docs/coding-conventions.md`
-      - [ ] `npm run lint` passes, including QML validation with `qmllint`
+      - [ ] `make lint` passes, including QML validation with `qmllint`
     - [ ] Python checks completed where applicable:
       - [ ] Changed Python functions, variables, classes, and private members follow project naming conventions
       - [ ] All changed Python function signatures and returns are fully type-annotated
