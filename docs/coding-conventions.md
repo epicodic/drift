@@ -53,9 +53,9 @@ Use Ruff for formatting and linting, `ty` for type checking, and `uv` for enviro
 
 ## Tooling
 
-Use `npm run build` to build the TypeScript, JavaScript, and QML addon package.
-Use `npm test` to run the JavaScript and TypeScript test suite.
-Use `npm run lint` to run JavaScript, TypeScript, and QML quality checks, including `qmllint`.
+Use `make build` to build the TypeScript, JavaScript, and QML addon package.
+Use `make test` to run the JavaScript and TypeScript test suite.
+Use `make lint` to run JavaScript, TypeScript, and QML quality checks, including `qmllint`.
 Use `uv build` to build Python packages when Python tooling is present.
 Use `uv run pytest` to run Python tests.
 Use `uv run ruff check .`, `uv run ruff format --check .`, and `uv run ty check .` for Python quality checks.

@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-shader_dir="${script_dir}/drift/contents/shaders"
+if [[ $# -ne 2 ]]; then
+    echo "usage: $(basename "$0") <input.frag> <output.frag.qsb>" >&2
+    exit 1
+fi
+
+frag_in="$1"
+qsb_out="$2"
 
 # Known Qt6 install locations are checked BEFORE bare `qsb` on PATH: on Debian/Ubuntu-family
 # systems `qsb` on PATH is a qtchooser wrapper that can silently resolve to a missing Qt5
@@ -27,6 +32,6 @@ if ! qsb_bin="$(find_qsb)"; then
     exit 1
 fi
 
-"${qsb_bin}" --glsl "150,120,100es" --hlsl 50 --msl 12 -b -o \
-    "${shader_dir}/focus_glow.frag.qsb" \
-    "${shader_dir}/focus_glow.frag"
+mkdir -p "$(dirname "${qsb_out}")"
+
+"${qsb_bin}" --glsl "150,120,100es" --hlsl 50 --msl 12 -b -o "${qsb_out}" "${frag_in}"

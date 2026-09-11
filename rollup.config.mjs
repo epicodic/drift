@@ -10,7 +10,7 @@ function typescriptPlugin() {
     });
 }
 
-// The QML host (contents/ui/main.qml) imports this bundle and calls
+// The QML host (.build/drift/contents/ui/main.qml) imports this bundle and calls
 // `Drift.init(root, scriptUiDirUrl)` (docs §6.2). Rollup wraps the src/ module tree in
 // an IIFE assigned to `DriftBundle`; the footer re-exposes `init` as a top-level
 // function declaration, which is the form QML reliably exposes to `import "..." as
@@ -19,9 +19,9 @@ function typescriptPlugin() {
 // silently dropped otherwise (confirmed live: this shim previously only declared
 // `root`, silently discarding `scriptUiDirUrl`).
 const mainBundle = {
-    input: 'src/main.ts',
+    input: 'drift/src/main.ts',
     output: {
-        file: 'drift/contents/code/main.js',
+        file: '.build/drift/contents/code/main.js',
         format: 'iife',
         name: 'DriftBundle',
         footer: 'function init(root, scriptUiDirUrl) { return DriftBundle.init(root, scriptUiDirUrl); }',
@@ -29,10 +29,10 @@ const mainBundle = {
     plugins: [typescriptPlugin()],
 };
 
-// Prints drift/contents/config/main.xml's content to stdout when run with `node`; `npm run
-// generate:config` redirects it into the file (docs/agents/specs/2026-09-06-settings-consolidation-design.md).
+// Prints .build/drift/contents/config/main.xml's content to stdout when run with `node`;
+// the Makefile's main.xml rule redirects it into the file (docs/agents/specs/2026-09-06-settings-consolidation-design.md).
 const generateMainXmlBundle = {
-    input: 'src/config/generate-main-xml.ts',
+    input: 'drift/src/config/generate-main-xml.ts',
     output: {
         file: '.build/generate-main-xml.cjs',
         format: 'cjs',
@@ -40,11 +40,11 @@ const generateMainXmlBundle = {
     plugins: [typescriptPlugin()],
 };
 
-// Prints the DRIFT_BINDINGS data block to stdout when run with `node`; `npm run
-// generate:config` redirects it into drift/contents/bin/shortcut-bindings.generated.sh,
+// Prints the DRIFT_BINDINGS data block to stdout when run with `node`; the Makefile's
+// shortcut-bindings rule redirects it into .build/drift/contents/bin/shortcut-bindings.generated.sh,
 // which setup-shortcuts.sh sources.
 const generateShortcutBindingsBundle = {
-    input: 'src/config/generate-shortcut-bindings.ts',
+    input: 'drift/src/config/generate-shortcut-bindings.ts',
     output: {
         file: '.build/generate-shortcut-bindings.cjs',
         format: 'cjs',

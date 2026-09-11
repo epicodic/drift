@@ -5,20 +5,12 @@ import globals from 'globals';
 
 export default tseslint.config(
     {
-        ignores: [
-            'drift/contents/code/main.js',
-            '.build/**',
-            'node_modules/**',
-            '.agents/**',
-            '.serena/**',
-            '.github/**',
-            '_playground/**',
-        ],
+        ignores: ['.build/**', 'node_modules/**', '.agents/**', '.serena/**', '.github/**', '_playground/**'],
     },
     js.configs.recommended,
     ...tseslint.configs.recommended,
     {
-        files: ['src/**/*.ts'],
+        files: ['drift/src/**/*.ts'],
         languageOptions: {
             parserOptions: {
                 project: './tsconfig.json',
@@ -29,8 +21,8 @@ export default tseslint.config(
         // KWin's declarativescript JS engine rejects spread syntax and optional catch bindings
         // at parse time (SyntaxError, whole script fails to load). Bundled sources must never
         // emit either.
-        files: ['src/**/*.ts'],
-        ignores: ['src/**/*.test.ts'],
+        files: ['drift/src/**/*.ts'],
+        ignores: ['drift/src/**/*.test.ts'],
         rules: {
             'no-restricted-syntax': [
                 'error',
