@@ -13,7 +13,7 @@
         "pretest": "rollup -c && npm run generate:config",
         "test": "vitest run",
         "test:watch": "vitest",
-        "lint": "eslint . && prettier --check . && qmllint drift/contents/ui/main.qml",
+        "lint": "eslint . && prettier --check . && npm run pretest && qmllint drift/contents/ui/main.qml",
         "lint:fix": "eslint . --fix && prettier --write .",
         "package:install": "npm run build && (kpackagetool6 --type=KWin/Script --install=./drift || kpackagetool6 --type=KWin/Script --upgrade=./drift)",
         "package:remove": "kpackagetool6 --type=KWin/Script --remove=drift"
