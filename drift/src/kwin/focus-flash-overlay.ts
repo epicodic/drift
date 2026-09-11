@@ -29,7 +29,7 @@ PlasmaCore.Dialog {
         implicitWidth: dialog.width
         implicitHeight: dialog.height
         // Solid highlight color; the shader turns it into an inward-only glow hugging the
-        // window edge (see drift/contents/shaders/focus_glow.frag), so the hue can never
+        // window edge (see drift/shaders/focus_glow.frag), so the hue can never
         // fringe toward black the way a blurred-then-masked stroke did.
         property color glowColor: Kirigami.Theme.highlightColor
         property vector2d itemSize: Qt.vector2d(width, height)

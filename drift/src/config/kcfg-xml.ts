@@ -1,4 +1,4 @@
-// Builds drift/contents/config/main.xml's content from SETTINGS_DEFINITIONS. Pure and
+// Builds .build/drift/contents/config/main.xml's content from SETTINGS_DEFINITIONS. Pure and
 // side-effect-free so it's directly unit-testable; generate-main-xml.ts is the thin
 // script wrapper that actually prints this to stdout for the build.
 
