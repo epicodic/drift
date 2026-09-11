@@ -3,20 +3,7 @@ description: Install Qt6/KWin build tooling and run `make package`.
 runs:
   using: composite
   steps:
-    - uses: actions/setup-node@v6
-      with:
-        node-version: 20
-        cache: npm
-
-    - name: Install Qt6 build tools
-      shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y qml6-module-qtquick qt6-declarative-dev qt6-declarative-dev-tools qt6-shader-baker zip
-
-    - name: Prefer Qt6 tools over the qtchooser wrapper
-      shell: bash
-      run: echo "/usr/lib/qt6/bin" >> "$GITHUB_PATH"
+    - uses: ./.github/actions/setup-toolchain
 
     - name: make package
       shell: bash
