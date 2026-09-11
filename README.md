@@ -180,9 +180,9 @@ Pull requests welcome.
 Start with [docs/development.md](docs/development.md) for the build/test/lint workflow and [docs/coding-conventions.md](docs/coding-conventions.md) for style.
 
 ```sh
-npm run build      # bundle the addon
-npm test           # run the TypeScript/JavaScript test suite
-npm run lint       # ESLint + Prettier + qmllint
+make build         # lint, test, and assemble the addon package
+make test          # run the TypeScript/JavaScript test suite
+make lint          # ESLint + Prettier + qmllint
 ```
 
 Curious how the pieces fit together?

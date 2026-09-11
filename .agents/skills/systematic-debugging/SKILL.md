@@ -92,10 +92,10 @@ You MUST complete each phase before proceeding to the next.
    npm install
 
    # Layer 2: Does the build succeed before running tests?
-   npm run build
+   make build
 
    # Layer 3: Does the JavaScript/TypeScript test suite run?
-   npm test
+   make test
 
    # Layer 4: Isolate a Python test when Python tooling is involved
    uv run pytest tests/component/test_component.py::test_specific_case -v

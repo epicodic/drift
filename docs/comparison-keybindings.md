@@ -83,4 +83,4 @@ Empty cells mean the project has no equivalent (by design, or not yet built).
 - [Niri "Getting Started" default hotkeys](https://github.com/YaLTeR/niri/wiki/Getting-Started) (fetched 2026-09-02) — default keybindings section.
 - [PaperWM README, Usage section](https://github.com/paperwm/PaperWM#usage) (fetched 2026-09-02) — default keybindings table.
 - [Karousel README, Key bindings section](https://github.com/peterfajdiga/karousel#key-bindings) (fetched 2026-09-02) — default keybindings table.
-- Drift's own defaults: [`src/config/settings.ts`](../src/config/settings.ts), [`src/input/shortcuts.ts`](../src/input/shortcuts.ts).
+- Drift's own defaults: [`drift/src/config/settings.ts`](../drift/src/config/settings.ts), [`drift/src/input/shortcuts.ts`](../drift/src/input/shortcuts.ts).

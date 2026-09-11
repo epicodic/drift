@@ -1,6 +1,6 @@
 _playground/
 node_modules/
-drift/contents/
+.build/
 .agents/
 .serena/
 .github/

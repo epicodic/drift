@@ -17,10 +17,12 @@ and as `CLAUDE.md` via symlink for Claude Code.
 ## Build & Test
 
 This repository targets a KDE Plasma 6 / KWin addon.
-Use npm for the TypeScript, JavaScript, and QML package.
-Use `npm run build` to build the addon package.
-Use `npm test` to run the JavaScript and TypeScript tests.
-Use `npm run lint` to run JavaScript, TypeScript, and QML checks, including `qmllint`.
+Use Make for the TypeScript, JavaScript, and QML package — it owns build orchestration with real file-based dependency tracking; `package.json` holds only metadata and devDependencies.
+Use `make build` to lint, test, and assemble the addon package into `.build/drift`.
+Use `make test` to run the JavaScript and TypeScript tests.
+Use `make lint` to run JavaScript, TypeScript, and QML checks, including `qmllint`.
+Source lives entirely under `drift/` (`drift/src` for TypeScript, `drift/ui`, `drift/shaders`, `drift/bin` for QML/shader/shell sources); `.build/` holds only generated output and is never committed.
+Grouped Makefile targets require GNU Make 4.3 or newer.
 Use uv for optional Python tooling.
 Use `uv build` to build Python packages, `uv run pytest` to run Python tests, and `uv run ruff check . && uv run ruff format --check . && uv run ty check .` for Python quality checks.
 

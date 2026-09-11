@@ -1,8 +1,4 @@
 .serena/
 _playground/
 node_modules/
-drift/contents/code/main.js
-drift/contents/shaders/*.qsb
-drift/contents/config/main.xml
-drift/contents/bin/shortcut-bindings.generated.sh
 .build/
