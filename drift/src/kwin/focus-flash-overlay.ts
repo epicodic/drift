@@ -16,6 +16,11 @@ PlasmaCore.Dialog {
     id: dialog
     property real borderWidth: 4
     property real blurRadius: 24
+    // Fixed cosmetic values, not user-configurable (matches sharpness/glowColor below):
+    // cornerRadius rounds the glow's edge to match typical window rounding, and bleedRadius
+    // is both how far the dialog is padded outward and how far the glow fades past the edge.
+    property real cornerRadius: 32
+    property real bleedRadius: 32
     title: "${FOCUS_FLASH_OVERLAY_WINDOW_TITLE}"
     type: PlasmaCore.Dialog.OnScreenDisplay
     backgroundHints: PlasmaCore.Types.NoBackground
@@ -28,15 +33,16 @@ PlasmaCore.Dialog {
         height: dialog.height
         implicitWidth: dialog.width
         implicitHeight: dialog.height
-        // Solid highlight color; the shader turns it into an inward-only glow hugging the
-        // window edge (see drift/shaders/focus_glow.frag), so the hue can never
-        // fringe toward black the way a blurred-then-masked stroke did.
+        // Solid highlight color; the shader turns it into a glow hugging the window edge from
+        // both sides (see drift/shaders/focus_glow.frag), so the hue can never fringe
+        // toward black the way a blurred-then-masked stroke did.
         property color glowColor: Kirigami.Theme.highlightColor
         property vector2d itemSize: Qt.vector2d(width, height)
         property real coreHalf: dialog.borderWidth * 0.5
         property real glow: dialog.blurRadius
-        property real radius: 0
+        property real radius: dialog.cornerRadius
         property real sharpness: 2.0
+        property real bleed: dialog.bleedRadius
         fragmentShader: Qt.resolvedUrl("../shaders/focus_glow.frag.qsb")
     }
 }`;
@@ -79,10 +85,11 @@ export function createFocusFlashOverlay(
                 const elapsed = Date.now() - startedAt;
                 try {
                     const frame = win.frameGeometry();
-                    dialog.x = Math.round(frame.x);
-                    dialog.y = Math.round(frame.y);
-                    dialog.width = Math.round(frame.width);
-                    dialog.height = Math.round(frame.height);
+                    const bleed = dialog.bleedRadius;
+                    dialog.x = Math.round(frame.x - bleed);
+                    dialog.y = Math.round(frame.y - bleed);
+                    dialog.width = Math.round(frame.width + bleed * 2);
+                    dialog.height = Math.round(frame.height + bleed * 2);
                     dialog.opacity = flashOpacity(elapsed, durationMs) * peakOpacity;
                 } catch (error) {
                     // The window can be closed mid-flash — never let that take down the timer.
