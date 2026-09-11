@@ -134,8 +134,8 @@ Vague name, tests mock not code
 
 ```bash
 # TypeScript/JavaScript/QML
-npm run build
-npm test
+make build
+make test
 
 # Python (pytest)
 uv run pytest tests/path/test_module.py::test_specific_behavior -v
