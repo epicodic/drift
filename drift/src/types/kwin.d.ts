@@ -186,6 +186,7 @@ interface QmlMinimapDialog extends QmlObject {
 interface QmlFocusFlashDialog extends QmlObject {
     borderWidth: number;
     blurRadius: number;
+    bleedRadius: number;
     x: number;
     y: number;
     width: number;
