@@ -126,12 +126,22 @@ export interface Settings {
      * between the dragged window and a candidate tile before that tile is considered for
      * stacking at all (docs: 2026-09-07-drag-reorder-stack-refinement-design). */
     stackOverlapFraction: number;
-    /** Whether an almost-purely-horizontal drag pans the viewport instead of reordering the
-     * dragged window's column (docs: 2026-09-10-drag-viewport-pan-design). */
+    /** Whether dragging a window defaults to panning the viewport instead of immediately
+     * reordering/stacking (docs: 2026-09-12-drag-pan-dwell-design). `false` disables panning
+     * and the dwell-to-free gesture entirely — dragging behaves exactly as it would without
+     * this feature. */
     dragPanEnabled: boolean;
-    /** Cumulative vertical drag movement, in pixels, at which drag-pan fades to 0 and today's
-     * reorder/stack behavior takes over fully (docs: 2026-09-10-drag-viewport-pan-design). */
-    dragPanVerticalTolerancePx: number;
+    /** Cumulative vertical drag movement, in pixels, before a hold-to-free gesture can start
+     * counting at all (docs: 2026-09-12-drag-pan-dwell-design). */
+    dragPanVerticalTriggerPx: number;
+    /** Horizontal drift, in pixels, allowed since a hold-to-free gesture started before it's
+     * canceled (docs: 2026-09-12-drag-pan-dwell-design) — measured cumulatively from where the
+     * hold began, not per tick, so ordinary hand tremor doesn't cancel it. */
+    dragPanHorizontalTolerancePx: number;
+    /** How long a hold-to-free gesture must be sustained before the drag is freed from pan mode
+     * into today's normal reorder/stack/cross-strip-drag behavior, in milliseconds (docs:
+     * 2026-09-12-drag-pan-dwell-design). */
+    dragPanFreeDwellMs: number;
     /** How long the minimap overlay stays visible after the last focus-step press, in milliseconds. */
     minimapAutoHideMs: number;
     /** Whether the minimap's column boxes show a live preview of each window's content

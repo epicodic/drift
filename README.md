@@ -178,6 +178,7 @@ Drift isn't the first take on scrollable tiling — it borrows ideas from severa
 
 Pull requests welcome.
 Start with [docs/development.md](docs/development.md) for the build/test/lint workflow and [docs/coding-conventions.md](docs/coding-conventions.md) for style.
+[docs/known_bugs.md](docs/known_bugs.md) tracks bugs that are known but not yet root-caused or fixed.
 
 ```sh
 make build         # lint, test, and assemble the addon package

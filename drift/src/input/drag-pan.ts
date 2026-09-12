@@ -1,12 +1,16 @@
-// Pure geometry: whether a drag's horizontal movement should pan the viewport instead of
-// being left as real (reorder/stack-triggering) movement — the single mechanism shared by
-// every drag, no KWin/Grid/Viewport dependency (docs: 2026-09-10-drag-viewport-pan-design).
+// Pure geometry: whether a drag's current vertical pull and horizontal drift still qualify as
+// "holding" for the dwell-to-free gesture — the single mechanism shared by every drag, no
+// KWin/Grid/Viewport dependency (docs: 2026-09-12-drag-pan-dwell-design).
 
-/** Hard-threshold gate for whether this tick's horizontal drag movement should pan the
- * viewport rather than move the window's virtual position: `true` (pan) while cumulative
- * vertical drag movement (`dyTotal`) stays under `tolerancePx`, `false` (today's
- * reorder/stack behavior) once it reaches or exceeds it. A non-positive `tolerancePx`
- * always returns `false`, since `dyTotal` is never negative. */
-export function dragPanShouldPan(dyTotal: number, tolerancePx: number): boolean {
-    return dyTotal < tolerancePx;
+/** Whether this tick's cumulative vertical pull and horizontal drift-since-hold-started still
+ * qualify as "holding" for the dwell-to-free gesture: true once `dyTotal` has crossed
+ * `triggerPx`, as long as drift stays within `tolerancePx`. `driftSinceHoldStartPx` is 0 for
+ * the tick that first arms the hold — there's no prior anchor yet to drift from. */
+export function dragPanHolding(
+    dyTotal: number,
+    driftSinceHoldStartPx: number,
+    triggerPx: number,
+    tolerancePx: number,
+): boolean {
+    return dyTotal >= triggerPx && Math.abs(driftSinceHoldStartPx) <= tolerancePx;
 }

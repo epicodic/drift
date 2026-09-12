@@ -17,7 +17,7 @@ import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import { combineStripStackSnapshot, type StripStackMinimapSnapshot } from '../ui/minimap';
 import { Animator, type Timer } from '../viewport/animator';
-import { EdgeDwell } from '../viewport/edge-dwell';
+import { DwellTimer } from '../utils/dwell-timer';
 import { ANIMATION_TICK_MS, SharedTicker } from '../viewport/shared-ticker';
 import { Strip, type StripDragHooks } from './strip';
 
@@ -32,7 +32,7 @@ export class StripStack {
     private transitionStrips: [number, number] = [0, 0];
     private transitionExcludeWindowId: string | undefined;
     private cameraY = 0;
-    private edgeDwell: EdgeDwell<EdgeDirection> | null = null;
+    private edgeDwell: DwellTimer<EdgeDirection> | null = null;
     private draggedWindowId: string | null = null;
 
     constructor(
@@ -331,7 +331,7 @@ export class StripStack {
 
     private moveFocusedWindowToStrip(
         targetIndex: number,
-        options: { excludeWindowId?: string; initiallyDragging?: boolean } = {},
+        options: { excludeWindowId?: string; initiallyDragging?: boolean; initiallyFreed?: boolean } = {},
     ): void {
         const windows = this.requireStrip(this.activeStripIndex).detachFocusedColumn();
         this.addWindowsToStrip(windows, targetIndex, options);
@@ -351,7 +351,7 @@ export class StripStack {
     private addWindowsToStrip(
         windows: WindowAdapter[],
         targetIndex: number,
-        options: { excludeWindowId?: string; initiallyDragging?: boolean } = {},
+        options: { excludeWindowId?: string; initiallyDragging?: boolean; initiallyFreed?: boolean } = {},
     ): void {
         if (windows.length === 0) {
             return;
@@ -368,9 +368,19 @@ export class StripStack {
         // addWindowStack; the single-window case keeps using addWindow directly (equivalent,
         // but matches the far more common call shape 1:1).
         if (windows.length === 1) {
-            targetStrip.addWindow(windows[0], options.initiallyDragging ?? false, this.stripDragHooks());
+            targetStrip.addWindow(
+                windows[0],
+                options.initiallyDragging ?? false,
+                this.stripDragHooks(),
+                options.initiallyFreed ?? false,
+            );
         } else {
-            targetStrip.addWindowStack(windows, options.initiallyDragging ?? false, this.stripDragHooks());
+            targetStrip.addWindowStack(
+                windows,
+                options.initiallyDragging ?? false,
+                this.stripDragHooks(),
+                options.initiallyFreed ?? false,
+            );
         }
         for (const win of windows) {
             this.stripByWindow.set(win.id, targetIndex);
@@ -402,7 +412,7 @@ export class StripStack {
     private beginEdgeWatch(win: WindowAdapter): void {
         this.edgeDwell?.stop();
         this.draggedWindowId = win.id;
-        this.edgeDwell = new EdgeDwell<EdgeDirection>(
+        this.edgeDwell = new DwellTimer<EdgeDirection>(
             this.ticker.subscribe(),
             () => Date.now(),
             ANIMATION_TICK_MS,
@@ -441,7 +451,18 @@ export class StripStack {
             return;
         }
         const targetIndex = direction === 'above' ? this.activeStripIndex - 1 : this.activeStripIndex + 1;
-        this.moveFocusedWindowToStrip(targetIndex, { excludeWindowId: this.draggedWindowId, initiallyDragging: true });
+        // updateEdgeWatch — the only thing that can ever lead here — is only forwarded to at all
+        // once either `dragPanEnabled` is off (drag.ts gates onDragTick on `!deps.dragPanEnabled
+        // || freed`) or the drag is already freed. In the first case `freed`'s value never
+        // affects behavior anyway (drag.ts's pin gate is `dragPanEnabled && !freed`, which never
+        // pins when `dragPanEnabled` is off) — so initiallyFreed: true is safe here
+        // unconditionally, not just a default, whichever disjunct got us here (docs:
+        // 2026-09-12-drag-pan-dwell-design).
+        this.moveFocusedWindowToStrip(targetIndex, {
+            excludeWindowId: this.draggedWindowId,
+            initiallyDragging: true,
+            initiallyFreed: true,
+        });
     }
 
     private requireStrip(index: number): Strip {

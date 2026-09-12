@@ -26,7 +26,7 @@ import {
 } from '../viewport/align-cycle';
 import { Animator, type Timer } from '../viewport/animator';
 import { AxisMotion } from '../viewport/axis-motion';
-import { EdgeDwell } from '../viewport/edge-dwell';
+import { DwellTimer } from '../utils/dwell-timer';
 import { ANIMATION_TICK_MS, SharedTicker } from '../viewport/shared-ticker';
 import { Viewport } from '../viewport/viewport';
 import { ColumnRegistry, type TileLocation } from './column-registry';
@@ -364,10 +364,15 @@ export class Strip {
         return buildMinimapSnapshot(this.grid, this.viewport, this.registry, this.animator.targetOffset());
     }
 
-    addWindow(win: WindowAdapter, initiallyDragging = false, stripDragHooks?: StripDragHooks): void {
+    addWindow(
+        win: WindowAdapter,
+        initiallyDragging = false,
+        stripDragHooks?: StripDragHooks,
+        initiallyFreed = false,
+    ): void {
         const width = Math.round(win.frameGeometry().width) || this.settings.defaultColumnWidth;
         const column = this.grid.addColumn(width);
-        this.wireTile(win, column, column.focusedTileId, initiallyDragging, stripDragHooks);
+        this.wireTile(win, column, column.focusedTileId, initiallyDragging, stripDragHooks, initiallyFreed);
         this.render(initiallyDragging ? win.id : undefined);
         // A mid-drag add skips revealFocused(): Grid.addColumn always focuses the new column,
         // and if this strip's content already overflows the viewport, revealFocused() would kick
@@ -384,17 +389,22 @@ export class Strip {
      * `addWindow` for re-adding an already-stacked column elsewhere (e.g. a cross-strip move),
      * so the stack survives intact instead of splitting into separate columns. No-op for an
      * empty array. */
-    addWindowStack(windows: WindowAdapter[], initiallyDragging = false, stripDragHooks?: StripDragHooks): void {
+    addWindowStack(
+        windows: WindowAdapter[],
+        initiallyDragging = false,
+        stripDragHooks?: StripDragHooks,
+        initiallyFreed = false,
+    ): void {
         const [first, ...rest] = windows;
         if (first === undefined) {
             return;
         }
         const width = Math.round(first.frameGeometry().width) || this.settings.defaultColumnWidth;
         const column = this.grid.addColumn(width);
-        this.wireTile(first, column, column.focusedTileId, initiallyDragging, stripDragHooks);
+        this.wireTile(first, column, column.focusedTileId, initiallyDragging, stripDragHooks, initiallyFreed);
         for (const win of rest) {
             const tileId = column.addTile();
-            this.wireTile(win, column, tileId, initiallyDragging, stripDragHooks);
+            this.wireTile(win, column, tileId, initiallyDragging, stripDragHooks, initiallyFreed);
         }
         this.render(initiallyDragging ? first.id : undefined);
         // See addWindow's comment above — same rationale for skipping revealFocused() mid-drag.
@@ -412,6 +422,7 @@ export class Strip {
         tileId: number,
         initiallyDragging: boolean,
         stripDragHooks?: StripDragHooks,
+        initiallyFreed = false,
     ): void {
         const signals = new SignalManager();
         this.registry.set(column.id, tileId, win, signals);
@@ -448,9 +459,19 @@ export class Strip {
                     reorderThresholdFraction: this.settings.reorderThresholdFraction,
                     stackOverlapFraction: this.settings.stackOverlapFraction,
                     dragPanEnabled: this.settings.dragPanEnabled,
-                    dragPanVerticalTolerancePx: this.settings.dragPanVerticalTolerancePx,
+                    dragPanVerticalTriggerPx: this.settings.dragPanVerticalTriggerPx,
+                    dragPanHorizontalTolerancePx: this.settings.dragPanHorizontalTolerancePx,
+                    workspace: this.workspaceAdapter,
+                    createPanFreeDwell: (onFire: () => void) =>
+                        new DwellTimer<true>(
+                            this.ticker.subscribe(),
+                            () => Date.now(),
+                            ANIMATION_TICK_MS,
+                            this.settings.dragPanFreeDwellMs,
+                            onFire,
+                        ),
                     createStackDwell: (onFire: (key: string) => void) =>
-                        new EdgeDwell<string>(
+                        new DwellTimer<string>(
                             this.ticker.subscribe(),
                             () => Date.now(),
                             ANIMATION_TICK_MS,
@@ -479,6 +500,7 @@ export class Strip {
                     onDragFinished: () => stripDragHooks?.onDragFinished?.(),
                 },
                 initiallyDragging,
+                initiallyFreed,
             ),
         );
     }

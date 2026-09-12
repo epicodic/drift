@@ -36,8 +36,16 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.dragPanEnabled).toBe(true);
     });
 
-    it('defaults dragPanVerticalTolerancePx to 40', () => {
-        expect(DEFAULT_SETTINGS.dragPanVerticalTolerancePx).toBe(40);
+    it('defaults dragPanVerticalTriggerPx to 20', () => {
+        expect(DEFAULT_SETTINGS.dragPanVerticalTriggerPx).toBe(20);
+    });
+
+    it('defaults dragPanHorizontalTolerancePx to 10', () => {
+        expect(DEFAULT_SETTINGS.dragPanHorizontalTolerancePx).toBe(10);
+    });
+
+    it('defaults dragPanFreeDwellMs to 400, matching the other drag dwells', () => {
+        expect(DEFAULT_SETTINGS.dragPanFreeDwellMs).toBe(400);
     });
 
     it('defaults the strip-drag edge border to 2px', () => {
