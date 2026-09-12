@@ -19,8 +19,8 @@ PlasmaCore.Dialog {
     // Fixed cosmetic values, not user-configurable (matches sharpness/glowColor below):
     // cornerRadius rounds the glow's edge to match typical window rounding, and bleedRadius
     // is both how far the dialog is padded outward and how far the glow fades past the edge.
-    property real cornerRadius: 32
-    property real bleedRadius: 32
+    property real cornerRadius: 8
+    property real bleedRadius: 8
     title: "${FOCUS_FLASH_OVERLAY_WINDOW_TITLE}"
     type: PlasmaCore.Dialog.OnScreenDisplay
     backgroundHints: PlasmaCore.Types.NoBackground
