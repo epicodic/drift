@@ -498,7 +498,8 @@ describe('StripStack.moveWindowToStripAbove/Below', () => {
         stack.render();
 
         expect(created[0].detachFocusedTile).toHaveBeenCalled();
-        expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object));
+        // keyboard/direct move: no drag in flight, options default to false
+        expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object), false);
         expect(created[1].render).toHaveBeenCalled(); // strip -1 is now active
     });
 
@@ -522,7 +523,8 @@ describe('StripStack.moveWindowToStripAbove/Below', () => {
         stack.render();
 
         expect(created[0].detachFocusedTile).toHaveBeenCalled();
-        expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object));
+        // keyboard/direct move: no drag in flight, options default to false
+        expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object), false);
         expect(created[1].render).toHaveBeenCalled(); // strip 1 is now active
     });
 
@@ -569,7 +571,8 @@ describe('StripStack.moveWindowToStripAbove/Below', () => {
 
         stack.moveWindowToStripAbove(); // win: strip -1 -> strip -2
 
-        expect(created[2].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object));
+        // keyboard/direct move: no drag in flight, options default to false
+        expect(created[2].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object), false);
     });
 
     it('prunes strip 0 once it becomes empty and inactive, recreating it fresh on return', () => {
@@ -593,7 +596,8 @@ describe('StripStack.moveColumnToStripAbove/Below', () => {
         stack.render();
 
         expect(created[0].detachFocusedColumn).toHaveBeenCalled();
-        expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object));
+        // keyboard/direct move: no drag in flight, options default to false
+        expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object), false);
         expect(created[1].render).toHaveBeenCalled(); // strip -1 is now active
     });
 
@@ -617,7 +621,8 @@ describe('StripStack.moveColumnToStripAbove/Below', () => {
         stack.render();
 
         expect(created[0].detachFocusedColumn).toHaveBeenCalled();
-        expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object));
+        // keyboard/direct move: no drag in flight, options default to false
+        expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object), false);
         expect(created[1].render).toHaveBeenCalled(); // strip 1 is now active
     });
 
@@ -639,7 +644,8 @@ describe('StripStack.moveColumnToStripAbove/Below', () => {
 
         stack.moveColumnToStripBelow();
 
-        expect(created[1].addWindowStack).toHaveBeenCalledWith([win1, win2], false, expect.anything());
+        // keyboard/direct move: no drag in flight, options default to false
+        expect(created[1].addWindowStack).toHaveBeenCalledWith([win1, win2], false, expect.anything(), false);
         expect(created[1].addWindow).not.toHaveBeenCalled();
     });
 });
@@ -682,14 +688,15 @@ describe('StripStack.activateWindow', () => {
 });
 
 describe('StripStack cross-strip drag', () => {
-    it('keyboard-driven moveWindowToStripBelow still passes initiallyDragging=false and no exclusion (regression)', () => {
+    it('keyboard-driven moveWindowToStripBelow still passes initiallyDragging=false, initiallyFreed=false, and no exclusion (regression)', () => {
         const { stack, created } = makeStack();
         const win = fakeWin('w1');
         created[0].detachFocusedTile.mockReturnValue(win);
 
         stack.moveWindowToStripBelow();
 
-        expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object));
+        // keyboard/direct move: no drag in flight, options default to false
+        expect(created[1].addWindow).toHaveBeenCalledWith(win, false, expect.any(Object), false);
     });
 
     it('flips to the strip above once the dwell elapses while the pointer is held past the top edge', () => {
@@ -715,7 +722,7 @@ describe('StripStack cross-strip drag', () => {
             timer.fire(); // dwell elapses
 
             expect(created[1].detachFocusedColumn).toHaveBeenCalled();
-            expect(created[0].addWindow).toHaveBeenCalledWith(win, true, expect.any(Object));
+            expect(created[0].addWindow).toHaveBeenCalledWith(win, true, expect.any(Object), true);
         } finally {
             vi.useRealTimers();
         }
@@ -741,7 +748,7 @@ describe('StripStack cross-strip drag', () => {
             timer.fire(); // dwell elapses
 
             expect(created[0].detachFocusedColumn).toHaveBeenCalled();
-            expect(created[1].addWindow).toHaveBeenCalledWith(win, true, expect.any(Object));
+            expect(created[1].addWindow).toHaveBeenCalledWith(win, true, expect.any(Object), true);
         } finally {
             vi.useRealTimers();
         }
@@ -970,7 +977,11 @@ describe('StripStack — cross-strip drag of a stacked column', () => {
             vi.setSystemTime(100);
             timer.fire(); // dwell elapses
 
-            expect(created[1].addWindowStack).toHaveBeenCalledWith([win1, win2], true, expect.anything());
+            // Despite this test's name not mentioning dwelling, it drives the drag purely through
+            // onDragStarted/onDragTick + timer.fire() — the same armed-edge-watch/dwell path as the
+            // "flips to the strip above/below" tests above, reaching onEdgeDwellFired, not a direct
+            // moveColumnToStripBelow() call — so initiallyFreed is true here, not the default false.
+            expect(created[1].addWindowStack).toHaveBeenCalledWith([win1, win2], true, expect.anything(), true);
             expect(created[1].addWindow).not.toHaveBeenCalled();
         } finally {
             vi.useRealTimers();

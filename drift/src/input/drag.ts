@@ -6,7 +6,7 @@
 // tick is stacking considered: candidates are gathered purely from the dragged tile's
 // own geometry — its column's siblings plus both immediate neighbor columns' tiles —
 // and resolved by `resolveStackTarget`'s overlap-gate + top-edge-band, dwell-gated by
-// `EdgeDwell` exactly like reorder's neighbor used to be, now applied uniformly to
+// `DwellTimer` exactly like reorder's neighbor used to be, now applied uniformly to
 // same-column and cross-column hovers alike. Stack stays preview-only until release,
 // unlike reorder.
 
@@ -16,11 +16,12 @@ import { Grid } from '../core/grid';
 import { debug } from '../debug';
 import { toVirtualX } from '../kwin/geometry-sync';
 import { WindowAdapter } from '../kwin/window-adapter';
+import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import { StackPreview } from '../runtime/strip';
-import { EdgeDwell } from '../viewport/edge-dwell';
+import { DwellTimer } from '../utils/dwell-timer';
 import { Viewport } from '../viewport/viewport';
 import { resolveStackTarget, stackTargetIndex, StackCandidate, StackTarget } from './drag-hover';
-import { dragPanShouldPan } from './drag-pan';
+import { dragPanHolding } from './drag-pan';
 
 /** The dragged tile's resolved stack landing spot, ready to commit on release —
  * `columnId`/`slot` identify the target column and tile-list index. */
@@ -52,21 +53,32 @@ export interface DragReorderDeps {
     /** Minimum horizontal overlap a candidate tile needs before it's considered for
      * stacking (`settings.stackOverlapFraction`) — see `resolveStackTarget`. */
     stackOverlapFraction: number;
-    /** Whether an almost-purely-horizontal drag pans the viewport instead of reordering
-     * (`settings.dragPanEnabled`) — see `dragPanShouldPan` (docs:
-     * 2026-09-10-drag-viewport-pan-design). */
+    /** Whether dragging defaults to pan mode with a dwell-to-free gesture, or is fully inert
+     * (`settings.dragPanEnabled`) — see `dragPanHolding` (docs: 2026-09-12-drag-pan-dwell-design). */
     dragPanEnabled: boolean;
-    /** Cumulative vertical drag movement, in pixels, past which drag-pan stops and today's
-     * reorder/stack behavior applies (`settings.dragPanVerticalTolerancePx`) — see
-     * `dragPanShouldPan`. */
-    dragPanVerticalTolerancePx: number;
+    /** Cumulative vertical pull, in pixels, before a hold can start counting
+     * (`settings.dragPanVerticalTriggerPx`) — see `dragPanHolding`. */
+    dragPanVerticalTriggerPx: number;
+    /** Horizontal drift, in pixels, allowed since a hold started before it's canceled
+     * (`settings.dragPanHorizontalTolerancePx`) — see `dragPanHolding`. */
+    dragPanHorizontalTolerancePx: number;
+    /** Read access to the real pointer position — used to re-seed the dragged window's geometry
+     * to its true cursor-relative position the instant a hold-to-free gesture fires, closing the
+     * gap left by pinning `y` during pan mode in one write instead of leaving KWin's own tracking
+     * to close it incrementally (docs: 2026-09-12-drag-pan-dwell-design). */
+    workspace: Pick<WorkspaceAdapter, 'cursorPos'>;
+    /** Builds the dwell timer for the pan-to-drag-mode hold gesture, firing `onFire` once held
+     * past `dragPanFreeDwellMs` — one instance per drag-reorder connection, reused across every
+     * drag that window does, same pattern as `createStackDwell` (docs:
+     * 2026-09-12-drag-pan-dwell-design). */
+    createPanFreeDwell(onFire: () => void): DwellTimer<true>;
     render(excludeWindowId?: string, instant?: boolean, verticalOffsetY?: undefined, stackPreview?: StackPreview): void;
     /** Builds a dwell timer armed on a resolved stack target's compound key
      * (`` `${columnId}:${tileId}:${direction}` ``), firing `onFire` once hovered past
      * `columnDragDwellMs` — one instance per drag-reorder connection, reused across
      * every drag that window does. Applied uniformly to same-column and cross-column
      * stack hovers alike (docs: 2026-09-07-drag-reorder-stack-refinement-design). */
-    createStackDwell(onFire: (key: string) => void): EdgeDwell<string>;
+    createStackDwell(onFire: (key: string) => void): DwellTimer<string>;
     /** Seeds the dropped window's motion channels at its actual drop rect, so it eases into
      * its resolved slot across all four dimensions instead of snapping (docs:
      * 2026-09-08-window-motion-primitive-design). */
@@ -131,7 +143,12 @@ function requireColumn(grid: Grid, columnId: number): Column {
  * 2026-09-02-cross-row-drag-design): the new connection never sees
  * `interactiveMoveResizeStarted`, since it already fired once on the connection this
  * one replaces. Returns a disconnect function. */
-export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, initiallyDragging = false): () => void {
+export function registerDragReorder(
+    win: WindowAdapter,
+    deps: DragReorderDeps,
+    initiallyDragging = false,
+    initiallyFreed = false,
+): () => void {
     let dragging = initiallyDragging;
     let lastStackHover: StackHover | null = null;
     /** Which stack target's compound key (`` `${columnId}:${tileId}:${direction}` ``) the
@@ -139,14 +156,34 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
      * Only a fired key shows a preview. */
     let armedStackKey: string | null = null;
     /** The dragged window's real (screen) y at the start of the current drag — the baseline
-     * `dragPanShouldPan`'s cumulative `dyTotal` is measured against. Seeded here (not just in
+     * `dragPanHolding`'s cumulative `dyTotal` is measured against. Seeded here (not just in
      * `onInteractiveMoveResizeStarted`) so an `initiallyDragging` connection — created
      * mid-drag by a cross-strip reparent — has a sane starting value even though it never
-     * sees that signal fire (docs: 2026-09-10-drag-viewport-pan-design). */
+     * sees that signal fire (docs: 2026-09-12-drag-pan-dwell-design). */
     let startY = win.frameGeometry().y;
     /** The dragged window's real (screen) x as of the last tick — this tick's raw
      * horizontal delta (`dxTick`) is measured against it. */
     let lastX = win.frameGeometry().x;
+    /** `startY` minus the real pointer's y at drag start — lets the freeing moment place the
+     * window at exactly where an un-pinned drag would have put it (`cursorPos().y +
+     * grabOffsetY`), instead of leaving KWin's own tracking to close the gap incrementally
+     * (docs: 2026-09-12-drag-pan-dwell-design). */
+    let grabOffsetY = startY - deps.workspace.cursorPos().y;
+    /** The dragged window's real x when the current hold-to-free gesture started (null while
+     * not holding) — horizontal drift is measured cumulatively from here, not per tick, so
+     * ordinary hand tremor doesn't cancel the hold. */
+    let holdStartX: number | null = null;
+    /** Whether this drag has earned full reorder/stack/cross-strip-drag behavior. Starts at
+     * `initiallyFreed` for a connection created mid-drag by a cross-strip reparent (see
+     * `onEdgeDwellFired` in `strip-stack.ts`, which will thread `initiallyFreed: true` through
+     * this path once wired up — by construction, since cross-strip moves can only ever fire
+     * once already freed); every later genuinely new drag on this same window/connection starts
+     * unfree again, same as `dragging` always starts fresh rather than reusing `initiallyDragging`. */
+    let freed = initiallyFreed;
+    /** Re-entrancy guard: `win.setFrameGeometry` below fires `onFrameGeometryChanged`
+     * synchronously, before the call returns, which would otherwise re-enter `tickInner`
+     * mid-tick and corrupt `lastX`/the hold state (docs: 2026-09-12-drag-pan-dwell-design). */
+    let applyingPin = false;
 
     const disconnectStarted = win.onInteractiveMoveResizeStarted(() => {
         dragging = win.isInteractiveMove();
@@ -155,6 +192,9 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
             const rect = win.frameGeometry();
             startY = rect.y;
             lastX = rect.x;
+            grabOffsetY = startY - deps.workspace.cursorPos().y;
+            holdStartX = null;
+            freed = false;
             deps.onDragStarted?.(win);
         }
     });
@@ -264,6 +304,19 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
         return resolveStackTarget(draggedRect, candidates, deps.stackOverlapFraction);
     };
 
+    // Fires once the hold-to-free gesture (dragPanHolding) has held steady past
+    // dragPanFreeDwellMs. Re-seeds the window to its true pointer-relative position — closing
+    // the gap `y`-pinning left behind in one write — then lets tickInner's normal reorder/stack
+    // logic take over from the very next tick (docs: 2026-09-12-drag-pan-dwell-design).
+    const panFreeDwell = deps.createPanFreeDwell(() => {
+        freed = true;
+        const raw = win.frameGeometry();
+        const cursor = deps.workspace.cursorPos();
+        applyingPin = true;
+        win.setFrameGeometry({ x: raw.x, y: cursor.y + grabOffsetY, width: raw.width, height: raw.height });
+        applyingPin = false;
+    });
+
     // Fires once the resolved stack target has held steady past columnDragDwellMs.
     // Recomputes fresh against the window's CURRENT geometry rather than whatever it was
     // when the dwell armed — the dwell's own timer tick is independent of
@@ -286,34 +339,64 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
     });
 
     const tickInner = (): void => {
+        if (applyingPin) {
+            // Re-entrant call caused by our own win.setFrameGeometry below — ignore it.
+            return;
+        }
         const location = currentLocation();
         if (location === null) {
             debug('drag tick: currentLocation() is null (window not in registry)');
             return;
         }
 
-        // Pan step: while dragPanShouldPan holds, redirect this tick's raw horizontal
-        // movement into the viewport instead of leaving it as real (reorder/stack-triggering)
-        // movement. Must run before winEdges/resolveCurrentTarget below, since both read the
-        // window's virtual position, which this changes via viewport.offset() (docs:
-        // 2026-09-10-drag-viewport-pan-design). Uses setOffset, not the clamped scrollBy —
-        // panning is allowed past the strip's content bounds (e.g. dragging the first column
-        // further right); revealFocused() on release (see finishedInner) already animates the
-        // viewport back into a valid, clamped position, so no clamping is needed here.
-        const raw = win.frameGeometry();
-        if (deps.dragPanEnabled) {
+        // Pan step: while dragPanEnabled and not yet freed, the drag is pinned pan-only —
+        // y stays at startY, x's movement redirects into the viewport instead of the window's
+        // virtual position, and reorder/edge-expel/stack below never runs at all (the early
+        // return, not just the offset math, is what makes that true — docs:
+        // 2026-09-12-drag-pan-dwell-design). Gating on `deps.dragPanEnabled && !freed` together
+        // (not `freed` alone) matters: `freed` never becomes true when the feature is disabled,
+        // so gating on it alone would wrongly keep this block — and reorder/stack below —
+        // blocked forever whenever dragPanEnabled is false.
+        if (deps.dragPanEnabled && !freed) {
+            const raw = win.frameGeometry();
             const dyTotal = Math.abs(raw.y - startY);
+            const driftSinceHoldStartPx = holdStartX === null ? 0 : raw.x - holdStartX;
+            if (
+                dragPanHolding(
+                    dyTotal,
+                    driftSinceHoldStartPx,
+                    deps.dragPanVerticalTriggerPx,
+                    deps.dragPanHorizontalTolerancePx,
+                )
+            ) {
+                holdStartX ??= raw.x;
+                panFreeDwell.update(true);
+            } else {
+                holdStartX = null;
+                panFreeDwell.update(null);
+            }
+
             const dxTick = raw.x - lastX;
-            if (dxTick !== 0 && dragPanShouldPan(dyTotal, deps.dragPanVerticalTolerancePx)) {
+            if (dxTick !== 0) {
                 deps.viewport.setOffset(deps.viewport.offset() - dxTick);
             }
+            lastX = raw.x;
+
+            applyingPin = true;
+            win.setFrameGeometry({ x: raw.x, y: startY, width: raw.width, height: raw.height });
+            applyingPin = false;
+            // Every other tickInner exit path ends by calling deps.render(...) — this one must too,
+            // or the viewport.setOffset() above only takes visible effect once finishedInner's
+            // unconditional render() fires on release, instead of live during the drag.
+            deps.render(win.id, false);
+            return;
         }
-        lastX = raw.x;
 
         const winEdges = windowEdgesVirtualX(win, deps.area, deps.viewport.offset());
         const homeColumn = requireColumn(deps.grid, location.columnId);
         const homeIndex = deps.grid.indexOf(location.columnId);
 
+        const raw = win.frameGeometry();
         debug(
             `drag tick: win=${win.id} loc=col${location.columnId}/tile${location.tileId} ` +
                 `winEdges=(${winEdges.left.toFixed(0)},${winEdges.right.toFixed(0)}) ` +
@@ -404,7 +487,14 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
             return;
         }
         tick();
-        deps.onDragTick?.(win);
+        // Cross-strip moves (StripStack.updateEdgeWatch, the only thing wired to onDragTick)
+        // must be structurally impossible during active panning, not just unlikely — same
+        // disabled-or-freed condition as the pin block in tickInner, and for the same reason:
+        // freed never becomes true when the feature is disabled (docs:
+        // 2026-09-12-drag-pan-dwell-design).
+        if (!deps.dragPanEnabled || freed) {
+            deps.onDragTick?.(win);
+        }
     });
 
     const finishedInner = (): void => {
@@ -414,6 +504,7 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
         }
         dragging = false;
         stackDwell.stop();
+        panFreeDwell.stop();
         armedStackKey = null;
         const location = currentLocation();
         debug(
@@ -454,6 +545,7 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
             );
             dragging = false;
             stackDwell.stop();
+            panFreeDwell.stop();
             armedStackKey = null;
             lastStackHover = null;
             deps.onDragFinished?.();
@@ -465,5 +557,6 @@ export function registerDragReorder(win: WindowAdapter, deps: DragReorderDeps, i
         disconnectGeometryChanged();
         disconnectFinished();
         stackDwell.stop();
+        panFreeDwell.stop();
     };
 }

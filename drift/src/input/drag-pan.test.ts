@@ -1,26 +1,34 @@
 import { describe, expect, it } from 'vitest';
-import { dragPanShouldPan } from './drag-pan';
+import { dragPanHolding } from './drag-pan';
 
-describe('dragPanShouldPan', () => {
-    it('pans when there has been no vertical movement at all', () => {
-        expect(dragPanShouldPan(0, 40)).toBe(true);
+describe('dragPanHolding', () => {
+    it('is not holding before the vertical trigger is reached', () => {
+        expect(dragPanHolding(19, 0, 20, 10)).toBe(false);
     });
 
-    it('pans while vertical movement stays under the tolerance', () => {
-        expect(dragPanShouldPan(39, 40)).toBe(true);
+    it('is holding once the vertical trigger is exactly reached, with no drift yet', () => {
+        expect(dragPanHolding(20, 0, 20, 10)).toBe(true);
     });
 
-    it('stops panning once vertical movement reaches the tolerance', () => {
-        expect(dragPanShouldPan(40, 40)).toBe(false);
+    it('is holding once the vertical trigger is exceeded, with no drift yet', () => {
+        expect(dragPanHolding(50, 0, 20, 10)).toBe(true);
     });
 
-    it('stops panning once vertical movement exceeds the tolerance', () => {
-        expect(dragPanShouldPan(100, 40)).toBe(false);
+    it('stays holding while horizontal drift is under the tolerance', () => {
+        expect(dragPanHolding(50, 9, 20, 10)).toBe(true);
+        expect(dragPanHolding(50, -9, 20, 10)).toBe(true);
     });
 
-    it('never pans when the tolerance is non-positive', () => {
-        expect(dragPanShouldPan(0, 0)).toBe(false);
-        expect(dragPanShouldPan(0, -5)).toBe(false);
-        expect(dragPanShouldPan(1, 0)).toBe(false);
+    it('still holds when horizontal drift exactly equals the tolerance (inclusive boundary)', () => {
+        expect(dragPanHolding(50, 10, 20, 10)).toBe(true);
+        expect(dragPanHolding(50, -10, 20, 10)).toBe(true);
+    });
+
+    it('cancels the hold once horizontal drift exceeds the tolerance', () => {
+        expect(dragPanHolding(50, 25, 20, 10)).toBe(false);
+    });
+
+    it('always holds at zero drift regardless of tolerance, once past the trigger', () => {
+        expect(dragPanHolding(50, 0, 20, 0)).toBe(true);
     });
 });
