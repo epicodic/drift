@@ -16,11 +16,11 @@ PlasmaCore.Dialog {
     id: dialog
     property real borderWidth: 4
     property real blurRadius: 24
-    // Fixed cosmetic values, not user-configurable (matches sharpness/glowColor below):
-    // cornerRadius rounds the glow's edge to match typical window rounding, and bleedRadius
-    // is both how far the dialog is padded outward and how far the glow fades past the edge.
-    property real cornerRadius: 8
-    property real bleedRadius: 8
+    // Derived from blurRadius, not user-configurable (matches sharpness/glowColor below):
+    // bleedRadius is both how far the dialog is padded outward and how far the glow fades past
+    // the edge. The glow's own corner rounding is a shader-side side effect (see
+    // drift/shaders/focus_glow.frag), not a configurable radius matching the window's.
+    property real bleedRadius: blurRadius / 3
     title: "${FOCUS_FLASH_OVERLAY_WINDOW_TITLE}"
     type: PlasmaCore.Dialog.OnScreenDisplay
     backgroundHints: PlasmaCore.Types.NoBackground
@@ -40,7 +40,6 @@ PlasmaCore.Dialog {
         property vector2d itemSize: Qt.vector2d(width, height)
         property real coreHalf: dialog.borderWidth * 0.5
         property real glow: dialog.blurRadius
-        property real radius: dialog.cornerRadius
         property real sharpness: 2.0
         property real bleed: dialog.bleedRadius
         fragmentShader: Qt.resolvedUrl("../shaders/focus_glow.frag.qsb")
