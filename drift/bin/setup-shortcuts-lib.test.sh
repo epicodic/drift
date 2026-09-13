@@ -89,9 +89,11 @@ DriftFocusLeft")"
 
 # ExposeClass holds an active grant on 83886134 and is not in the exclude list. The
 # owning component (kwin/KWin) is reported alongside it, since the caller may need to
-# release the shortcut from a component other than kwin.
+# release the shortcut from a component other than kwin. The trailing field is its
+# full space-separated list of active key codes, needed to restore the exact prior
+# shortcut later.
 assert_eq "a KWin action holding the key is reported for release" \
-	"ExposeClass|Toggle Present Windows (Window class)|kwin|KWin" \
+	"ExposeClass|Toggle Present Windows (Window class)|kwin|KWin|83886134" \
 	"$(find_conflicting_actions "$FIXTURE_ALL_SHORTCUT_INFOS" "83886134" "DriftFocusRight
 DriftFocusLeft")"
 
@@ -102,7 +104,7 @@ DriftFocusLeft")"
 assert_eq "kwin component reply alone reports no conflict for Meta+I" "" \
 	"$(find_conflicting_actions "$FIXTURE_ALL_SHORTCUT_INFOS" "268435529" "")"
 assert_eq "a non-kwin component's action holding the key is reported with its own component" \
-	"_launch|System Settings|systemsettings.desktop|System Settings" \
+	"_launch|System Settings|systemsettings.desktop|System Settings|16777457 268435529" \
 	"$(find_conflicting_actions "$FIXTURE_SYSTEMSETTINGS_SHORTCUT_INFOS" "268435529" "")"
 
 # parse_component_paths turns an allComponents reply into one object path per line.
@@ -115,13 +117,13 @@ assert_eq "parse_component_paths extracts every component path" \
 # An empty actionFriendly ("") must not desync parsing of the fields after it, and
 # must be restored to a real empty string, not left as the internal sentinel.
 assert_eq "an action with an empty friendly name is parsed correctly" \
-	"Switch to Last-Used Keyboard Layout||KDE Keyboard Layout Switcher|Keyboard Layout Switcher" \
+	"Switch to Last-Used Keyboard Layout||KDE Keyboard Layout Switcher|Keyboard Layout Switcher|402653260" \
 	"$(find_conflicting_actions "$FIXTURE_EMPTY_FRIENDLY_SHORTCUT_INFOS" "402653260" "")"
 
 # A friendly-text value with an embedded, backslash-escaped quote must not desync the
 # fixed-width fields after it, and the quote must be unescaped in the parsed output.
 assert_eq "an action with an embedded escaped quote is parsed correctly" \
-	'switch-to-activity-0fa1616a|Switch to activity "Browsing"|ActivityManager|Activity Manager' \
+	'switch-to-activity-0fa1616a|Switch to activity "Browsing"|ActivityManager|Activity Manager|123' \
 	"$(find_conflicting_actions "$FIXTURE_ESCAPED_QUOTE_SHORTCUT_INFOS" "123" "")"
 
 # 0 only ever appears in a defaultKeys array (Switch to Screen 7), never in any

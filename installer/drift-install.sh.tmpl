@@ -1,0 +1,126 @@
+#!/bin/sh
+# Self-contained Drift installer: this file is a POSIX shell script with the built
+# .kwinscript archive appended to it as raw bytes after the __DRIFT_PAYLOAD__ marker
+# below (see `make installer` / Makefile). Must be saved to a real file and executed
+# directly (`sh ./drift-install.sh` or `./drift-install.sh`) — piping it through a
+# shell (`curl ... | sh`) does not work, since the payload is read back out of the
+# script's own file via `$0`, which isn't a real file when read from a pipe.
+#
+# Installs the Drift kwinscript, then optionally disables the KWin settings known to
+# conflict with it (docs/known_bugs.md #2) and sets up its default shortcuts — each of
+# those two steps backs up what it changes so `uninstall.sh` (shipped inside the
+# installed package at contents/bin/uninstall.sh) can restore it later.
+# See docs/agents/specs/2026-09-13-self-contained-installer-design.md.
+
+set -u
+
+CYAN='\033[36m'
+YELLOW='\033[33m'
+GREEN='\033[32m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+INSTALL_DIR="${HOME}/.local/share/kwin/scripts/drift"
+
+print_step() {
+	printf "${BOLD}==> %s${RESET}\n" "$1"
+}
+
+print_success() {
+	printf "${GREEN}✓ %s${RESET}\n" "$1"
+}
+
+print_skipped() {
+	printf "${YELLOW}⎯ Skipped.${RESET}\n"
+}
+
+print_warning() {
+	printf "${YELLOW}%s${RESET}\n" "$1"
+}
+
+# Reads a yes/no answer from the terminal, defaulting to "yes" on an empty reply or
+# when stdin isn't a terminal (e.g. this script's own extraction ran non-interactively).
+prompt_yes_no() {
+	printf "${CYAN}%s${RESET} [Y/n] " "$1"
+	if [ -t 0 ]; then
+		read -r reply
+	else
+		reply=""
+	fi
+	case "$reply" in
+		[Nn]*) return 1 ;;
+		*) return 0 ;;
+	esac
+}
+
+if [ ! -f "$0" ]; then
+	echo "drift-install.sh: must be run from a real file, not piped through a shell (e.g. 'curl ... | sh')." >&2
+	exit 1
+fi
+
+marker_line="$(grep -an -m1 -n '^__DRIFT_PAYLOAD__$' "$0" | cut -d: -f1)"
+if [ -z "$marker_line" ]; then
+	echo "drift-install.sh: no payload found — this file was not built by 'make installer'." >&2
+	exit 1
+fi
+
+TMP_KWINSCRIPT="$(mktemp --suffix=.kwinscript)" || {
+	echo "drift-install.sh: failed to create a temporary file for the kwinscript payload." >&2
+	exit 1
+}
+trap 'rm -f "$TMP_KWINSCRIPT"' EXIT
+tail -n "+$((marker_line + 1))" "$0" > "$TMP_KWINSCRIPT"
+
+if prompt_yes_no "Install/upgrade the Drift kwinscript?"; then
+	print_step "Installing Drift kwinscript..."
+	if kpackagetool6 --type=KWin/Script --install="$TMP_KWINSCRIPT" \
+		|| kpackagetool6 --type=KWin/Script --upgrade="$TMP_KWINSCRIPT"; then
+		kwriteconfig6 --file kwinrc --group Plugins --key driftEnabled true
+		qdbus6 org.kde.KWin /KWin reconfigure
+		print_success "Drift installed and enabled."
+	else
+		echo "drift-install.sh: failed to install the Drift kwinscript." >&2
+		exit 1
+	fi
+else
+	print_skipped
+fi
+
+if prompt_yes_no "Disable KWin settings known to conflict with Drift (edge snapping/tiling)?"; then
+	SETTINGS_SCRIPT="${INSTALL_DIR}/contents/bin/disable-incompatible-settings.sh"
+	if [ -x "$SETTINGS_SCRIPT" ]; then
+		print_step "Disabling incompatible KWin settings..."
+		if "$SETTINGS_SCRIPT"; then
+			print_success "Incompatible KWin settings disabled."
+		else
+			print_warning "drift-install.sh: disable-incompatible-settings.sh failed; continuing."
+		fi
+	else
+		print_warning "drift-install.sh: Drift isn't installed yet, skipping settings step."
+	fi
+else
+	print_skipped
+fi
+
+if prompt_yes_no "Set up Drift's default keyboard shortcuts?"; then
+	SHORTCUTS_SCRIPT="${INSTALL_DIR}/contents/bin/setup-shortcuts.sh"
+	if [ -x "$SHORTCUTS_SCRIPT" ]; then
+		print_step "Setting up shortcuts..."
+		if "$SHORTCUTS_SCRIPT"; then
+			print_success "Shortcuts set up."
+		else
+			print_warning "drift-install.sh: setup-shortcuts.sh failed; continuing."
+		fi
+	else
+		print_warning "drift-install.sh: Drift isn't installed yet, skipping shortcuts step."
+	fi
+else
+	print_skipped
+fi
+
+echo
+echo "Done. Run ${INSTALL_DIR}/contents/bin/uninstall.sh to remove Drift and restore any changed settings."
+
+exit 0
+
+__DRIFT_PAYLOAD__
