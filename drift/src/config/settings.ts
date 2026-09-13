@@ -10,8 +10,6 @@ export interface Settings {
     horizontalGap: number;
     /** Vertical gap between tiles stacked within a column, in pixels. */
     verticalGap: number;
-    /** Width given to a newly opened window's column, in pixels. */
-    defaultColumnWidth: number;
     /** Duration of a focus-scroll animation, in milliseconds. */
     animationDurationMs: number;
     /** Space reserved at the top of the screen, in pixels. */

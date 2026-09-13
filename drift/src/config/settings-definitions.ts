@@ -38,7 +38,6 @@ export type AnySettingsDefinition = { [K in keyof Settings]: SettingsDefinition<
 export const SETTINGS_DEFINITIONS: AnySettingsDefinition[] = [
     { name: 'horizontalGap', type: 'UInt', default: 8 },
     { name: 'verticalGap', type: 'UInt', default: 8 },
-    { name: 'defaultColumnWidth', type: 'UInt', default: 800 },
     { name: 'animationDurationMs', type: 'UInt', default: 200 },
     { name: 'topMargin', type: 'UInt', default: 8 },
     { name: 'bottomMargin', type: 'UInt', default: 8 },

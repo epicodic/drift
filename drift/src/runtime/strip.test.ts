@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '../config/settings';
+import { MIN_COLUMN_WIDTH } from '../core/column';
 import type { Rect } from '../core/coordinates';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { ScreenInfo, WorkspaceAdapter } from '../kwin/workspace-adapter';
@@ -233,6 +234,16 @@ describe('Strip', () => {
         strip.addWindow(win.adapter);
 
         expect(win.setFrameGeometry).toHaveBeenCalled();
+    });
+
+    it('falls back to the minimum column width for a window with no real geometry yet', () => {
+        const strip = new Strip(AREA, SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const win = fakeWindow('w1', { width: 0 });
+
+        strip.addWindow(win.adapter);
+
+        const rect = win.setFrameGeometry.mock.calls.slice(-1)[0][0] as { width: number };
+        expect(rect.width).toBe(MIN_COLUMN_WIDTH);
     });
 
     it('tears down every window signal when the window is removed', () => {
@@ -975,8 +986,8 @@ describe('Strip', () => {
 
                 const [lastCall] = win1.setFrameGeometry.mock.calls.slice(-1);
                 const width = (lastCall[0] as { width: number }).width;
-                expect(width).toBeGreaterThan(SETTINGS.defaultColumnWidth);
-                expect(width).toBeLessThan(SETTINGS.defaultColumnWidth + SETTINGS.columnWidthStep);
+                expect(width).toBeGreaterThan(800); // win1's fakeWindow default width
+                expect(width).toBeLessThan(800 + SETTINGS.columnWidthStep);
             } finally {
                 vi.useRealTimers();
             }
@@ -1335,6 +1346,21 @@ describe('Strip — absorb/expel', () => {
         const rightRect = rightCalls[rightCalls.length - 1][0];
         expect(rightRect.height).toBe(AREA.height); // right is alone in the original column now, full height
         expect(leftRect.x).toBeGreaterThan(rightRect.x); // left (expelled, focused) got the new column to the right
+    });
+
+    it("expel's new column matches the source column's own width", () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const left = fakeWindow('left', { width: 500 });
+        const right = fakeWindow('right');
+        strip.addWindow(left.adapter); // col1 @ width 500
+        strip.addWindow(right.adapter);
+        strip.focusLeft();
+        strip.absorbRight(); // left column (width 500) now has 2 tiles: left (focused), right
+
+        strip.expel();
+
+        const leftRect = left.setFrameGeometry.mock.calls.slice(-1)[0][0] as { width: number };
+        expect(leftRect.width).toBe(500); // expelled tile's new column keeps the source column's width
     });
 
     it('expel is a no-op on a single-tile column', () => {
@@ -2095,7 +2121,7 @@ describe('Strip — increaseColumnWidth/decreaseColumnWidth', () => {
 
     it('grows the focused column by columnWidthStep', () => {
         const strip = new Strip(AREA, STEP_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
-        const win1 = fakeWindow('w1'); // defaultColumnWidth 800
+        const win1 = fakeWindow('w1'); // fakeWindow default width 800
         strip.addWindow(win1.adapter);
         win1.setFrameGeometry.mockClear();
 

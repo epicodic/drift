@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Column } from './column';
+import { Column, MIN_COLUMN_WIDTH } from './column';
 
 describe('Column', () => {
     it('exposes its id and width', () => {
@@ -14,14 +14,19 @@ describe('Column', () => {
         expect(column.width).toBe(500);
     });
 
-    it('rejects a non-positive width on construction', () => {
-        expect(() => new Column(1, 0, 1000)).toThrow();
-        expect(() => new Column(1, -10, 1000)).toThrow();
+    it('clamps a non-positive width to the minimum on construction', () => {
+        expect(new Column(1, 0, 1000).width).toBe(MIN_COLUMN_WIDTH);
+        expect(new Column(1, -10, 1000).width).toBe(MIN_COLUMN_WIDTH);
     });
 
-    it('rejects a non-positive width on resize', () => {
+    it('clamps a non-positive width to the minimum on resize', () => {
         const column = new Column(1, 300, 1000);
-        expect(() => column.setWidth(0)).toThrow();
+        column.setWidth(0);
+        expect(column.width).toBe(MIN_COLUMN_WIDTH);
+    });
+
+    it('clamps a NaN width to the minimum', () => {
+        expect(new Column(1, NaN, 1000).width).toBe(MIN_COLUMN_WIDTH);
     });
 
     it('rejects a non-positive height on construction', () => {
