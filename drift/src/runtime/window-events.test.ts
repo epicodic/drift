@@ -28,6 +28,7 @@ function fakeDeps(overrides: Partial<WindowEventDeps> = {}): WindowEventDeps {
         tileOf: () => null,
         isHidden: () => false,
         isEcho: () => false,
+        moveTransients: vi.fn(),
         resizeColumn: vi.fn(),
         resizeTile: vi.fn(() => true),
         hideColumn: vi.fn(),
@@ -147,6 +148,25 @@ describe('onWindowGeometryChanged', () => {
 
         onWindowGeometryChanged(win, { x: 0, y: 0, width: 800, height: 600 }, deps);
 
+        expect(deps.resizeColumn).not.toHaveBeenCalled();
+    });
+
+    it('follows transient children by the position delta even for an otherwise-ignored pure move', () => {
+        const deps = fakeDeps();
+        const win = fakeWindow('w1', { x: 50, y: 10, width: 800, height: 600 });
+
+        onWindowGeometryChanged(win, { x: 0, y: 0, width: 800, height: 600 }, deps);
+
+        expect(deps.moveTransients).toHaveBeenCalledWith('w1', 50, 10);
+    });
+
+    it('follows transient children even when the geometry change is an echo of its own write', () => {
+        const deps = fakeDeps({ isEcho: () => true });
+        const win = fakeWindow('w1', { x: 50, y: 10, width: 900, height: 600 });
+
+        onWindowGeometryChanged(win, { x: 0, y: 0, width: 800, height: 600 }, deps);
+
+        expect(deps.moveTransients).toHaveBeenCalledWith('w1', 50, 10);
         expect(deps.resizeColumn).not.toHaveBeenCalled();
     });
 

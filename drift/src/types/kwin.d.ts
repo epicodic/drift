@@ -52,6 +52,7 @@ interface Window {
     readonly caption: string;
     readonly normalWindow: boolean;
     readonly transient: boolean;
+    readonly transientFor: Window | null;
     readonly fullScreen: boolean;
     skipTaskbar: boolean;
     keepAbove: boolean;

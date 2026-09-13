@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import type { StripManager } from './strip-manager';
+import type { TransientLinks } from './transient-links';
 import type { WindowManager } from './window-manager';
 import { initWorkspaceSignals } from './workspace-signals';
 
@@ -21,6 +22,10 @@ function fakeWorkspaceAdapter() {
     return { adapter, handlers };
 }
 
+function fakeTransientLinks() {
+    return { link: vi.fn(), unlink: vi.fn() } as unknown as TransientLinks;
+}
+
 describe('initWorkspaceSignals', () => {
     it('re-renders the active strip when the current activity changes', () => {
         const renderActive = vi.fn();
@@ -28,7 +33,7 @@ describe('initWorkspaceSignals', () => {
         const windowManager = { addWindow: vi.fn() } as unknown as WindowManager;
         const { adapter, handlers } = fakeWorkspaceAdapter();
 
-        initWorkspaceSignals(windowManager, stripManager, adapter);
+        initWorkspaceSignals(windowManager, stripManager, fakeTransientLinks(), true, adapter);
         handlers.currentActivity();
 
         expect(renderActive).toHaveBeenCalledTimes(1);
@@ -40,7 +45,7 @@ describe('initWorkspaceSignals', () => {
         const windowManager = { addWindow: vi.fn() } as unknown as WindowManager;
         const { adapter, handlers } = fakeWorkspaceAdapter();
 
-        initWorkspaceSignals(windowManager, stripManager, adapter);
+        initWorkspaceSignals(windowManager, stripManager, fakeTransientLinks(), true, adapter);
         handlers.currentDesktop();
 
         expect(renderActive).toHaveBeenCalledTimes(1);
@@ -52,7 +57,7 @@ describe('initWorkspaceSignals', () => {
         const windowManager = { addWindow: vi.fn() } as unknown as WindowManager;
         const { adapter, handlers } = fakeWorkspaceAdapter();
 
-        initWorkspaceSignals(windowManager, stripManager, adapter);
+        initWorkspaceSignals(windowManager, stripManager, fakeTransientLinks(), true, adapter);
         handlers.activities();
 
         expect(prune).toHaveBeenCalledWith(new Set(['a']), new Set(['d1']));
@@ -64,7 +69,7 @@ describe('initWorkspaceSignals', () => {
         const windowManager = { addWindow } as unknown as WindowManager;
         const { adapter, handlers } = fakeWorkspaceAdapter();
 
-        initWorkspaceSignals(windowManager, stripManager, adapter);
+        initWorkspaceSignals(windowManager, stripManager, fakeTransientLinks(), true, adapter);
         handlers.windowAdded();
 
         expect(addWindow).toHaveBeenCalledTimes(1);
@@ -77,7 +82,7 @@ describe('initWorkspaceSignals', () => {
         const { adapter, handlers } = fakeWorkspaceAdapter();
         const win = {} as WindowAdapter;
 
-        initWorkspaceSignals(windowManager, stripManager, adapter);
+        initWorkspaceSignals(windowManager, stripManager, fakeTransientLinks(), true, adapter);
         handlers.windowActivated(win);
 
         expect(activateWindow).toHaveBeenCalledWith(win);
@@ -91,7 +96,14 @@ describe('initWorkspaceSignals', () => {
         const onManagedWindowActivated = vi.fn();
         const win = {} as WindowAdapter;
 
-        initWorkspaceSignals(windowManager, stripManager, adapter, onManagedWindowActivated);
+        initWorkspaceSignals(
+            windowManager,
+            stripManager,
+            fakeTransientLinks(),
+            true,
+            adapter,
+            onManagedWindowActivated,
+        );
         handlers.windowActivated(win);
 
         expect(onManagedWindowActivated).toHaveBeenCalledWith(win);
@@ -104,7 +116,14 @@ describe('initWorkspaceSignals', () => {
         const { adapter, handlers } = fakeWorkspaceAdapter();
         const onManagedWindowActivated = vi.fn();
 
-        initWorkspaceSignals(windowManager, stripManager, adapter, onManagedWindowActivated);
+        initWorkspaceSignals(
+            windowManager,
+            stripManager,
+            fakeTransientLinks(),
+            true,
+            adapter,
+            onManagedWindowActivated,
+        );
         handlers.windowActivated({} as WindowAdapter);
 
         expect(onManagedWindowActivated).not.toHaveBeenCalled();
@@ -116,9 +135,69 @@ describe('initWorkspaceSignals', () => {
         const windowManager = { addWindow: vi.fn(), activateWindow } as unknown as WindowManager;
         const { adapter, handlers } = fakeWorkspaceAdapter();
 
-        initWorkspaceSignals(windowManager, stripManager, adapter);
+        initWorkspaceSignals(windowManager, stripManager, fakeTransientLinks(), true, adapter);
 
         expect(() => handlers.windowActivated(null)).not.toThrow();
         expect(activateWindow).toHaveBeenCalledWith(null);
+    });
+
+    it('links an added window when popup pinning is enabled', () => {
+        const stripManager = { renderActive: vi.fn(), prune: vi.fn() } as unknown as StripManager;
+        const addWindow = vi.fn();
+        const windowManager = { addWindow } as unknown as WindowManager;
+        const { adapter, handlers } = fakeWorkspaceAdapter();
+        const link = vi.fn();
+        const transientLinks = { link, unlink: vi.fn() } as unknown as TransientLinks;
+        const win = {} as WindowAdapter;
+
+        initWorkspaceSignals(windowManager, stripManager, transientLinks, true, adapter);
+        handlers.windowAdded(win);
+
+        expect(link).toHaveBeenCalledWith(win);
+        expect(addWindow).toHaveBeenCalledWith(win);
+    });
+
+    it('does not link an added window when popup pinning is disabled', () => {
+        const stripManager = { renderActive: vi.fn(), prune: vi.fn() } as unknown as StripManager;
+        const windowManager = { addWindow: vi.fn() } as unknown as WindowManager;
+        const { adapter, handlers } = fakeWorkspaceAdapter();
+        const link = vi.fn();
+        const transientLinks = { link, unlink: vi.fn() } as unknown as TransientLinks;
+        const win = {} as WindowAdapter;
+
+        initWorkspaceSignals(windowManager, stripManager, transientLinks, false, adapter);
+        handlers.windowAdded(win);
+
+        expect(link).not.toHaveBeenCalled();
+    });
+
+    it('unlinks a removed window when popup pinning is enabled', () => {
+        const stripManager = { renderActive: vi.fn(), prune: vi.fn() } as unknown as StripManager;
+        const removeWindow = vi.fn();
+        const windowManager = { addWindow: vi.fn(), removeWindow } as unknown as WindowManager;
+        const { adapter, handlers } = fakeWorkspaceAdapter();
+        const unlink = vi.fn();
+        const transientLinks = { link: vi.fn(), unlink } as unknown as TransientLinks;
+        const win = {} as WindowAdapter;
+
+        initWorkspaceSignals(windowManager, stripManager, transientLinks, true, adapter);
+        handlers.windowRemoved(win);
+
+        expect(unlink).toHaveBeenCalledWith(win);
+        expect(removeWindow).toHaveBeenCalledWith(win);
+    });
+
+    it('does not unlink a removed window when popup pinning is disabled', () => {
+        const stripManager = { renderActive: vi.fn(), prune: vi.fn() } as unknown as StripManager;
+        const windowManager = { addWindow: vi.fn(), removeWindow: vi.fn() } as unknown as WindowManager;
+        const { adapter, handlers } = fakeWorkspaceAdapter();
+        const unlink = vi.fn();
+        const transientLinks = { link: vi.fn(), unlink } as unknown as TransientLinks;
+        const win = {} as WindowAdapter;
+
+        initWorkspaceSignals(windowManager, stripManager, transientLinks, false, adapter);
+        handlers.windowRemoved(win);
+
+        expect(unlink).not.toHaveBeenCalled();
     });
 });

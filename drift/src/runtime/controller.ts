@@ -14,6 +14,7 @@ import { ANIMATION_TICK_MS } from '../viewport/shared-ticker';
 import { registerShortcuts } from '../input/shortcuts';
 import type { StripStack } from './strip-stack';
 import { StripManager } from './strip-manager';
+import { TransientLinks } from './transient-links';
 import { WindowManager } from './window-manager';
 import { initWorkspaceSignals } from './workspace-signals';
 
@@ -34,6 +35,7 @@ export class Controller {
     private readonly workspaceAdapter = new WorkspaceAdapter();
     private readonly stripManager: StripManager;
     private readonly windowManager: WindowManager;
+    private readonly transientLinks: TransientLinks;
     private readonly minimapOverlay: MinimapOverlay;
     private readonly focusFlashOverlay: FocusFlashOverlay;
     private readonly areaRecheckTimer: { start(intervalMs: number, onTick: () => void): void; stop(): void };
@@ -58,14 +60,27 @@ export class Controller {
             settings.focusFlashOpacity,
             settings.focusFlashEnabled,
         );
-        this.stripManager = new StripManager(this.area, settings, createQmlTimer(root), this.workspaceAdapter);
+        this.transientLinks = new TransientLinks();
+        this.stripManager = new StripManager(
+            this.area,
+            settings,
+            createQmlTimer(root),
+            this.workspaceAdapter,
+            undefined,
+            this.transientLinks,
+        );
         this.windowManager = new WindowManager(this.stripManager, settings);
         this.areaRecheckTimer = createQmlTimer(root);
     }
 
     start(): void {
-        initWorkspaceSignals(this.windowManager, this.stripManager, this.workspaceAdapter, (win) =>
-            this.focusFlashOverlay.show(win),
+        initWorkspaceSignals(
+            this.windowManager,
+            this.stripManager,
+            this.transientLinks,
+            this.settings.popupPinningEnabled,
+            this.workspaceAdapter,
+            (win) => this.focusFlashOverlay.show(win),
         );
         registerShortcuts(this.root, this.settings, {
             focusLeft: () => this.focusAndShowMinimap((stack) => stack.focusLeft()),
