@@ -6,14 +6,13 @@ layout(std140, binding = 0) uniform buf {
     float qt_Opacity;
     vec4 glowColor;   // premultiply happens below; pass straight RGBA from QML
     vec2 itemSize;    // effect item size in px, == the window frame plus 2*bleed padding
-    float coreHalf;   // half width of the fully-opaque border core in px
     float glow;       // inward falloff distance in px
     float sharpness;  // pow() exponent applied to alpha; >1 concentrates the glow near the core
     float bleed;      // outward falloff distance in px; also how far the item is padded outward
 };
 // Inward falloff along one axis, ignoring the other axis entirely.
 float ringInside(float q) {
-    return 1.0 - smoothstep(coreHalf, coreHalf + glow, -q);
+    return 1.0 - smoothstep(0.0, glow, -q);
 }
 void main() {
     vec2 p = (qt_TexCoord0 - 0.5) * itemSize;      // centered pixel coords

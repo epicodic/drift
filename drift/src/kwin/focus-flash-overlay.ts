@@ -14,7 +14,6 @@ import org.kde.plasma.core as PlasmaCore
 import org.kde.kirigami as Kirigami
 PlasmaCore.Dialog {
     id: dialog
-    property real borderWidth: 4
     property real blurRadius: 24
     // Derived from blurRadius, not user-configurable (matches sharpness/glowColor below):
     // bleedRadius is both how far the dialog is padded outward and how far the glow fades past
@@ -38,7 +37,6 @@ PlasmaCore.Dialog {
         // toward black the way a blurred-then-masked stroke did.
         property color glowColor: Kirigami.Theme.highlightColor
         property vector2d itemSize: Qt.vector2d(width, height)
-        property real coreHalf: dialog.borderWidth * 0.5
         property real glow: dialog.blurRadius
         property real sharpness: 2.0
         property real bleed: dialog.bleedRadius
@@ -57,14 +55,12 @@ export interface FocusFlashOverlay {
 export function createFocusFlashOverlay(
     parent: QmlObject,
     tickMs: number,
-    borderWidth: number,
     blurRadius: number,
     durationMs: number,
     peakOpacity: number,
     enabled: boolean,
 ): FocusFlashOverlay {
     const dialog = Qt.createQmlObject(FOCUS_FLASH_QML, parent) as QmlFocusFlashDialog;
-    dialog.borderWidth = borderWidth;
     dialog.blurRadius = blurRadius;
     // Mapped once and never unmapped again: toggling `visible` re-triggers KWin's
     // slide-in-on-map effect for OnScreenDisplay windows on every flash. Opacity alone

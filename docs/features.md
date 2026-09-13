@@ -142,8 +142,8 @@ Implementation: [`2026-09-01-minimap-design.md`](agents/specs/2026-09-01-minimap
 Every time focus moves to a different window, a soft glow briefly hugs its edge from the inside and fades back
 out — a sinusoidal fade-in/fade-out envelope over `focusFlashDurationMs` (default 300ms). The glow is rendered by
 a custom signed-distance-field fragment shader rather than a blurred/clipped effect stack, so its hue can never
-fringe toward black at low opacity. `focusFlashEnabled`, `focusFlashBorderWidth` (default 4px), and
-`focusFlashBlurRadius` (default 24px) control whether it shows and how it looks.
+fringe toward black at low opacity. `focusFlashEnabled` and `focusFlashBlurRadius` (default 24px)
+control whether it shows and how it looks.
 Implementation: [algorithms.md § Focus-Flash Opacity Envelope](algorithms.md#focus-flash-opacity-envelope) and
 [`2026-09-05-focus-flash-glow-shader-design.md`](agents/specs/2026-09-05-focus-flash-glow-shader-design.md).
 

@@ -184,7 +184,6 @@ interface QmlMinimapDialog extends QmlObject {
 /** The dynamically-created focus-flash overlay dialog: a blurred border rectangle flashed
  * around a window's live frame geometry (docs: 2026-09-05-focus-flash-highlight-design). */
 interface QmlFocusFlashDialog extends QmlObject {
-    borderWidth: number;
     blurRadius: number;
     bleedRadius: number;
     x: number;

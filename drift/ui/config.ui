@@ -652,39 +652,13 @@
                                     </property>
                                     <layout class="QFormLayout" name="formLayout_focusFlash">
                                         <item row="0" column="0">
-                                            <widget class="QLabel" name="label_focusFlashBorderWidth">
-                                                <property name="text">
-                                                    <string>Border width:</string>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                        <item row="0" column="1">
-                                            <widget class="QSpinBox" name="kcfg_focusFlashBorderWidth">
-                                                <property name="toolTip">
-                                                    <string>Width of the focus-flash highlight's border</string>
-                                                </property>
-                                                <property name="suffix">
-                                                    <string> px</string>
-                                                </property>
-                                                <property name="minimum">
-                                                    <number>1</number>
-                                                </property>
-                                                <property name="maximum">
-                                                    <number>50</number>
-                                                </property>
-                                                <property name="value">
-                                                    <number>4</number>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                        <item row="1" column="0">
                                             <widget class="QLabel" name="label_focusFlashBlurRadius">
                                                 <property name="text">
                                                     <string>Blur radius:</string>
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="1" column="1">
+                                        <item row="0" column="1">
                                             <widget class="QSpinBox" name="kcfg_focusFlashBlurRadius">
                                                 <property name="toolTip">
                                                     <string>Blur radius of the focus-flash highlight</string>
@@ -703,14 +677,14 @@
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="2" column="0">
+                                        <item row="1" column="0">
                                             <widget class="QLabel" name="label_focusFlashDurationMs">
                                                 <property name="text">
                                                     <string>Duration:</string>
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="2" column="1">
+                                        <item row="1" column="1">
                                             <widget class="QSpinBox" name="kcfg_focusFlashDurationMs">
                                                 <property name="toolTip">
                                                     <string>Total duration of the focus-flash fade-in-then-fade-out</string>
@@ -729,14 +703,14 @@
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="3" column="0">
+                                        <item row="2" column="0">
                                             <widget class="QLabel" name="label_focusFlashOpacity">
                                                 <property name="text">
                                                     <string>Peak opacity:</string>
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="3" column="1">
+                                        <item row="2" column="1">
                                             <widget class="QDoubleSpinBox" name="kcfg_focusFlashOpacity">
                                                 <property name="toolTip">
                                                     <string>Peak opacity of the focus-flash highlight at the midpoint of its fade</string>
