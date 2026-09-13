@@ -10,12 +10,14 @@ import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import type { Timer } from '../viewport/animator';
 import { StripStack } from './strip-stack';
+import { TransientLinks } from './transient-links';
 
 export type StripStackFactory = (
     area: Rect,
     settings: Settings,
     timer: Timer,
     workspaceAdapter: WorkspaceAdapter,
+    transientLinks: TransientLinks,
 ) => StripStack;
 
 export class StripManager {
@@ -27,8 +29,16 @@ export class StripManager {
         private readonly settings: Settings,
         private readonly timer: Timer,
         private readonly workspaceAdapter: WorkspaceAdapter,
-        private readonly createStripStack: StripStackFactory = (area, settings, timer, workspaceAdapter) =>
-            new StripStack(area, settings, timer, workspaceAdapter),
+        // undefined skips StripStack's own createStrip parameter positionally so it falls back to
+        // its default, while still supplying transientLinks (the parameter after it).
+        private readonly createStripStack: StripStackFactory = (
+            area,
+            settings,
+            timer,
+            workspaceAdapter,
+            transientLinks,
+        ) => new StripStack(area, settings, timer, workspaceAdapter, undefined, transientLinks),
+        private readonly transientLinks: TransientLinks = new TransientLinks(),
     ) {}
 
     keyOf(activity: string, desktop: string): string {
@@ -125,7 +135,13 @@ export class StripManager {
     private stack(key: string): StripStack {
         let stack = this.stacks.get(key);
         if (stack === undefined) {
-            stack = this.createStripStack(this.area, this.settings, this.timer, this.workspaceAdapter);
+            stack = this.createStripStack(
+                this.area,
+                this.settings,
+                this.timer,
+                this.workspaceAdapter,
+                this.transientLinks,
+            );
             this.stacks.set(key, stack);
         }
         return stack;

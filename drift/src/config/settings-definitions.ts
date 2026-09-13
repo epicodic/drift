@@ -174,6 +174,7 @@ export const SETTINGS_DEFINITIONS: AnySettingsDefinition[] = [
     { name: 'dragPanVerticalTriggerPx', type: 'UInt', default: 20 },
     { name: 'dragPanHorizontalTolerancePx', type: 'UInt', default: 10 },
     { name: 'dragPanFreeDwellMs', type: 'UInt', default: 400 },
+    { name: 'popupPinningEnabled', type: 'Bool', default: true },
     { name: 'minimapAutoHideMs', type: 'UInt', default: 1200 },
     { name: 'minimapShowThumbnails', type: 'Bool', default: true },
     { name: 'focusFlashEnabled', type: 'Bool', default: true },

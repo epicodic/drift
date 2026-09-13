@@ -20,8 +20,15 @@ import { Animator, type Timer } from '../viewport/animator';
 import { DwellTimer } from '../utils/dwell-timer';
 import { ANIMATION_TICK_MS, SharedTicker } from '../viewport/shared-ticker';
 import { Strip, type StripDragHooks } from './strip';
+import { TransientLinks } from './transient-links';
 
-export type StripFactory = (area: Rect, settings: Settings, timer: Timer, workspaceAdapter: WorkspaceAdapter) => Strip;
+export type StripFactory = (
+    area: Rect,
+    settings: Settings,
+    timer: Timer,
+    workspaceAdapter: WorkspaceAdapter,
+    transientLinks: TransientLinks,
+) => Strip;
 
 export class StripStack {
     private readonly strips = new Map<number, Strip>();
@@ -40,8 +47,9 @@ export class StripStack {
         private readonly settings: Settings,
         timer: Timer,
         private readonly workspaceAdapter: WorkspaceAdapter,
-        private readonly createStrip: StripFactory = (area, settings, timer, workspaceAdapter) =>
-            new Strip(area, settings, timer, workspaceAdapter),
+        private readonly createStrip: StripFactory = (area, settings, timer, workspaceAdapter, transientLinks) =>
+            new Strip(area, settings, timer, workspaceAdapter, transientLinks),
+        private readonly transientLinks: TransientLinks = new TransientLinks(),
     ) {
         this.ticker = new SharedTicker(timer, ANIMATION_TICK_MS);
         this.verticalAnimator = new Animator(
@@ -267,7 +275,13 @@ export class StripStack {
     private strip(index: number): Strip {
         let strip = this.strips.get(index);
         if (strip === undefined) {
-            strip = this.createStrip(this.area, this.settings, this.ticker.subscribe(), this.workspaceAdapter);
+            strip = this.createStrip(
+                this.area,
+                this.settings,
+                this.ticker.subscribe(),
+                this.workspaceAdapter,
+                this.transientLinks,
+            );
             this.strips.set(index, strip);
         }
         return strip;

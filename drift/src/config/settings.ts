@@ -131,6 +131,11 @@ export interface Settings {
      * and the dwell-to-free gesture entirely — dragging behaves exactly as it would without
      * this feature. */
     dragPanEnabled: boolean;
+    /** Whether a dialog/popup follows its tiled parent window's on-screen position (strip
+     * scroll, column resize, park/unpark) instead of being left behind (docs:
+     * 2026-09-13-popup-pinning-design). `false` fully restores pre-feature behavior: popups are
+     * never touched by Drift. */
+    popupPinningEnabled: boolean;
     /** Cumulative vertical drag movement, in pixels, before a hold-to-free gesture can start
      * counting at all (docs: 2026-09-12-drag-pan-dwell-design). */
     dragPanVerticalTriggerPx: number;

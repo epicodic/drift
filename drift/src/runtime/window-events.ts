@@ -19,6 +19,11 @@ export interface WindowEventDeps {
     tileOf(windowId: string): TileLocation | null;
     isHidden(columnId: number): boolean;
     isEcho(windowId: string, rect: Rect): boolean;
+    /** Shifts every transient descendant (dialog/popup) of `windowId` by `(dx, dy)` — called
+     * for every real geometry change of a tiled window, including an echo of Drift's own write
+     * or a pure move that's otherwise a no-op for this function, since a popup still needs to
+     * follow its parent in both of those cases (docs: 2026-09-13-popup-pinning-design). */
+    moveTransients(windowId: string, dx: number, dy: number): void;
     resizeColumn(columnId: number, width: number, edge: ResizeEdge): void;
     /** Returns whether the tile actually resized — `false` for a single-tile column, which has
      * no neighbor to take the height from, and must not be treated as a live-tracking resize. */
@@ -56,6 +61,7 @@ export function onWindowGeometryChanged(win: WindowAdapter, oldReal: Rect, deps:
     if (rectsEqualRounded(oldReal, newReal)) {
         return;
     }
+    deps.moveTransients(win.id, Math.round(newReal.x - oldReal.x), Math.round(newReal.y - oldReal.y));
     if (deps.isEcho(win.id, newReal)) {
         return;
     }

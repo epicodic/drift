@@ -78,6 +78,14 @@ export class WindowAdapter {
         return this.window.fullScreen;
     }
 
+    isTransient(): boolean {
+        return this.window.transient;
+    }
+
+    transientFor(): WindowAdapter | null {
+        return this.window.transientFor === null ? null : new WindowAdapter(this.window.transientFor);
+    }
+
     /** Toggles taskbar visibility without affecting tiling: used to hide a window's taskbar
      * entry while its strip is inactive (docs: 2026-09-01-row-navigation-design). Safe to call on
      * an already-managed window — `isTileable()` is only read once, at the moment `WindowManager`

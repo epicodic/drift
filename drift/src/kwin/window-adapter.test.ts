@@ -32,6 +32,7 @@ function createWindow(overrides: Partial<Window> = {}): Window {
         interactiveMoveResizeStarted: { connect: () => {}, disconnect: () => {} },
         interactiveMoveResizeFinished: { connect: () => {}, disconnect: () => {} },
         transient: false,
+        transientFor: null,
         fullScreen: false,
         modal: false,
         managed: true,
@@ -108,6 +109,38 @@ describe('WindowAdapter.isFullScreen', () => {
         const window = createWindow({ fullScreen: true });
 
         expect(new WindowAdapter(window).isFullScreen()).toBe(true);
+    });
+});
+
+describe('WindowAdapter.isTransient', () => {
+    it('reflects the window transient property', () => {
+        const window = createWindow({ transient: true });
+
+        expect(new WindowAdapter(window).isTransient()).toBe(true);
+    });
+
+    it('is false for a normal window', () => {
+        const window = createWindow({ transient: false });
+
+        expect(new WindowAdapter(window).isTransient()).toBe(false);
+    });
+});
+
+describe('WindowAdapter.transientFor', () => {
+    it('returns null when the window has no transientFor', () => {
+        const window = createWindow({ transientFor: null });
+
+        expect(new WindowAdapter(window).transientFor()).toBeNull();
+    });
+
+    it('wraps the underlying transientFor window in a WindowAdapter', () => {
+        const parent = createWindow({ internalId: 'parent-1' });
+        const window = createWindow({ transientFor: parent });
+
+        const result = new WindowAdapter(window).transientFor();
+
+        expect(result).not.toBeNull();
+        expect(result?.id).toBe('parent-1');
     });
 });
 

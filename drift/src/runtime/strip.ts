@@ -36,6 +36,7 @@ import {
     onWindowGeometryChanged,
     type WindowEventDeps,
 } from './window-events';
+import { TransientLinks } from './transient-links';
 import { SignalManager } from '../utils/signal-manager';
 
 /** The subset of `DragReorderDeps` a caller can supply per-window without knowing about
@@ -97,6 +98,7 @@ export class Strip {
         private readonly settings: Settings,
         timer: Timer,
         private readonly workspaceAdapter: WorkspaceAdapter,
+        private readonly transientLinks: TransientLinks = new TransientLinks(),
     ) {
         this.area = this.marginedArea(area);
         this.grid = new Grid(Math.max(1, this.area.height), settings.horizontalGap, settings.verticalGap);
@@ -968,6 +970,7 @@ export class Strip {
             tileOf: (windowId) => this.registry.tileOf(windowId),
             isHidden: (columnId) => this.grid.isHidden(columnId),
             isEcho: (windowId, rect) => this.geometrySync.isEcho(windowId, rect),
+            moveTransients: (windowId, dx, dy) => this.transientLinks.moveChildren(windowId, dx, dy),
             resizeColumn: (columnId, width, edge) => this.grid.resizeColumn(columnId, width, edge),
             resizeTile: (columnId, tileId, height, edge) =>
                 this.grid.column(columnId)?.resizeTile(tileId, height, edge) ?? false,
