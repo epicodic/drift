@@ -53,7 +53,6 @@ export class Controller {
         this.focusFlashOverlay = createFocusFlashOverlay(
             root,
             ANIMATION_TICK_MS,
-            settings.focusFlashBorderWidth,
             settings.focusFlashBlurRadius,
             settings.focusFlashDurationMs,
             settings.focusFlashOpacity,

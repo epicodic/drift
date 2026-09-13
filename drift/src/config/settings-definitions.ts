@@ -177,7 +177,6 @@ export const SETTINGS_DEFINITIONS: AnySettingsDefinition[] = [
     { name: 'minimapAutoHideMs', type: 'UInt', default: 1200 },
     { name: 'minimapShowThumbnails', type: 'Bool', default: true },
     { name: 'focusFlashEnabled', type: 'Bool', default: true },
-    { name: 'focusFlashBorderWidth', type: 'UInt', default: 4 },
     { name: 'focusFlashBlurRadius', type: 'UInt', default: 24 },
     { name: 'focusFlashDurationMs', type: 'UInt', default: 300 },
     { name: 'focusFlashOpacity', type: 'Double', default: 0.5 },

@@ -94,7 +94,6 @@ describe('DEFAULT_SETTINGS', () => {
     });
 
     it('defaults the focus flash border width to 4px and blur radius to 24px', () => {
-        expect(DEFAULT_SETTINGS.focusFlashBorderWidth).toBe(4);
         expect(DEFAULT_SETTINGS.focusFlashBlurRadius).toBe(24);
     });
 

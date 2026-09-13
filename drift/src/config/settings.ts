@@ -150,8 +150,6 @@ export interface Settings {
     /** Whether the focus-flash highlight is shown at all (docs:
      * 2026-09-05-focus-flash-highlight-design). */
     focusFlashEnabled: boolean;
-    /** Width of the focus-flash highlight's border, in pixels. */
-    focusFlashBorderWidth: number;
     /** Blur radius of the focus-flash highlight, in pixels. */
     focusFlashBlurRadius: number;
     /** Total duration of the focus-flash fade-in-then-fade-out, in milliseconds. */
