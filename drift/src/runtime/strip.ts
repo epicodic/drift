@@ -372,7 +372,7 @@ export class Strip {
         stripDragHooks?: StripDragHooks,
         initiallyFreed = false,
     ): void {
-        const width = Math.round(win.frameGeometry().width) || this.settings.defaultColumnWidth;
+        const width = Math.round(win.frameGeometry().width);
         const column = this.grid.addColumn(width);
         this.wireTile(win, column, column.focusedTileId, initiallyDragging, stripDragHooks, initiallyFreed);
         this.render(initiallyDragging ? win.id : undefined);
@@ -401,7 +401,7 @@ export class Strip {
         if (first === undefined) {
             return;
         }
-        const width = Math.round(first.frameGeometry().width) || this.settings.defaultColumnWidth;
+        const width = Math.round(first.frameGeometry().width);
         const column = this.grid.addColumn(width);
         this.wireTile(first, column, column.focusedTileId, initiallyDragging, stripDragHooks, initiallyFreed);
         for (const win of rest) {
@@ -812,7 +812,7 @@ export class Strip {
         if (focused === null) {
             return;
         }
-        const result = this.grid.expelFocusedTile(focused.id, this.settings.defaultColumnWidth);
+        const result = this.grid.expelFocusedTile(focused.id, focused.width);
         if (result === null) {
             return;
         }

@@ -4,10 +4,13 @@
 
 import type { Rect, VerticalResizeEdge } from './coordinates';
 
-function assertPositiveWidth(width: number): void {
-    if (!(width > 0)) {
-        throw new Error(`Column width must be positive, got ${width}`);
-    }
+/** Floor for a column's width — callers may pass a non-positive or `NaN` width (e.g. a
+ * window whose `frameGeometry` hasn't been negotiated yet) and get a sane column instead
+ * of a thrown error. */
+export const MIN_COLUMN_WIDTH = 40;
+
+function clampWidth(width: number): number {
+    return width > MIN_COLUMN_WIDTH ? width : MIN_COLUMN_WIDTH;
 }
 
 function assertPositiveHeight(height: number): void {
@@ -34,9 +37,8 @@ export class Column {
         height: number,
         private readonly rowGap: number = 0,
     ) {
-        assertPositiveWidth(width);
         assertPositiveHeight(height);
-        this.columnWidth = width;
+        this.columnWidth = clampWidth(width);
         const firstId = this.nextTileId++;
         this.stack.push({ id: firstId, height });
         this.focusedTile = firstId;
@@ -47,8 +49,7 @@ export class Column {
     }
 
     setWidth(width: number): void {
-        assertPositiveWidth(width);
-        this.columnWidth = width;
+        this.columnWidth = clampWidth(width);
     }
 
     /** True while the column's window is minimized (docs: minimized-windows design). */
