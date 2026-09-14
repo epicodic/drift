@@ -27,22 +27,22 @@
                         </attribute>
                         <layout class="QVBoxLayout" name="verticalLayout_layout">
                             <item>
-                                <widget class="QGroupBox" name="groupBox_layout">
+                                <widget class="QGroupBox" name="groupBox_spacing">
                                     <property name="title">
-                                        <string>Layout</string>
+                                        <string>Spacing</string>
                                     </property>
-                                    <layout class="QFormLayout" name="formLayout_layout">
+                                    <layout class="QFormLayout" name="formLayout_spacing">
                                         <item row="0" column="0">
                                             <widget class="QLabel" name="label_horizontalGap">
                                                 <property name="text">
-                                                    <string>Horizontal gap:</string>
+                                                    <string>Horizontal gap between windows:</string>
                                                 </property>
                                             </widget>
                                         </item>
                                         <item row="0" column="1">
                                             <widget class="QSpinBox" name="kcfg_horizontalGap">
                                                 <property name="toolTip">
-                                                    <string>Horizontal gap between columns</string>
+                                                    <string>Horizontal gap between windows</string>
                                                 </property>
                                                 <property name="suffix">
                                                     <string> px</string>
@@ -58,14 +58,14 @@
                                         <item row="1" column="0">
                                             <widget class="QLabel" name="label_verticalGap">
                                                 <property name="text">
-                                                    <string>Vertical gap:</string>
+                                                    <string>Vertical gap between windows:</string>
                                                 </property>
                                             </widget>
                                         </item>
                                         <item row="1" column="1">
                                             <widget class="QSpinBox" name="kcfg_verticalGap">
                                                 <property name="toolTip">
-                                                    <string>Vertical gap between tiles stacked within a column</string>
+                                                    <string>Vertical gap between stacked windows</string>
                                                 </property>
                                                 <property name="suffix">
                                                     <string> px</string>
@@ -78,14 +78,23 @@
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="2" column="0">
+                                    </layout>
+                                </widget>
+                            </item>
+                            <item>
+                                <widget class="QGroupBox" name="groupBox_screenMargins">
+                                    <property name="title">
+                                        <string>Screen margins</string>
+                                    </property>
+                                    <layout class="QFormLayout" name="formLayout_screenMargins">
+                                        <item row="0" column="0">
                                             <widget class="QLabel" name="label_topMargin">
                                                 <property name="text">
                                                     <string>Top margin:</string>
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="2" column="1">
+                                        <item row="0" column="1">
                                             <widget class="QSpinBox" name="kcfg_topMargin">
                                                 <property name="toolTip">
                                                     <string>Space reserved at the top of the screen</string>
@@ -101,14 +110,14 @@
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="3" column="0">
+                                        <item row="1" column="0">
                                             <widget class="QLabel" name="label_bottomMargin">
                                                 <property name="text">
                                                     <string>Bottom margin:</string>
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="3" column="1">
+                                        <item row="1" column="1">
                                             <widget class="QSpinBox" name="kcfg_bottomMargin">
                                                 <property name="toolTip">
                                                     <string>Space reserved at the bottom of the screen</string>
@@ -124,14 +133,14 @@
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="4" column="0">
+                                        <item row="2" column="0">
                                             <widget class="QLabel" name="label_leftMargin">
                                                 <property name="text">
                                                     <string>Left margin:</string>
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="4" column="1">
+                                        <item row="2" column="1">
                                             <widget class="QSpinBox" name="kcfg_leftMargin">
                                                 <property name="toolTip">
                                                     <string>Space reserved at the left of the screen</string>
@@ -147,14 +156,14 @@
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="5" column="0">
+                                        <item row="3" column="0">
                                             <widget class="QLabel" name="label_rightMargin">
                                                 <property name="text">
                                                     <string>Right margin:</string>
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="5" column="1">
+                                        <item row="3" column="1">
                                             <widget class="QSpinBox" name="kcfg_rightMargin">
                                                 <property name="toolTip">
                                                     <string>Space reserved at the right of the screen</string>
@@ -167,19 +176,6 @@
                                                 </property>
                                                 <property name="value">
                                                     <number>8</number>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                        <item row="6" column="1">
-                                            <widget class="QCheckBox" name="kcfg_undockKeepAbove">
-                                                <property name="toolTip">
-                                                    <string>Keep an undocked (floating) window above still-docked windows</string>
-                                                </property>
-                                                <property name="text">
-                                                    <string>Keep undocked windows above docked ones</string>
-                                                </property>
-                                                <property name="checked">
-                                                    <bool>true</bool>
                                                 </property>
                                             </widget>
                                         </item>
@@ -201,22 +197,22 @@
                         </attribute>
                         <layout class="QVBoxLayout" name="verticalLayout_behavior">
                             <item>
-                                <widget class="QGroupBox" name="groupBox_scrolling">
+                                <widget class="QGroupBox" name="groupBox_scrollingResizing">
                                     <property name="title">
-                                        <string>Scrolling</string>
+                                        <string>Scrolling &amp;&amp; Resizing</string>
                                     </property>
-                                    <layout class="QFormLayout" name="formLayout_scrolling">
+                                    <layout class="QFormLayout" name="formLayout_scrollingResizing">
                                         <item row="0" column="0">
                                             <widget class="QLabel" name="label_viewportShiftStep">
                                                 <property name="text">
-                                                    <string>Viewport shift step:</string>
+                                                    <string>Viewport pan step:</string>
                                                 </property>
                                             </widget>
                                         </item>
                                         <item row="0" column="1">
                                             <widget class="QSpinBox" name="kcfg_viewportShiftStep">
                                                 <property name="toolTip">
-                                                    <string>Distance the viewport pans per shift shortcut press</string>
+                                                    <string>Distance the viewport pans per shortcut press</string>
                                                 </property>
                                                 <property name="suffix">
                                                     <string> px</string>
@@ -233,48 +229,16 @@
                                             </widget>
                                         </item>
                                         <item row="1" column="0">
-                                            <widget class="QLabel" name="label_animationDurationMs">
-                                                <property name="text">
-                                                    <string>Animation duration:</string>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                        <item row="1" column="1">
-                                            <widget class="QSpinBox" name="kcfg_animationDurationMs">
-                                                <property name="toolTip">
-                                                    <string>Duration of the focus-scroll animation</string>
-                                                </property>
-                                                <property name="suffix">
-                                                    <string> ms</string>
-                                                </property>
-                                                <property name="maximum">
-                                                    <number>5000</number>
-                                                </property>
-                                                <property name="value">
-                                                    <number>200</number>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                    </layout>
-                                </widget>
-                            </item>
-                            <item>
-                                <widget class="QGroupBox" name="groupBox_resizing">
-                                    <property name="title">
-                                        <string>Resizing</string>
-                                    </property>
-                                    <layout class="QFormLayout" name="formLayout_resizing">
-                                        <item row="0" column="0">
                                             <widget class="QLabel" name="label_columnWidthStep">
                                                 <property name="text">
                                                     <string>Column width step:</string>
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="0" column="1">
+                                        <item row="1" column="1">
                                             <widget class="QSpinBox" name="kcfg_columnWidthStep">
                                                 <property name="toolTip">
-                                                    <string>Distance a column's width changes per increase/decrease-width shortcut press</string>
+                                                    <string>Amount a column's width changes per increase/decrease-width shortcut press</string>
                                                 </property>
                                                 <property name="suffix">
                                                     <string> px</string>
@@ -290,17 +254,17 @@
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="1" column="0">
+                                        <item row="2" column="0">
                                             <widget class="QLabel" name="label_windowHeightStep">
                                                 <property name="text">
-                                                    <string>Window height step:</string>
+                                                    <string>Window height step, stacked tiles only:</string>
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="1" column="1">
+                                        <item row="2" column="1">
                                             <widget class="QSpinBox" name="kcfg_windowHeightStep">
                                                 <property name="toolTip">
-                                                    <string>Distance a stacked tile's height changes per increase/decrease-height shortcut press (stacked columns only)</string>
+                                                    <string>Amount a stacked window's height changes per increase/decrease-height shortcut press</string>
                                                 </property>
                                                 <property name="suffix">
                                                     <string> px</string>
@@ -320,48 +284,78 @@
                                 </widget>
                             </item>
                             <item>
-                                <widget class="QGroupBox" name="groupBox_dragging">
+                                <widget class="QGroupBox" name="groupBox_floatingWindows">
                                     <property name="title">
-                                        <string>Dragging</string>
+                                        <string>Floating windows</string>
                                     </property>
-                                    <layout class="QFormLayout" name="formLayout_dragging">
-                                        <item row="0" column="0">
-                                            <widget class="QLabel" name="label_stripDragDwellMs">
-                                                <property name="text">
-                                                    <string>Strip-drag dwell:</string>
-                                                </property>
-                                            </widget>
-                                        </item>
+                                    <layout class="QFormLayout" name="formLayout_floatingWindows">
                                         <item row="0" column="1">
-                                            <widget class="QSpinBox" name="kcfg_stripDragDwellMs">
+                                            <widget class="QCheckBox" name="kcfg_undockKeepAbove">
                                                 <property name="toolTip">
-                                                    <string>How long a dragged window must stay past the screen's top/bottom edge before it moves to the strip above/below</string>
+                                                    <string>Keep a floating window above docked windows</string>
                                                 </property>
-                                                <property name="suffix">
-                                                    <string> ms</string>
-                                                </property>
-                                                <property name="minimum">
-                                                    <number>0</number>
-                                                </property>
-                                                <property name="maximum">
-                                                    <number>5000</number>
-                                                </property>
-                                                <property name="value">
-                                                    <number>400</number>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                        <item row="1" column="0">
-                                            <widget class="QLabel" name="label_stripDragEdgeBorderPx">
                                                 <property name="text">
-                                                    <string>Strip-drag edge border:</string>
+                                                    <string>Keep floating windows above tiled ones</string>
+                                                </property>
+                                                <property name="checked">
+                                                    <bool>true</bool>
                                                 </property>
                                             </widget>
                                         </item>
                                         <item row="1" column="1">
-                                            <widget class="QSpinBox" name="kcfg_stripDragEdgeBorderPx">
+                                            <widget class="QCheckBox" name="kcfg_popupPinningEnabled">
                                                 <property name="toolTip">
-                                                    <string>How close to the screen's top/bottom edge the pointer must be for a cross-strip drag to arm</string>
+                                                    <string>A dialog or popup follows its tiled parent window's on-screen position instead of being left behind</string>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Keep popups pinned to their parent window</string>
+                                                </property>
+                                                <property name="checked">
+                                                    <bool>true</bool>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                    </layout>
+                                </widget>
+                            </item>
+                            <item>
+                                <widget class="QGroupBox" name="kcfg_dragPanEnabled">
+                                    <property name="title">
+                                        <string>Drag-to-Pan</string>
+                                    </property>
+                                    <property name="toolTip">
+                                        <string>Dragging a window pans the viewport by default. Pull the window down or up and hold it steady to switch to normal reordering, stacking, or moving it to another strip.</string>
+                                    </property>
+                                    <property name="checkable">
+                                        <bool>true</bool>
+                                    </property>
+                                    <property name="checked">
+                                        <bool>true</bool>
+                                    </property>
+                                    <layout class="QFormLayout" name="formLayout_dragPan">
+                                        <item row="0" column="0" colspan="2">
+                                            <widget class="QLabel" name="label_dragPanCaption">
+                                                <property name="text">
+                                                    <string>Hold-to-free gesture — pull trigger to switch into rearrange mode:</string>
+                                                </property>
+                                                <property name="font">
+                                                    <font>
+                                                        <italic>true</italic>
+                                                    </font>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="1" column="0">
+                                            <widget class="QLabel" name="label_dragPanVerticalTriggerPx">
+                                                <property name="text">
+                                                    <string>Vertical pull threshold:</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="1" column="1">
+                                            <widget class="QSpinBox" name="kcfg_dragPanVerticalTriggerPx">
+                                                <property name="toolTip">
+                                                    <string>Cumulative vertical drag movement, in pixels, before a hold-to-free gesture can start counting</string>
                                                 </property>
                                                 <property name="suffix">
                                                     <string> px</string>
@@ -370,24 +364,50 @@
                                                     <number>0</number>
                                                 </property>
                                                 <property name="maximum">
-                                                    <number>100</number>
+                                                    <number>500</number>
                                                 </property>
                                                 <property name="value">
-                                                    <number>2</number>
+                                                    <number>20</number>
                                                 </property>
                                             </widget>
                                         </item>
                                         <item row="2" column="0">
-                                            <widget class="QLabel" name="label_columnDragDwellMs">
+                                            <widget class="QLabel" name="label_dragPanHorizontalTolerancePx">
                                                 <property name="text">
-                                                    <string>Column-stack drag dwell:</string>
+                                                    <string>Sideways tolerance:</string>
                                                 </property>
                                             </widget>
                                         </item>
                                         <item row="2" column="1">
-                                            <widget class="QSpinBox" name="kcfg_columnDragDwellMs">
+                                            <widget class="QSpinBox" name="kcfg_dragPanHorizontalTolerancePx">
                                                 <property name="toolTip">
-                                                    <string>How long the pointer must hover a neighbor column before a cross-column drag previews stacking into it</string>
+                                                    <string>Horizontal drift, in pixels, allowed since a hold-to-free gesture started before it's canceled</string>
+                                                </property>
+                                                <property name="suffix">
+                                                    <string> px</string>
+                                                </property>
+                                                <property name="minimum">
+                                                    <number>0</number>
+                                                </property>
+                                                <property name="maximum">
+                                                    <number>500</number>
+                                                </property>
+                                                <property name="value">
+                                                    <number>10</number>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="3" column="0">
+                                            <widget class="QLabel" name="label_dragPanFreeDwellMs">
+                                                <property name="text">
+                                                    <string>Hold dwell:</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="3" column="1">
+                                            <widget class="QSpinBox" name="kcfg_dragPanFreeDwellMs">
+                                                <property name="toolTip">
+                                                    <string>How long a hold-to-free gesture must be sustained before the drag is freed into normal reorder/stack/cross-strip-drag behavior</string>
                                                 </property>
                                                 <property name="suffix">
                                                     <string> ms</string>
@@ -396,21 +416,47 @@
                                                     <number>0</number>
                                                 </property>
                                                 <property name="maximum">
-                                                    <number>5000</number>
+                                                    <number>2000</number>
                                                 </property>
                                                 <property name="value">
                                                     <number>400</number>
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="3" column="0">
+                                    </layout>
+                                </widget>
+                            </item>
+                            <item>
+                                <widget class="QGroupBox" name="groupBox_dragToRearrange">
+                                    <property name="title">
+                                        <string>Drag-to-Rearrange</string>
+                                    </property>
+                                    <layout class="QFormLayout" name="formLayout_dragToRearrange">
+                                        <item row="0" column="0" colspan="2">
+                                            <widget class="QLabel" name="label_reorderingCaption">
+                                                <property name="text">
+                                                    <string>Reordering:</string>
+                                                </property>
+                                                <property name="font">
+                                                    <font>
+                                                        <italic>true</italic>
+                                                    </font>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="1" column="0">
                                             <widget class="QLabel" name="label_reorderThresholdFraction">
                                                 <property name="text">
                                                     <string>Reorder threshold:</string>
                                                 </property>
+                                                <property name="font">
+                                                    <font>
+                                                        <italic>true</italic>
+                                                    </font>
+                                                </property>
                                             </widget>
                                         </item>
-                                        <item row="3" column="1">
+                                        <item row="1" column="1">
                                             <widget class="QDoubleSpinBox" name="kcfg_reorderThresholdFraction">
                                                 <property name="toolTip">
                                                     <string>How far a dragged column's edge must penetrate a neighbor before a reorder swap fires, as a fraction of the neighbor's width</string>
@@ -432,10 +478,43 @@
                                                 </property>
                                             </widget>
                                         </item>
+                                        <item row="2" column="0" colspan="2">
+                                            <widget class="QLabel" name="label_stackingCaption">
+                                                <property name="text">
+                                                    <string>Stacking:</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="3" column="0">
+                                            <widget class="QLabel" name="label_columnDragDwellMs">
+                                                <property name="text">
+                                                    <string>Hover dwell before stack:</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="3" column="1">
+                                            <widget class="QSpinBox" name="kcfg_columnDragDwellMs">
+                                                <property name="toolTip">
+                                                    <string>How long the pointer must hover a neighbor column before the dragged window is stacked into it</string>
+                                                </property>
+                                                <property name="suffix">
+                                                    <string> ms</string>
+                                                </property>
+                                                <property name="minimum">
+                                                    <number>0</number>
+                                                </property>
+                                                <property name="maximum">
+                                                    <number>5000</number>
+                                                </property>
+                                                <property name="value">
+                                                    <number>400</number>
+                                                </property>
+                                            </widget>
+                                        </item>
                                         <item row="4" column="0">
                                             <widget class="QLabel" name="label_stackOverlapFraction">
                                                 <property name="text">
-                                                    <string>Stack overlap threshold:</string>
+                                                    <string>Minimum overlap to stack:</string>
                                                 </property>
                                             </widget>
                                         </item>
@@ -461,82 +540,29 @@
                                                 </property>
                                             </widget>
                                         </item>
-                                        <item row="5" column="1">
-                                            <widget class="QCheckBox" name="kcfg_dragPanEnabled">
-                                                <property name="toolTip">
-                                                    <string>Dragging a window pans the viewport by default. Pull the window down or up and hold it steady to switch to normal reordering, stacking, or moving it to another strip.</string>
-                                                </property>
+                                        <item row="5" column="0" colspan="2">
+                                            <widget class="QLabel" name="label_movingToStripCaption">
                                                 <property name="text">
-                                                    <string>Pan the viewport by default while dragging a window</string>
+                                                    <string>Moving to another strip:</string>
                                                 </property>
-                                                <property name="checked">
-                                                    <bool>true</bool>
+                                                <property name="font">
+                                                    <font>
+                                                        <italic>true</italic>
+                                                    </font>
                                                 </property>
                                             </widget>
                                         </item>
                                         <item row="6" column="0">
-                                            <widget class="QLabel" name="label_dragPanVerticalTriggerPx">
+                                            <widget class="QLabel" name="label_stripDragDwellMs">
                                                 <property name="text">
-                                                    <string>Drag-pan hold trigger distance:</string>
+                                                    <string>Dwell before moving to other strip:</string>
                                                 </property>
                                             </widget>
                                         </item>
                                         <item row="6" column="1">
-                                            <widget class="QSpinBox" name="kcfg_dragPanVerticalTriggerPx">
+                                            <widget class="QSpinBox" name="kcfg_stripDragDwellMs">
                                                 <property name="toolTip">
-                                                    <string>Cumulative vertical drag movement, in pixels, before a hold-to-free gesture can start counting</string>
-                                                </property>
-                                                <property name="suffix">
-                                                    <string> px</string>
-                                                </property>
-                                                <property name="minimum">
-                                                    <number>0</number>
-                                                </property>
-                                                <property name="maximum">
-                                                    <number>500</number>
-                                                </property>
-                                                <property name="value">
-                                                    <number>20</number>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                        <item row="7" column="0">
-                                            <widget class="QLabel" name="label_dragPanHorizontalTolerancePx">
-                                                <property name="text">
-                                                    <string>Drag-pan hold sideways tolerance:</string>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                        <item row="7" column="1">
-                                            <widget class="QSpinBox" name="kcfg_dragPanHorizontalTolerancePx">
-                                                <property name="toolTip">
-                                                    <string>Horizontal drift, in pixels, allowed since a hold-to-free gesture started before it's canceled</string>
-                                                </property>
-                                                <property name="suffix">
-                                                    <string> px</string>
-                                                </property>
-                                                <property name="minimum">
-                                                    <number>0</number>
-                                                </property>
-                                                <property name="maximum">
-                                                    <number>500</number>
-                                                </property>
-                                                <property name="value">
-                                                    <number>10</number>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                        <item row="8" column="0">
-                                            <widget class="QLabel" name="label_dragPanFreeDwellMs">
-                                                <property name="text">
-                                                    <string>Drag-pan hold-to-free dwell:</string>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                        <item row="8" column="1">
-                                            <widget class="QSpinBox" name="kcfg_dragPanFreeDwellMs">
-                                                <property name="toolTip">
-                                                    <string>How long a hold-to-free gesture must be sustained before the drag is freed into normal reorder/stack/cross-strip-drag behavior</string>
+                                                    <string>How long a dragged window must stay past the screen's top/bottom edge before it moves to the strip above/below</string>
                                                 </property>
                                                 <property name="suffix">
                                                     <string> ms</string>
@@ -545,10 +571,36 @@
                                                     <number>0</number>
                                                 </property>
                                                 <property name="maximum">
-                                                    <number>2000</number>
+                                                    <number>5000</number>
                                                 </property>
                                                 <property name="value">
                                                     <number>400</number>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="7" column="0">
+                                            <widget class="QLabel" name="label_stripDragEdgeBorderPx">
+                                                <property name="text">
+                                                    <string>Edge trigger distance:</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="7" column="1">
+                                            <widget class="QSpinBox" name="kcfg_stripDragEdgeBorderPx">
+                                                <property name="toolTip">
+                                                    <string>How close to the screen's top/bottom edge the pointer must be for a cross-strip drag to arm</string>
+                                                </property>
+                                                <property name="suffix">
+                                                    <string> px</string>
+                                                </property>
+                                                <property name="minimum">
+                                                    <number>0</number>
+                                                </property>
+                                                <property name="maximum">
+                                                    <number>100</number>
+                                                </property>
+                                                <property name="value">
+                                                    <number>2</number>
                                                 </property>
                                             </widget>
                                         </item>
@@ -556,34 +608,51 @@
                                 </widget>
                             </item>
                             <item>
-                                <widget class="QGroupBox" name="groupBox_popups">
-                                    <property name="title">
-                                        <string>Popups</string>
+                                <spacer name="verticalSpacer_behavior">
+                                    <property name="orientation">
+                                        <enum>Qt::Orientation::Vertical</enum>
                                     </property>
-                                    <layout class="QFormLayout" name="formLayout_popups">
-                                        <item row="0" column="1">
-                                            <widget class="QCheckBox" name="kcfg_popupPinningEnabled">
-                                                <property name="toolTip">
-                                                    <string>A dialog or popup follows its tiled parent window's on-screen position instead of being left behind</string>
-                                                </property>
+                                </spacer>
+                            </item>
+                        </layout>
+                    </widget>
+                    <widget class="QWidget" name="tab_visuals">
+                        <attribute name="title">
+                            <string>Visuals</string>
+                        </attribute>
+                        <layout class="QVBoxLayout" name="verticalLayout_visuals">
+                            <item>
+                                <widget class="QGroupBox" name="groupBox_animation">
+                                    <property name="title">
+                                        <string>Animation</string>
+                                    </property>
+                                    <layout class="QFormLayout" name="formLayout_animation">
+                                        <item row="0" column="0">
+                                            <widget class="QLabel" name="label_animationDurationMs">
                                                 <property name="text">
-                                                    <string>Keep popups pinned to their parent window</string>
+                                                    <string>Animation duration:</string>
                                                 </property>
-                                                <property name="checked">
-                                                    <bool>true</bool>
+                                            </widget>
+                                        </item>
+                                        <item row="0" column="1">
+                                            <widget class="QSpinBox" name="kcfg_animationDurationMs">
+                                                <property name="toolTip">
+                                                    <string>Duration of the animations</string>
+                                                </property>
+                                                <property name="suffix">
+                                                    <string> ms</string>
+                                                </property>
+                                                <property name="maximum">
+                                                    <number>5000</number>
+                                                </property>
+                                                <property name="value">
+                                                    <number>200</number>
                                                 </property>
                                             </widget>
                                         </item>
                                     </layout>
                                 </widget>
                             </item>
-                        </layout>
-                    </widget>
-                    <widget class="QWidget" name="tab_visualFeedback">
-                        <attribute name="title">
-                            <string>Visual Feedback</string>
-                        </attribute>
-                        <layout class="QVBoxLayout" name="verticalLayout_visualFeedback">
                             <item>
                                 <widget class="QGroupBox" name="groupBox_minimap">
                                     <property name="title">
@@ -695,21 +764,21 @@
                                                     <number>5000</number>
                                                 </property>
                                                 <property name="value">
-                                                    <number>300</number>
+                                                    <number>500</number>
                                                 </property>
                                             </widget>
                                         </item>
                                         <item row="2" column="0">
                                             <widget class="QLabel" name="label_focusFlashOpacity">
                                                 <property name="text">
-                                                    <string>Peak opacity:</string>
+                                                    <string>Opacity:</string>
                                                 </property>
                                             </widget>
                                         </item>
                                         <item row="2" column="1">
                                             <widget class="QDoubleSpinBox" name="kcfg_focusFlashOpacity">
                                                 <property name="toolTip">
-                                                    <string>Peak opacity of the focus-flash highlight at the midpoint of its fade</string>
+                                                    <string>Opacity of the focus-flash highlight</string>
                                                 </property>
                                                 <property name="decimals">
                                                     <number>2</number>
@@ -729,6 +798,45 @@
                                             </widget>
                                         </item>
                                     </layout>
+                                </widget>
+                            </item>
+                            <item>
+                                <spacer name="verticalSpacer_visuals">
+                                    <property name="orientation">
+                                        <enum>Qt::Orientation::Vertical</enum>
+                                    </property>
+                                </spacer>
+                            </item>
+                        </layout>
+                    </widget>
+                    <widget class="QWidget" name="tab_windowRules">
+                        <attribute name="title">
+                            <string>Window Rules</string>
+                        </attribute>
+                        <layout class="QVBoxLayout" name="verticalLayout_windowRules">
+                            <item>
+                                <widget class="QLabel" name="label_windowRulesExplanation">
+                                    <property name="text">
+                                        <string>JSON array of rules matching a window's class/caption, to set its float, width, align, or screen. See docs/agents/specs/2026-09-06-window-rules-design.md for the schema.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                        <bool>true</bool>
+                                    </property>
+                                </widget>
+                            </item>
+                            <item>
+                                <widget class="QPlainTextEdit" name="kcfg_windowRules">
+                                    <property name="tabChangesFocus">
+                                        <bool>true</bool>
+                                    </property>
+                                    <property name="lineWrapMode">
+                                        <enum>QPlainTextEdit::NoWrap</enum>
+                                    </property>
+                                    <property name="font">
+                                        <font>
+                                            <family>Monospace</family>
+                                        </font>
+                                    </property>
                                 </widget>
                             </item>
                         </layout>
@@ -768,37 +876,12 @@
                                     </property>
                                 </widget>
                             </item>
-                        </layout>
-                    </widget>
-                    <widget class="QWidget" name="tab_windowRules">
-                        <attribute name="title">
-                            <string>Window Rules</string>
-                        </attribute>
-                        <layout class="QVBoxLayout" name="verticalLayout_windowRules">
                             <item>
-                                <widget class="QLabel" name="label_windowRulesExplanation">
-                                    <property name="text">
-                                        <string>JSON array of rules matching a window's class/caption, to set its float, width, align, or screen. See docs/agents/specs/2026-09-06-window-rules-design.md for the schema.</string>
+                                <spacer name="verticalSpacer_shortcuts">
+                                    <property name="orientation">
+                                        <enum>Qt::Orientation::Vertical</enum>
                                     </property>
-                                    <property name="wordWrap">
-                                        <bool>true</bool>
-                                    </property>
-                                </widget>
-                            </item>
-                            <item>
-                                <widget class="QPlainTextEdit" name="kcfg_windowRules">
-                                    <property name="tabChangesFocus">
-                                        <bool>true</bool>
-                                    </property>
-                                    <property name="lineWrapMode">
-                                        <enum>QPlainTextEdit::NoWrap</enum>
-                                    </property>
-                                    <property name="font">
-                                        <font>
-                                            <family>Monospace</family>
-                                        </font>
-                                    </property>
-                                </widget>
+                                </spacer>
                             </item>
                         </layout>
                     </widget>

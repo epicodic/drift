@@ -34,6 +34,11 @@
 #   empty array literal (needed for the "clear the keys" `ai` argument when releasing),
 #   confirmed live — busctl's explicit type signature sidesteps that entirely (see the
 #   retired release-shortcuts.sh history for where this was first confirmed).
+# - Before releasing another action's shortcut, its current active key(s) are recorded
+#   via settings-backup-lib.sh's backup_if_absent() into shortcuts.backup (under
+#   drift_backup_dir(), only the very first time each action is displaced), so
+#   uninstall.sh can restore the exact prior binding later. See
+#   docs/agents/specs/2026-09-13-self-contained-installer-design.md.
 # - Freeing a KWin core action's shortcut only clears the *declared* assignment in
 #   kglobalaccel; if that action's process already holds a live grab on the key (as
 #   KWin does for its own compiled-in core actions), the grab is only released after a
@@ -46,6 +51,10 @@ set -eu
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 # shellcheck source=./setup-shortcuts-lib.sh
 . "${SCRIPT_DIR}/setup-shortcuts-lib.sh"
+# shellcheck source=./settings-backup-lib.sh
+. "${SCRIPT_DIR}/settings-backup-lib.sh"
+
+SHORTCUTS_BACKUP_FILE="$(drift_backup_dir)/shortcuts.backup"
 
 if [ ! -f "${SCRIPT_DIR}/shortcut-bindings.generated.sh" ]; then
 	echo "setup-shortcuts.sh: shortcut-bindings.generated.sh not found — run 'make build' first" >&2
@@ -106,8 +115,11 @@ printf '%s\n' "$DRIFT_BINDINGS" | while IFS='|' read -r row_action_name row_acti
 		fi
 	done)"
 	if [ -n "$conflicts" ]; then
-		printf '%s\n' "$conflicts" | while IFS='|' read -r conflict_name conflict_text conflict_component conflict_component_friendly; do
+		printf '%s\n' "$conflicts" | while IFS='|' read -r conflict_name conflict_text conflict_component \
+			conflict_component_friendly conflict_active_keys; do
 			printf "  ${YELLOW}⎯${RESET} Releasing \"${conflict_text}\" (${conflict_component_friendly})...\n"
+			backup_if_absent "$SHORTCUTS_BACKUP_FILE" "$conflict_name" \
+				"${conflict_name}|${conflict_component}|${conflict_component_friendly}|${conflict_text}|${conflict_active_keys}"
 			busctl --user call org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel setShortcut asaiu \
 				4 "${conflict_component}" "${conflict_name}" "${conflict_component_friendly}" "${conflict_text}" 0 4 >/dev/null
 		done
