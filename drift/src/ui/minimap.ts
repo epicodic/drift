@@ -5,6 +5,7 @@
 import type { Grid } from '../core/grid';
 import type { ColumnRegistry } from '../runtime/column-registry';
 import type { Viewport } from '../viewport/viewport';
+import { stripHue, stripLabel } from './strip-identity';
 
 /** One window in a column's vertical tile stack (docs: 2026-09-03-vertical-tiling-design). A
  * plain single-window column has exactly one, filling the column's full height. */
@@ -79,6 +80,8 @@ export function buildMinimapSnapshot(
 
 export interface MinimapStrip {
     stripIndex: number;
+    label: string;
+    hue: number;
     columns: MinimapColumn[];
 }
 
@@ -120,6 +123,8 @@ export function combineStripStackSnapshot(
     return {
         strips: strips.map((strip) => ({
             stripIndex: strip.stripIndex,
+            label: stripLabel(strip.stripIndex),
+            hue: stripHue(strip.stripIndex),
             columns:
                 strip.stripIndex === activeStripIndex
                     ? strip.snapshot.columns

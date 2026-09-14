@@ -6,6 +6,7 @@ import { Rect } from '../core/coordinates';
 import { DEBUG_CONSOLE_WINDOW_TITLE } from './debug-console';
 import { FOCUS_FLASH_OVERLAY_WINDOW_TITLE } from './focus-flash-overlay';
 import { MINIMAP_OVERLAY_WINDOW_TITLE } from './minimap-overlay';
+import { STRIP_OSD_WINDOW_TITLE } from './strip-osd';
 
 export class WindowAdapter {
     constructor(private readonly window: Window) {}
@@ -49,7 +50,8 @@ export class WindowAdapter {
             !this.window.deleted &&
             this.window.caption !== DEBUG_CONSOLE_WINDOW_TITLE &&
             this.window.caption !== MINIMAP_OVERLAY_WINDOW_TITLE &&
-            this.window.caption !== FOCUS_FLASH_OVERLAY_WINDOW_TITLE
+            this.window.caption !== FOCUS_FLASH_OVERLAY_WINDOW_TITLE &&
+            this.window.caption !== STRIP_OSD_WINDOW_TITLE
         );
     }
 

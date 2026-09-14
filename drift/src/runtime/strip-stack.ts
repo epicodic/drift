@@ -266,6 +266,13 @@ export class StripStack {
         return combineStripStackSnapshot(strips, this.activeStripIndex, this.area.height);
     }
 
+    /** The currently active strip's permanent index — what `strip-identity.ts`'s
+     * `stripLabel`/`stripHue` derive a strip's label/color from (docs:
+     * 2026-09-14-strip-navigation-hints-design). */
+    activeIndex(): number {
+        return this.activeStripIndex;
+    }
+
     private activeStrip(): Strip {
         return this.strip(this.activeStripIndex);
     }

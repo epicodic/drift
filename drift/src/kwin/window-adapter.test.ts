@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEBUG_CONSOLE_WINDOW_TITLE } from './debug-console';
 import { FOCUS_FLASH_OVERLAY_WINDOW_TITLE } from './focus-flash-overlay';
 import { MINIMAP_OVERLAY_WINDOW_TITLE } from './minimap-overlay';
+import { STRIP_OSD_WINDOW_TITLE } from './strip-osd';
 import { WindowAdapter } from './window-adapter';
 
 function createWindow(overrides: Partial<Window> = {}): Window {
@@ -75,6 +76,12 @@ describe('WindowAdapter.isTileable', () => {
 
     it('rejects the focus flash overlay window by title', () => {
         const window = createWindow({ caption: FOCUS_FLASH_OVERLAY_WINDOW_TITLE });
+
+        expect(new WindowAdapter(window).isTileable()).toBe(false);
+    });
+
+    it('rejects the strip OSD window by title', () => {
+        const window = createWindow({ caption: STRIP_OSD_WINDOW_TITLE });
 
         expect(new WindowAdapter(window).isTileable()).toBe(false);
     });

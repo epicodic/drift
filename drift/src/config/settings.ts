@@ -160,6 +160,17 @@ export interface Settings {
     /** Peak opacity of the focus-flash highlight at the midpoint of its fade-in-then-fade-out
      * (docs: 2026-09-05-focus-flash-highlight-design.md). */
     focusFlashOpacity: number;
+    /** Whether the minimap's per-strip label/color chips are shown at all (docs:
+     * 2026-09-14-strip-navigation-hints-design). */
+    stripHintsEnabled: boolean;
+    /** Whether the strip-change OSD (label badge + screen-edge glow) is shown at all (docs:
+     * 2026-09-14-strip-navigation-hints-design). */
+    stripOsdEnabled: boolean;
+    /** Total duration of the strip-change OSD's fade-in-then-fade-out, in milliseconds. */
+    stripOsdDurationMs: number;
+    /** Peak opacity of the strip-change OSD's screen-edge glow at the midpoint of its
+     * fade-in-then-fade-out. */
+    stripOsdGlowOpacity: number;
     /** Whether an undocked window is kept above still-docked windows (docs:
      * 2026-09-06-manual-undock-redock-design). */
     undockKeepAbove: boolean;

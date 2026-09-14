@@ -6,6 +6,7 @@
 
 import type { Rect } from '../core/coordinates';
 import type { StripStackMinimapSnapshot } from '../ui/minimap';
+import { stripColor } from '../ui/strip-identity';
 import { createQmlTimer } from './qml-timer';
 
 /** Identifies the overlay's own window so Drift excludes it from tiling (see `WindowAdapter.isTileable`). */
@@ -28,6 +29,7 @@ PlasmaCore.Dialog {
     property real panelHeight: ${MAX_MINIMAP_HEIGHT}
     property real stripHeight: ${MAX_MINIMAP_HEIGHT}
     property bool showThumbnails: false
+    property bool showStripHints: true
     title: "${MINIMAP_OVERLAY_WINDOW_TITLE}"
     type: PlasmaCore.Dialog.OnScreenDisplay
     backgroundHints: PlasmaCore.Types.NoBackground
@@ -49,6 +51,25 @@ PlasmaCore.Dialog {
                     y: modelData.y
                     width: parent.width
                     height: dialog.stripHeight
+                    Rectangle {
+                        id: labelChip
+                        visible: dialog.showStripHints
+                        x: 4
+                        y: 4
+                        z: 1
+                        width: labelText.implicitWidth + 8
+                        height: labelText.implicitHeight + 4
+                        radius: 3
+                        color: Qt.rgba(modelData.color.r, modelData.color.g, modelData.color.b, 0.9)
+                        Text {
+                            id: labelText
+                            anchors.centerIn: parent
+                            text: modelData.label
+                            color: "black"
+                            font.bold: true
+                            font.pixelSize: 12
+                        }
+                    }
                     Repeater {
                         model: modelData.columns
                         delegate: Item {
@@ -188,6 +209,8 @@ interface PanelColumn {
 
 interface PanelStrip {
     y: number;
+    label: string;
+    color: { r: number; g: number; b: number };
     columns: PanelColumn[];
 }
 
@@ -201,9 +224,15 @@ export interface MinimapOverlay {
     show(snapshot: StripStackMinimapSnapshot, screen: Rect): void;
 }
 
-export function createMinimapOverlay(parent: QmlObject, autoHideMs: number, showThumbnails: boolean): MinimapOverlay {
+export function createMinimapOverlay(
+    parent: QmlObject,
+    autoHideMs: number,
+    showThumbnails: boolean,
+    showStripHints: boolean,
+): MinimapOverlay {
     const dialog = Qt.createQmlObject(MINIMAP_QML, parent) as QmlMinimapDialog;
     dialog.showThumbnails = showThumbnails;
+    dialog.showStripHints = showStripHints;
     const hideTimer = createQmlTimer(parent);
 
     return {
@@ -294,6 +323,8 @@ function toPanelStrips(snapshot: StripStackMinimapSnapshot): PanelStrip[] {
         const left = stripLefts.get(strip.stripIndex) ?? 0;
         return {
             y: (strip.stripIndex * snapshot.stripPitch - top) * scale,
+            label: strip.label,
+            color: stripColor(strip.hue),
             columns: strip.columns.map((column) => ({
                 x: (column.x - left) * scale,
                 width: column.width * scale,

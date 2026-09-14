@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StripStackMinimapSnapshot } from '../ui/minimap';
+import { stripHue, stripLabel } from '../ui/strip-identity';
 import { panelLayout, toPanelViewportBox } from './minimap-overlay';
 
 /** Two strips whose columns span the same total width (0..8), matching the bug report:
@@ -11,6 +12,8 @@ function twoStripSnapshot(activeStripIndex: 0 | 1): StripStackMinimapSnapshot {
         strips: [
             {
                 stripIndex: 0,
+                label: stripLabel(0),
+                hue: stripHue(0),
                 columns: [
                     { id: 1, x: 0, width: 5, tiles: [] },
                     { id: 2, x: 5, width: 3, tiles: [] },
@@ -18,6 +21,8 @@ function twoStripSnapshot(activeStripIndex: 0 | 1): StripStackMinimapSnapshot {
             },
             {
                 stripIndex: 1,
+                label: stripLabel(1),
+                hue: stripHue(1),
                 columns: [
                     { id: 3, x: 0, width: 3, tiles: [] },
                     { id: 4, x: 3, width: 5, tiles: [] },

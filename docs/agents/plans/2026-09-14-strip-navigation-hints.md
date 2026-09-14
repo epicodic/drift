@@ -20,7 +20,7 @@
 
 This is the foundational pure module every other task builds on: `stripLabel`, `stripHue`, and `stripColor`, all pure functions of a strip's signed `stripIndex`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `drift/src/ui/strip-identity.test.ts`:
 
@@ -105,7 +105,7 @@ describe('stripColor', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```sh
 make test
@@ -113,7 +113,7 @@ make test
 
 Expected: FAIL — `drift/src/ui/strip-identity.ts` doesn't exist yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `drift/src/ui/strip-identity.ts`:
 
@@ -194,7 +194,7 @@ export function stripColor(hue: number): StripColor {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```sh
 make test
@@ -202,7 +202,7 @@ make test
 
 Expected: PASS
 
-- [ ] **Step 5: Coding-guideline follow-up checklist (mandatory before task completion)**
+- [x] **Step 5: Coding-guideline follow-up checklist (mandatory before task completion)**
 
 Run this checklist and record PASS/FAIL with file evidence:
 - [ ] Conventions file read: `docs/coding-conventions.md`
@@ -222,7 +222,7 @@ Run this checklist and record PASS/FAIL with file evidence:
 
 Adding a setting in this codebase means adding it in exactly two places (`settings.ts`'s `Settings` interface, `settings-definitions.ts`'s `SETTINGS_DEFINITIONS` array) — `DEFAULT_SETTINGS`/`loadSettings()` derive generically from the array, and the generated `.kcfg` XML is a build step, not something to hand-edit.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `drift/src/config/settings.test.ts`, insert after the existing `'defaults the focus flash peak opacity to 0.5'` test (before `'keeps undocked windows above others by default'`):
 
@@ -245,7 +245,7 @@ In `drift/src/config/settings.test.ts`, insert after the existing `'defaults the
 
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```sh
 make test
@@ -253,7 +253,7 @@ make test
 
 Expected: FAIL — TypeScript compile error, `stripHintsEnabled`/etc. don't exist on `Settings`.
 
-- [ ] **Step 3: Add the fields to the `Settings` interface**
+- [x] **Step 3: Add the fields to the `Settings` interface**
 
 In `drift/src/config/settings.ts`, insert after the existing `focusFlashOpacity: number;` field (before `undockKeepAbove: boolean;`):
 
@@ -271,7 +271,7 @@ In `drift/src/config/settings.ts`, insert after the existing `focusFlashOpacity:
     stripOsdGlowOpacity: number;
 ```
 
-- [ ] **Step 4: Add the definitions**
+- [x] **Step 4: Add the definitions**
 
 In `drift/src/config/settings-definitions.ts`, insert after the existing `{ name: 'focusFlashOpacity', type: 'Double', default: 0.5 },` line (before `{ name: 'undockKeepAbove', ... }`):
 
@@ -282,7 +282,7 @@ In `drift/src/config/settings-definitions.ts`, insert after the existing `{ name
     { name: 'stripOsdGlowOpacity', type: 'Double', default: 0.5 },
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 ```sh
 make test
@@ -290,7 +290,7 @@ make test
 
 Expected: PASS
 
-- [ ] **Step 6: Coding-guideline follow-up checklist (mandatory before task completion)**
+- [x] **Step 6: Coding-guideline follow-up checklist (mandatory before task completion)**
 
 Run this checklist and record PASS/FAIL with file evidence:
 - [ ] Conventions file read: `docs/coding-conventions.md`
@@ -307,7 +307,9 @@ Run this checklist and record PASS/FAIL with file evidence:
 - Modify: `drift/src/ui/minimap.ts`
 - Test: `drift/src/ui/minimap.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+> **Plan-gap note (found during implementation):** widening `MinimapStrip` also broke two pre-existing test fixtures not listed above — `drift/src/kwin/minimap-overlay.test.ts`'s `twoStripSnapshot()` helper (missing `label`/`hue`, a compile error) and one exact-`toEqual` assertion in `drift/src/runtime/strip-stack.test.ts`. Both were fixed using the real `stripLabel`/`stripHue` functions (not hardcoded values); reviewed and approved as part of this task.
+
+- [x] **Step 1: Write the failing test**
 
 In `drift/src/ui/minimap.test.ts`, add the import and update the existing test:
 
@@ -349,7 +351,7 @@ with:
     });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```sh
 make test
@@ -357,7 +359,7 @@ make test
 
 Expected: FAIL — `combined.strips` entries don't have `label`/`hue` yet.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `drift/src/ui/minimap.ts`, add the import:
 
@@ -429,7 +431,7 @@ with:
     };
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```sh
 make test
@@ -437,7 +439,7 @@ make test
 
 Expected: PASS
 
-- [ ] **Step 5: Coding-guideline follow-up checklist (mandatory before task completion)**
+- [x] **Step 5: Coding-guideline follow-up checklist (mandatory before task completion)**
 
 Run this checklist and record PASS/FAIL with file evidence:
 - [ ] Conventions file read: `docs/coding-conventions.md`
@@ -455,7 +457,7 @@ Run this checklist and record PASS/FAIL with file evidence:
 
 `Controller` (Task 7) needs to read the active strip index before and after a navigation action, to decide whether the OSD should fire. `StripStack` has no public accessor for it today.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `drift/src/runtime/strip-stack.test.ts`, add to the `'StripStack strip paging'` describe block (alongside the existing `stripUp`/`stripDown` tests):
 
@@ -475,7 +477,7 @@ In `drift/src/runtime/strip-stack.test.ts`, add to the `'StripStack strip paging
     });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```sh
 make test
@@ -483,7 +485,7 @@ make test
 
 Expected: FAIL — TypeScript compile error, `activeIndex` doesn't exist on `StripStack`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `drift/src/runtime/strip-stack.ts`, insert a new public method right before the existing `private activeStrip(): Strip {` method:
 
@@ -497,7 +499,7 @@ In `drift/src/runtime/strip-stack.ts`, insert a new public method right before t
 
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```sh
 make test
@@ -505,7 +507,7 @@ make test
 
 Expected: PASS
 
-- [ ] **Step 5: Coding-guideline follow-up checklist (mandatory before task completion)**
+- [x] **Step 5: Coding-guideline follow-up checklist (mandatory before task completion)**
 
 Run this checklist and record PASS/FAIL with file evidence:
 - [ ] Conventions file read: `docs/coding-conventions.md`
@@ -523,7 +525,7 @@ Run this checklist and record PASS/FAIL with file evidence:
 
 `toPanelStrips` is not exported and has no dedicated test today (only `panelLayout` and `toPanelViewportBox` are — confirmed in `drift/src/kwin/minimap-overlay.test.ts`); this task keeps that boundary and is verified structurally (typecheck/test/lint) plus Task 8's live check, same as the QML-touching parts of the existing minimap/focus-flash overlays.
 
-- [ ] **Step 1: Add the `stripColor` import and `showStripHints` toggle**
+- [x] **Step 1: Add the `stripColor` import and `showStripHints` toggle**
 
 In `drift/src/kwin/minimap-overlay.ts`, add the import:
 
@@ -538,7 +540,7 @@ In the `MINIMAP_QML` template string, add a new dialog property alongside `showT
     property bool showStripHints: true
 ```
 
-- [ ] **Step 2: Add the label chip to the strip-row delegate**
+- [x] **Step 2: Add the label chip to the strip-row delegate**
 
 In the `MINIMAP_QML` template string, the strip-row delegate currently reads:
 
@@ -578,7 +580,7 @@ Add a label chip as the first child of that `Item` delegate, right after the `he
                     }
 ```
 
-- [ ] **Step 3: Thread `label`/`color` through `PanelStrip`/`toPanelStrips`**
+- [x] **Step 3: Thread `label`/`color` through `PanelStrip`/`toPanelStrips`**
 
 Replace the `PanelStrip` interface:
 
@@ -652,7 +654,7 @@ function toPanelStrips(snapshot: StripStackMinimapSnapshot): PanelStrip[] {
 }
 ```
 
-- [ ] **Step 4: Thread the toggle through `createMinimapOverlay`**
+- [x] **Step 4: Thread the toggle through `createMinimapOverlay`**
 
 Replace:
 
@@ -678,7 +680,7 @@ export function createMinimapOverlay(
 
 Add `showStripHints: boolean;` to the `QmlMinimapDialog` interface in `drift/src/types/kwin.d.ts`, alongside the existing `showThumbnails: boolean;` field.
 
-- [ ] **Step 5: Update the call site**
+- [x] **Step 5: Update the call site**
 
 In `drift/src/runtime/controller.ts`, replace:
 
@@ -697,7 +699,7 @@ with:
         );
 ```
 
-- [ ] **Step 6: Run typecheck, tests, and lint**
+- [x] **Step 6: Run typecheck, tests, and lint**
 
 ```sh
 make test && make lint
@@ -705,7 +707,7 @@ make test && make lint
 
 Expected: both pass. These are structural checks only — they cannot see rendered output (confirmed live in Task 8).
 
-- [ ] **Step 7: Coding-guideline follow-up checklist (mandatory before task completion)**
+- [x] **Step 7: Coding-guideline follow-up checklist (mandatory before task completion)**
 
 Run this checklist and record PASS/FAIL with file evidence:
 - [ ] Conventions file read for touched language(s): `docs/coding-conventions.md`
@@ -722,9 +724,11 @@ Run this checklist and record PASS/FAIL with file evidence:
 - Modify: `drift/src/types/kwin.d.ts`
 - Create: `drift/src/kwin/strip-osd.ts`
 
+> **Plan-gap note (found during review):** every prior overlay in this codebase (`debug-console`, `minimap-overlay`, `focus-flash-overlay`) needed a matching caption exclusion added to `WindowAdapter.isTileable()` in `drift/src/kwin/window-adapter.ts`, plus a dedicated test in `window-adapter.test.ts` — `outputOnly`/`OnScreenDisplay` alone isn't sufficient in practice. This task's file list didn't call that out; both the exclusion and its test were added and reviewed as part of this task.
+
 No test file — like `focus-flash-overlay.ts` and `minimap-overlay.ts`'s own QML glue, this isn't exercisable without a live compositor. Verified structurally here (typecheck/lint) and live in Task 8.
 
-- [ ] **Step 1: Add the `QmlStripOsdDialog` type**
+- [x] **Step 1: Add the `QmlStripOsdDialog` type**
 
 In `drift/src/types/kwin.d.ts`, add a new interface after `QmlFocusFlashDialog`:
 
@@ -745,7 +749,7 @@ interface QmlStripOsdDialog extends QmlObject {
 }
 ```
 
-- [ ] **Step 2: Write `strip-osd.ts`**
+- [x] **Step 2: Write `strip-osd.ts`**
 
 Create `drift/src/kwin/strip-osd.ts`:
 
@@ -845,7 +849,7 @@ export function createStripOsd(
 }
 ```
 
-- [ ] **Step 3: Run typecheck, tests, and lint**
+- [x] **Step 3: Run typecheck, tests, and lint**
 
 ```sh
 make test && make lint
@@ -853,7 +857,7 @@ make test && make lint
 
 Expected: both pass.
 
-- [ ] **Step 4: Coding-guideline follow-up checklist (mandatory before task completion)**
+- [x] **Step 4: Coding-guideline follow-up checklist (mandatory before task completion)**
 
 Run this checklist and record PASS/FAIL with file evidence:
 - [ ] Conventions file read for touched language(s): `docs/coding-conventions.md`
@@ -872,7 +876,7 @@ Run this checklist and record PASS/FAIL with file evidence:
 
 No test file — `Controller` has none today; it's untestable KWin-orchestration glue (no live compositor/workspace in the test environment), same as every other piece of wiring in this file. Verified structurally (typecheck/lint) and live in Task 8.
 
-- [ ] **Step 1: Add imports**
+- [x] **Step 1: Add imports**
 
 In `drift/src/runtime/controller.ts`, add:
 
@@ -881,7 +885,7 @@ import { createStripOsd, type StripOsd } from '../kwin/strip-osd';
 import { stripHue, stripLabel } from '../ui/strip-identity';
 ```
 
-- [ ] **Step 2: Add the `stripOsd` field and construct it**
+- [x] **Step 2: Add the `stripOsd` field and construct it**
 
 Replace:
 
@@ -931,7 +935,7 @@ with:
         );
 ```
 
-- [ ] **Step 3: Diff `activeIndex()` around the move and fire the OSD**
+- [x] **Step 3: Diff `activeIndex()` around the move and fire the OSD**
 
 Replace `focusAndShowMinimap`:
 
@@ -961,7 +965,7 @@ with:
     }
 ```
 
-- [ ] **Step 4: Run typecheck, tests, and lint**
+- [x] **Step 4: Run typecheck, tests, and lint**
 
 ```sh
 make test && make lint
@@ -969,7 +973,7 @@ make test && make lint
 
 Expected: both pass.
 
-- [ ] **Step 5: Coding-guideline follow-up checklist (mandatory before task completion)**
+- [x] **Step 5: Coding-guideline follow-up checklist (mandatory before task completion)**
 
 Run this checklist and record PASS/FAIL with file evidence:
 - [ ] Conventions file read for touched language(s): `docs/coding-conventions.md`

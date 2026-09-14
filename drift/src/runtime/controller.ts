@@ -9,9 +9,11 @@ import { createDebugConsole } from '../kwin/debug-console';
 import { createFocusFlashOverlay, type FocusFlashOverlay } from '../kwin/focus-flash-overlay';
 import { createMinimapOverlay, type MinimapOverlay } from '../kwin/minimap-overlay';
 import { createQmlTimer } from '../kwin/qml-timer';
+import { createStripOsd, type StripOsd } from '../kwin/strip-osd';
 import { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import { ANIMATION_TICK_MS } from '../viewport/shared-ticker';
 import { registerShortcuts } from '../input/shortcuts';
+import { stripHue, stripLabel } from '../ui/strip-identity';
 import type { StripStack } from './strip-stack';
 import { StripManager } from './strip-manager';
 import { TransientLinks } from './transient-links';
@@ -38,6 +40,7 @@ export class Controller {
     private readonly transientLinks: TransientLinks;
     private readonly minimapOverlay: MinimapOverlay;
     private readonly focusFlashOverlay: FocusFlashOverlay;
+    private readonly stripOsd: StripOsd;
     private readonly areaRecheckTimer: { start(intervalMs: number, onTick: () => void): void; stop(): void };
     private area: Rect;
 
@@ -51,7 +54,12 @@ export class Controller {
         if (settings.debugConsoleEnabled) {
             createDebugConsole(root);
         }
-        this.minimapOverlay = createMinimapOverlay(root, settings.minimapAutoHideMs, settings.minimapShowThumbnails);
+        this.minimapOverlay = createMinimapOverlay(
+            root,
+            settings.minimapAutoHideMs,
+            settings.minimapShowThumbnails,
+            settings.stripHintsEnabled,
+        );
         this.focusFlashOverlay = createFocusFlashOverlay(
             root,
             ANIMATION_TICK_MS,
@@ -59,6 +67,13 @@ export class Controller {
             settings.focusFlashDurationMs,
             settings.focusFlashOpacity,
             settings.focusFlashEnabled,
+        );
+        this.stripOsd = createStripOsd(
+            root,
+            ANIMATION_TICK_MS,
+            settings.stripOsdDurationMs,
+            settings.stripOsdGlowOpacity,
+            settings.stripOsdEnabled,
         );
         this.transientLinks = new TransientLinks();
         this.stripManager = new StripManager(
@@ -120,9 +135,15 @@ export class Controller {
 
     private focusAndShowMinimap(move: (stack: StripStack) => void): void {
         const stack = this.stripManager.activeStripStack();
+        const beforeIndex = stack.activeIndex();
         move(stack);
+        const afterIndex = stack.activeIndex();
         const snapshot = stack.minimapSnapshot();
-        this.minimapOverlay.show(snapshot, this.workspaceAdapter.screenGeometryAtCursor());
+        const screen = this.workspaceAdapter.screenGeometryAtCursor();
+        this.minimapOverlay.show(snapshot, screen);
+        if (afterIndex !== beforeIndex) {
+            this.stripOsd.show(stripLabel(afterIndex), stripHue(afterIndex), screen);
+        }
     }
 
     /** Re-reads `workingArea()` and, only if it actually changed, pushes the correction through

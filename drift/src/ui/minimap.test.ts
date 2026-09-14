@@ -6,6 +6,7 @@ import { SignalManager } from '../utils/signal-manager';
 import { Viewport } from '../viewport/viewport';
 import { buildMinimapSnapshot, combineStripStackSnapshot } from './minimap';
 import type { MinimapColumn, MinimapViewport, MinimapSnapshot } from './minimap';
+import { stripHue, stripLabel } from './strip-identity';
 
 function fakeWindow(icon: QIcon | null, handle: Window | null = null): WindowAdapter {
     return { icon: () => icon, windowHandle: () => handle } as unknown as WindowAdapter;
@@ -114,15 +115,15 @@ describe('combineStripStackSnapshot', () => {
         return { stripIndex, snapshot: { columns, viewport, gridHeight } };
     }
 
-    it('merges every strip, tagging each with its own stripIndex', () => {
+    it('merges every strip, tagging each with its own stripIndex, label, and hue', () => {
         const stripMinus1 = strip(-1, [{ id: 1, x: 0, width: 400, tiles: [tile(false)] }]);
         const strip0 = strip(0, [{ id: 2, x: 0, width: 600, tiles: [tile(true)] }]);
 
         const combined = combineStripStackSnapshot([stripMinus1, strip0], 0, 1000);
 
         expect(combined.strips).toEqual([
-            { stripIndex: -1, columns: stripMinus1.snapshot.columns },
-            { stripIndex: 0, columns: strip0.snapshot.columns },
+            { stripIndex: -1, label: stripLabel(-1), hue: stripHue(-1), columns: stripMinus1.snapshot.columns },
+            { stripIndex: 0, label: stripLabel(0), hue: stripHue(0), columns: strip0.snapshot.columns },
         ]);
     });
 

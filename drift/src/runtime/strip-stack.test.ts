@@ -3,6 +3,7 @@ import { DEFAULT_SETTINGS } from '../config/settings';
 import type { Rect } from '../core/coordinates';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
+import { stripHue, stripLabel } from '../ui/strip-identity';
 import type { Timer } from '../viewport/animator';
 import type { StripDragHooks, Strip } from './strip';
 import { StripStack, type StripFactory } from './strip-stack';
@@ -265,7 +266,7 @@ describe('StripStack', () => {
         expect(created[0].shiftViewportLeft).toHaveBeenCalled();
         expect(created[0].shiftViewportRight).toHaveBeenCalled();
         expect(created[0].minimapSnapshot).toHaveBeenCalled();
-        expect(snapshot.strips).toEqual([{ stripIndex: 0, columns: [] }]);
+        expect(snapshot.strips).toEqual([{ stripIndex: 0, label: stripLabel(0), hue: stripHue(0), columns: [] }]);
         expect(snapshot.viewport).toEqual({
             stripIndex: 0,
             offset: 0,
@@ -346,6 +347,20 @@ describe('StripStack strip paging', () => {
         stack.render();
 
         expect(created[0].render).toHaveBeenCalled();
+    });
+
+    it('activeIndex starts at 0 and tracks stripUp/stripDown', () => {
+        const { stack } = makeStack();
+        expect(stack.activeIndex()).toBe(0);
+
+        stack.stripUp();
+        expect(stack.activeIndex()).toBe(-1);
+
+        stack.stripDown();
+        expect(stack.activeIndex()).toBe(0);
+
+        stack.stripDown();
+        expect(stack.activeIndex()).toBe(1);
     });
 
     it('animates the vertical transition, rendering both the outgoing and incoming strip on each tick', () => {

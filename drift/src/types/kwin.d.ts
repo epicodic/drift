@@ -175,6 +175,7 @@ interface QmlMinimapDialog extends QmlObject {
     panelHeight: number;
     stripHeight: number;
     showThumbnails: boolean;
+    showStripHints: boolean;
     x: number;
     y: number;
     width: number;
@@ -187,6 +188,21 @@ interface QmlMinimapDialog extends QmlObject {
 interface QmlFocusFlashDialog extends QmlObject {
     blurRadius: number;
     bleedRadius: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    opacity: number;
+    visible: boolean;
+}
+
+/** The dynamically-created strip-change OSD dialog: a full-screen edge glow plus a large
+ * label badge, flashed whenever the active strip actually changes (docs:
+ * 2026-09-14-strip-navigation-hints-design). `glowRgb` is plain data (see `StripColor` in
+ * `ui/strip-identity.ts`), typed loosely here since this file has no app-specific types. */
+interface QmlStripOsdDialog extends QmlObject {
+    glowRgb: unknown;
+    label: string;
     x: number;
     y: number;
     width: number;

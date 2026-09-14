@@ -105,6 +105,22 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.focusFlashOpacity).toBe(0.5);
     });
 
+    it('enables strip hints (minimap labels/colors) by default', () => {
+        expect(DEFAULT_SETTINGS.stripHintsEnabled).toBe(true);
+    });
+
+    it('enables the strip-change OSD by default', () => {
+        expect(DEFAULT_SETTINGS.stripOsdEnabled).toBe(true);
+    });
+
+    it('defaults the strip OSD duration to 500ms', () => {
+        expect(DEFAULT_SETTINGS.stripOsdDurationMs).toBe(500);
+    });
+
+    it('defaults the strip OSD glow peak opacity to 0.5', () => {
+        expect(DEFAULT_SETTINGS.stripOsdGlowOpacity).toBe(0.5);
+    });
+
     it('keeps undocked windows above others by default', () => {
         expect(DEFAULT_SETTINGS.undockKeepAbove).toBe(true);
     });
