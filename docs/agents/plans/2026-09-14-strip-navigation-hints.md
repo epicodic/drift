@@ -4,7 +4,7 @@
 
 **Goal:** Give every strip a permanent label (digits upward from home, letters downward) and a permanent golden-ratio-spread color, shown as a chip on the minimap and as a full-screen glow + badge OSD whenever the active strip changes, per [`docs/agents/specs/2026-09-14-strip-navigation-hints-design.md`](../specs/2026-09-14-strip-navigation-hints-design.md).
 
-**Architecture:** A new pure module, `src/ui/strip-identity.ts`, derives a strip's label/hue/color from its existing signed `stripIndex` — no new identity state. `src/ui/minimap.ts` and `src/kwin/minimap-overlay.ts` thread `label`/`hue`/`color` through the existing minimap snapshot/render pipeline as a chip per strip row. A new `src/kwin/strip-osd.ts` overlay reuses the existing `drift/shaders/focus_glow.frag` shader (already used by `focus-flash-overlay.ts`) to draw a full-screen inward glow plus a large label badge, triggered from `Controller.focusAndShowMinimap` whenever `StripStack.activeIndex()` actually changes.
+**Architecture:** A new pure module, `src/ui/strip-identity.ts`, derives a strip's label/hue/color from its existing signed `stripIndex` — no new identity state. `src/ui/minimap.ts` and `src/kwin/minimap-overlay.ts` thread `label`/`hue`/`color` through the existing minimap snapshot/render pipeline as a chip per strip row. A new `src/kwin/strip-osd.ts` overlay reuses the existing `drift/shaders/focus_glow.frag` shader (already used by `focus-flash-overlay.ts`) to draw a full-screen inward glow plus a large label badge. Originally triggered only from `Controller.focusAndShowMinimap`'s before/after `StripStack.activeIndex()` diff (keybinding paths only); see "Post-Task-8 fixes" below — this was replaced by a `StripStack`-level `onActiveIndexChanged` callback that fires uniformly for keybinding, drag, and window-activation-triggered strip changes alike.
 
 **Tech Stack:** TypeScript, JavaScript, and QML with npm; optional Python with uv, pytest, Ruff, and ty.
 
@@ -1062,3 +1062,16 @@ Plan complete and saved to `docs/agents/plans/2026-09-14-strip-navigation-hints.
 **2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
 
 **Which approach?**
+
+---
+
+## Post-Task-8 fixes (live verification feedback)
+
+Live testing of Tasks 1-7 (before this section was written) found three real gaps, all fixed and independently reviewed:
+
+- [x] **F1 — Missing `stripOsdGlowRadius` setting.** The OSD's glow radius was hardcoded (`60`) in `strip-osd.ts`'s QML instead of being a setting. Added `stripOsdGlowRadius` (`UInt`, default `60`) to `settings.ts`/`settings-definitions.ts`, threaded it into `createStripOsd`'s signature (mirroring `createFocusFlashOverlay`'s `blurRadius` position) and the `Controller` call site.
+- [x] **F2 — No settings-dialog entries at all.** None of the strip-hints settings were wired into `drift/ui/config.ui`'s existing "Visuals" tab. Added a `kcfg_stripHintsEnabled` checkbox to the existing Minimap group, and a new checkable `kcfg_stripOsdEnabled` group box (radius/duration/opacity spin boxes) mirroring the existing `kcfg_focusFlashEnabled` group's structure exactly.
+- [x] **F3 — OSD label covered by the minimap.** Both the OSD and the minimap panel were screen-centered, so they overlapped. Moved the OSD's `Text` label from `anchors.centerIn: parent` to a top-left anchor with a 40px margin.
+- [x] **F4 — Drag-triggered strip changes showed no hint.** Root cause: dragging a window across strips goes through `StripStack`'s internal `onEdgeDwellFired` → `switchToStrip`, entirely bypassing `Controller.focusAndShowMinimap` (the sole place the OSD was triggered, reachable only via keybindings). Fixed by giving `StripStack` an optional constructor-injected `onActiveIndexChanged: (index: number) => void` callback, invoked inside `switchToStrip` right after a genuine index change, threaded through `StripManager` so `Controller` supplies one callback that fires the OSD uniformly for every path that can change the active strip (keybindings, drag, and window-activation across strips). `Controller.focusAndShowMinimap`'s prior before/after diff and its own `stripOsd.show` call were removed as redundant — it's back to unconditionally showing only the minimap, as before this feature existed. The minimap's own drag-triggered display was explicitly left unchanged (out of scope, a pre-existing and separate limitation).
+
+Live re-verification (the original Task 8) is pending — see the questions above for what to check, plus: confirm the new Visuals-tab settings actually take effect, confirm the label no longer overlaps the minimap, and confirm dragging a window to the strip above/below now shows the OSD.

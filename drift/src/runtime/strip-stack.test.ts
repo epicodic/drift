@@ -155,11 +155,19 @@ function fakeWin(id: string, rect: Rect = { x: 0, y: 0, width: 400, height: 1000
     return { id, setSkipTaskbar: vi.fn(), frameGeometry: () => rect } as unknown as WindowAdapter;
 }
 
-function makeStack(settingsOverride: Partial<typeof SETTINGS> = {}) {
+function makeStack(settingsOverride: Partial<typeof SETTINGS> = {}, onActiveIndexChanged?: (index: number) => void) {
     const { factory, created } = recordingFactory();
     const timer = fakeTimer();
     const workspaceAdapter = fakeWorkspaceAdapter();
-    const stack = new StripStack(AREA, { ...SETTINGS, ...settingsOverride }, timer, workspaceAdapter, factory);
+    const stack = new StripStack(
+        AREA,
+        { ...SETTINGS, ...settingsOverride },
+        timer,
+        workspaceAdapter,
+        factory,
+        undefined,
+        onActiveIndexChanged,
+    );
     return { stack, created, timer, workspaceAdapter };
 }
 
@@ -361,6 +369,17 @@ describe('StripStack strip paging', () => {
 
         stack.stripDown();
         expect(stack.activeIndex()).toBe(1);
+    });
+
+    it('calls onActiveIndexChanged with the new index whenever the active strip changes', () => {
+        const onActiveIndexChanged = vi.fn();
+        const { stack } = makeStack({}, onActiveIndexChanged);
+
+        stack.stripDown();
+        expect(onActiveIndexChanged).toHaveBeenCalledWith(1);
+
+        stack.stripUp();
+        expect(onActiveIndexChanged).toHaveBeenCalledWith(0);
     });
 
     it('animates the vertical transition, rendering both the outgoing and incoming strip on each tick', () => {

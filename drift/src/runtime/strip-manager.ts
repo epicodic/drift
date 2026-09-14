@@ -18,6 +18,7 @@ export type StripStackFactory = (
     timer: Timer,
     workspaceAdapter: WorkspaceAdapter,
     transientLinks: TransientLinks,
+    onActiveIndexChanged: (index: number) => void,
 ) => StripStack;
 
 export class StripManager {
@@ -37,8 +38,10 @@ export class StripManager {
             timer,
             workspaceAdapter,
             transientLinks,
-        ) => new StripStack(area, settings, timer, workspaceAdapter, undefined, transientLinks),
+            onActiveIndexChanged,
+        ) => new StripStack(area, settings, timer, workspaceAdapter, undefined, transientLinks, onActiveIndexChanged),
         private readonly transientLinks: TransientLinks = new TransientLinks(),
+        private readonly onActiveIndexChanged: (index: number) => void = () => {},
     ) {}
 
     keyOf(activity: string, desktop: string): string {
@@ -141,6 +144,7 @@ export class StripManager {
                 this.timer,
                 this.workspaceAdapter,
                 this.transientLinks,
+                this.onActiveIndexChanged,
             );
             this.stacks.set(key, stack);
         }

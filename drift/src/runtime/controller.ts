@@ -71,6 +71,7 @@ export class Controller {
         this.stripOsd = createStripOsd(
             root,
             ANIMATION_TICK_MS,
+            settings.stripOsdGlowRadius,
             settings.stripOsdDurationMs,
             settings.stripOsdGlowOpacity,
             settings.stripOsdEnabled,
@@ -83,6 +84,8 @@ export class Controller {
             this.workspaceAdapter,
             undefined,
             this.transientLinks,
+            (index) =>
+                this.stripOsd.show(stripLabel(index), stripHue(index), this.workspaceAdapter.screenGeometryAtCursor()),
         );
         this.windowManager = new WindowManager(this.stripManager, settings);
         this.areaRecheckTimer = createQmlTimer(root);
@@ -135,15 +138,9 @@ export class Controller {
 
     private focusAndShowMinimap(move: (stack: StripStack) => void): void {
         const stack = this.stripManager.activeStripStack();
-        const beforeIndex = stack.activeIndex();
         move(stack);
-        const afterIndex = stack.activeIndex();
         const snapshot = stack.minimapSnapshot();
-        const screen = this.workspaceAdapter.screenGeometryAtCursor();
-        this.minimapOverlay.show(snapshot, screen);
-        if (afterIndex !== beforeIndex) {
-            this.stripOsd.show(stripLabel(afterIndex), stripHue(afterIndex), screen);
-        }
+        this.minimapOverlay.show(snapshot, this.workspaceAdapter.screenGeometryAtCursor());
     }
 
     /** Re-reads `workingArea()` and, only if it actually changed, pushes the correction through

@@ -40,7 +40,11 @@ PlasmaCore.Dialog {
             fragmentShader: Qt.resolvedUrl("../shaders/focus_glow.frag.qsb")
         }
         Text {
-            anchors.centerIn: parent
+            anchors {
+                top: parent.top
+                left: parent.left
+                margins: 40
+            }
             text: dialog.label
             color: Qt.rgba(dialog.glowRgb.r, dialog.glowRgb.g, dialog.glowRgb.b, 1.0)
             font.bold: true
@@ -59,11 +63,13 @@ export interface StripOsd {
 export function createStripOsd(
     parent: QmlObject,
     tickMs: number,
+    glowRadius: number,
     durationMs: number,
     peakOpacity: number,
     enabled: boolean,
 ): StripOsd {
     const dialog = Qt.createQmlObject(STRIP_OSD_QML, parent) as QmlStripOsdDialog;
+    dialog.glowRadius = glowRadius;
     dialog.opacity = 0;
     dialog.visible = true;
     const timer = createQmlTimer(parent);

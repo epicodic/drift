@@ -166,6 +166,8 @@ export interface Settings {
     /** Whether the strip-change OSD (label badge + screen-edge glow) is shown at all (docs:
      * 2026-09-14-strip-navigation-hints-design). */
     stripOsdEnabled: boolean;
+    /** Inward falloff radius of the strip-change OSD's screen-edge glow, in pixels. */
+    stripOsdGlowRadius: number;
     /** Total duration of the strip-change OSD's fade-in-then-fade-out, in milliseconds. */
     stripOsdDurationMs: number;
     /** Peak opacity of the strip-change OSD's screen-edge glow at the midpoint of its

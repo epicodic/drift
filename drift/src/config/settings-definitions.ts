@@ -182,6 +182,7 @@ export const SETTINGS_DEFINITIONS: AnySettingsDefinition[] = [
     { name: 'focusFlashOpacity', type: 'Double', default: 0.5 },
     { name: 'stripHintsEnabled', type: 'Bool', default: true },
     { name: 'stripOsdEnabled', type: 'Bool', default: true },
+    { name: 'stripOsdGlowRadius', type: 'UInt', default: 60 },
     { name: 'stripOsdDurationMs', type: 'UInt', default: 500 },
     { name: 'stripOsdGlowOpacity', type: 'Double', default: 0.5 },
     { name: 'undockKeepAbove', type: 'Bool', default: true },

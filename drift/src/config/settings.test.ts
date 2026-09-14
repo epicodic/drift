@@ -117,6 +117,10 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.stripOsdDurationMs).toBe(500);
     });
 
+    it('defaults the strip OSD glow radius to 60px', () => {
+        expect(DEFAULT_SETTINGS.stripOsdGlowRadius).toBe(60);
+    });
+
     it('defaults the strip OSD glow peak opacity to 0.5', () => {
         expect(DEFAULT_SETTINGS.stripOsdGlowOpacity).toBe(0.5);
     });

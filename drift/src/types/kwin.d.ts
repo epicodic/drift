@@ -202,6 +202,7 @@ interface QmlFocusFlashDialog extends QmlObject {
  * `ui/strip-identity.ts`), typed loosely here since this file has no app-specific types. */
 interface QmlStripOsdDialog extends QmlObject {
     glowRgb: unknown;
+    glowRadius: number;
     label: string;
     x: number;
     y: number;
