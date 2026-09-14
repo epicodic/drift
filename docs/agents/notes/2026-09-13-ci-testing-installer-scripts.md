@@ -78,3 +78,62 @@ Treat option 2 (real `kwin_wayland --virtual`) as a later upgrade only if the `r
 - [kwin-mcp — headless `kwin_wayland --virtual` inside `dbus-run-session` for CI](https://github.com/isac322/kwin-mcp)
 - [Arch Linux forums — `kglobalacceld` startable standalone from a shell](https://bbs.archlinux.org/viewtopic.php?id=293520)
 - [KGlobalAccel API docs](https://api.kde.org/kglobalaccel-index.html)
+
+## Update (2026-09-14): implemented, with two corrections to the above
+
+`scripts/test-installer-integration.sh` and the `installer-integration` job in the new
+`.github/workflows/installer-integration.yml` (`push` to `main` only, not every PR —
+it builds and installs a real `.build/drift-install.sh` inside a throwaway container,
+heavier than the plain `build.yml` job) now implement this.
+The test drives the actual `.build/drift-install.sh` end to end, not the
+`contents/bin` scripts directly — running those directly would skip the installer's
+own prompt flow and its `${HOME}/.local/share/...` install-location logic entirely.
+Two assumptions above turned out to be wrong once actually tested.
+Both were found by installing the real packages and running the real binaries, first
+on a local KDE neon machine, then in a real `ubuntu:26.04` Docker container.
+
+### `ubuntu-latest` cannot install these tools at all
+
+`kglobalacceld` and `libkf6config-bin` (provides `kwriteconfig6`/`kreadconfig6`) do not
+exist in Ubuntu noble (24.04, today's `ubuntu-latest`).
+Checked directly against `packages.ubuntu.com` and the Kubuntu Backports PPA's
+Launchpad API — zero published binaries for noble.
+They only appear starting in questing (25.10) and resolute (26.04).
+The `installer-integration` job runs the KDE-tool-dependent steps inside a
+`docker run ubuntu:26.04` container instead, with the rest of the job (checkout,
+`make installer`) staying on the plain `ubuntu-latest` host.
+
+### `kglobalacceld` needs `QT_QPA_PLATFORM=offscreen`, not just a session bus
+
+The "confirmed... startable standalone from a shell" claim above came from a general
+forum post, not this actual binary.
+`kglobalacceld` links against `libQt6Widgets`/`libQt6Gui` and constructs a real
+`QApplication`.
+With no display and no `QT_QPA_PLATFORM` override, it aborts immediately with Qt's
+standard "no Qt platform plugin could be initialized" error.
+Setting `QT_QPA_PLATFORM=offscreen` (and installing the `qt6-qpa-plugins` package for
+the offscreen plugin itself) lets it start and register `org.kde.kglobalaccel` with no
+display or X server at all.
+A `kglobalacceld` build on one local KDE neon machine exited silently even with this
+set — that build behaves differently from the real Ubuntu package for reasons never
+fully identified — so this is confirmed against the actual CI-relevant binary, not
+that one.
+
+### New known gap: verifying Drift's own shortcuts land under `kwin` isn't possible headless
+
+`setShortcut` on kglobalaccel's D-Bus interface only ever updates an action under a
+component it already knows about.
+Confirmed empirically: calling it for a component name kglobalaccel has never seen
+returns an empty key list and creates nothing visible in `allComponents()`.
+The `kwin` component only exists once a real KWin process has registered its own core
+shortcuts — headless CI has no such process.
+So `setup-shortcuts.sh`'s busctl calls under component `kwin` are inert in this
+environment; the test cannot observe whether Drift's own bindings would actually take
+effect.
+What the test does verify for real: `setup-shortcuts.sh` detecting, releasing, and
+backing up a shortcut that collides with one of Drift's bindings, and `uninstall.sh`
+restoring it afterward — using `systemsettings.desktop`'s real, always-present default
+shortcut on Meta+I as the collision, no fixture needed.
+Closing this gap would need a real `kwin_wayland --virtual` (this note's option 2
+above) or a full KGlobalAccel-client stand-in that performs the same registration a
+real KWin process does — treat as a future upgrade, not attempted here.
