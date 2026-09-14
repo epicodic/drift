@@ -1,0 +1,35 @@
+name: Installer Integration
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  installer-integration:
+    # Runs the actual self-contained installer (installer/drift-install.sh.tmpl,
+    # built as .build/drift-install.sh) against real kwriteconfig6, kreadconfig6,
+    # kpackagetool6, and kglobalaccel tools inside a throwaway ubuntu:26.04 container.
+    # Only that release ships kglobalacceld/libkf6config-bin in the plain Ubuntu
+    # archive (confirmed against packages.ubuntu.com — noble has neither at all);
+    # QT_QPA_PLATFORM=offscreen lets kglobalacceld start with no display.
+    # See docs/agents/notes/2026-09-13-ci-testing-installer-scripts.md.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-toolchain
+      - run: make installer
+      - name: Run installer integration test
+        run: |
+          docker run --rm \
+            -e DEBIAN_FRONTEND=noninteractive -e NEEDRESTART_MODE=a \
+            -v "${GITHUB_WORKSPACE}:/repo:ro" \
+            ubuntu:26.04 bash -c '
+              set -e
+              apt-get update -qq
+              apt-get install -y -qq kglobalacceld libkf6config-bin kpackagetool6 kwin-common \
+                dbus-daemon dbus-user-session dbus-bin qt6-qpa-plugins
+              mkdir -p /work
+              cp -r /repo/scripts /repo/drift /repo/.build /work/
+              cd /work
+              dbus-run-session -- scripts/test-installer-integration.sh
+            '
