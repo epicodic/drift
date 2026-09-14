@@ -122,10 +122,6 @@ export class Controller {
         const stack = this.stripManager.activeStripStack();
         move(stack);
         const snapshot = stack.minimapSnapshot();
-        const activeStrip = snapshot.strips.find((strip) => strip.stripIndex === snapshot.viewport.stripIndex);
-        if (!activeStrip?.columns.some((column) => column.tiles.some((tile) => tile.focused))) {
-            return;
-        }
         this.minimapOverlay.show(snapshot, this.workspaceAdapter.screenGeometryAtCursor());
     }
 
