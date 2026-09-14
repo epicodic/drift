@@ -1,11 +1,16 @@
-name: Installer Integration
+name: Package Installer
 
 on:
   push:
     branches: [main]
+  release:
+    types: [published]
+
+permissions:
+  contents: write
 
 jobs:
-  installer-integration:
+  package-installer:
     # Runs the actual self-contained installer (installer/drift-install.sh.tmpl,
     # built as .build/drift-install_<version>.sh) against real kwriteconfig6, kreadconfig6,
     # kpackagetool6, and kglobalaccel tools inside a throwaway ubuntu:26.04 container.
@@ -33,3 +38,10 @@ jobs:
               cd /work
               dbus-run-session -- scripts/test-installer-integration.sh
             '
+      - name: Attach artifacts to release
+        if: github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >
+          gh release upload "${{ github.event.release.tag_name }}"
+          .build/drift_*.kwinscript .build/drift-install_*.sh --clobber
