@@ -144,15 +144,29 @@ PlasmaCore.Dialog {
                     }
                 }
             }
-            Rectangle {
-                x: dialog.viewportBox.x
-                y: dialog.viewportBox.y - 6
-                width: Math.max(dialog.viewportBox.width, 2)
-                height: dialog.stripHeight + 12
-                radius: 4
-                color: "transparent"
-                border.color: "#ffffff"
-                border.width: 2
+            Item {
+                // Clips the viewport indicator only horizontally at the panel edge: its own
+                // vertical bounds match the rounded rectangle's full overshoot range below
+                // (y - 6 .. y + height + 6) so the top/bottom marker tabs are never clipped,
+                // only a left/right overhang past the strip's own content is. This keeps the
+                // panel scale stable even when the viewport is wider than the active strip's
+                // columns, instead of the overhang inflating the scale (docs: minimap scale
+                // stability fix).
+                x: 0
+                y: -6
+                width: dialog.panelWidth
+                height: parent.height + 12
+                clip: true
+                Rectangle {
+                    x: dialog.viewportBox.x
+                    y: dialog.viewportBox.y
+                    width: Math.max(dialog.viewportBox.width, 2)
+                    height: dialog.stripHeight + 12
+                    radius: 4
+                    color: "transparent"
+                    border.color: "#ffffff"
+                    border.width: 2
+                }
             }
         }
     }
@@ -219,13 +233,17 @@ export function createMinimapOverlay(parent: QmlObject, autoHideMs: number, show
  * independently) so that a column's rendered width:height ratio always matches its true
  * `columnWidth : gridHeight` ratio (docs: 2026-09-01-minimap-thumbnails-design). Each strip is
  * left-aligned independently: `stripLefts` maps every `stripIndex` to that strip's own leftmost
- * edge (its columns' min x, plus the active viewport's own extent for the active strip), so
- * relative horizontal offset between strips is not preserved — only the widest strip's span
- * drives the horizontal scale. Strips are still spaced vertically by their real
- * `stripIndex * stripPitch` position — a strip with no entry between the lowest and highest
- * existing `stripIndex` (pruned or never created) is simply never drawn, leaving real blank
- * space at its position (docs: 2026-09-02-multi-strip-minimap-design). */
-function panelLayout(snapshot: StripStackMinimapSnapshot): {
+ * edge (its columns' min x only — never the active viewport's extent, so panning to an edge
+ * column never changes the scale), so relative horizontal offset between strips is not
+ * preserved — only the widest strip's own column span drives the horizontal scale. Strips are
+ * still spaced vertically by their real `stripIndex * stripPitch` position — a strip with no
+ * entry between the lowest and highest existing `stripIndex` (pruned or never created) is simply
+ * never drawn, leaving real blank space at its position (docs: 2026-09-02-multi-strip-minimap-design).
+ * Because the viewport indicator itself is no longer part of this span, it can now extend past
+ * the strip's own columns (e.g. a viewport wider than the strip's content, hugging one edge) —
+ * `toPanelViewportBox` still reports that true, unclamped extent, and the QML template clips it
+ * visually at the panel edge instead of it inflating the scale. */
+export function panelLayout(snapshot: StripStackMinimapSnapshot): {
     stripLefts: Map<number, number>;
     top: number;
     scale: number;
@@ -246,10 +264,6 @@ function panelLayout(snapshot: StripStackMinimapSnapshot): {
         for (const column of strip.columns) {
             left = Math.min(left, column.x);
             right = Math.max(right, column.x + column.width);
-        }
-        if (strip.stripIndex === viewport.stripIndex) {
-            left = Math.min(left, viewport.contentLeft, viewport.offset);
-            right = Math.max(right, viewport.contentLeft + viewport.contentWidth, viewport.offset + viewport.width);
         }
         if (!Number.isFinite(left)) {
             left = 0;
@@ -295,7 +309,7 @@ function toPanelStrips(snapshot: StripStackMinimapSnapshot): PanelStrip[] {
     });
 }
 
-function toPanelViewportBox(snapshot: StripStackMinimapSnapshot): PanelViewportBox {
+export function toPanelViewportBox(snapshot: StripStackMinimapSnapshot): PanelViewportBox {
     const { stripLefts, top, scale } = panelLayout(snapshot);
     const left = stripLefts.get(snapshot.viewport.stripIndex) ?? 0;
     return {
