@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Integration test for the actual self-contained installer (installer/drift-install.sh.tmpl,
-# built as .build/drift-install.sh), run against the real kwriteconfig6/kreadconfig6/
+# built as .build/drift-install_<version>.sh), run against the real kwriteconfig6/kreadconfig6/
 # kpackagetool6/kglobalaccel tools — no mocking of KConfig or D-Bus behavior, only the
 # one genuine live-KWin dependency (`qdbus6 ... reconfigure`) is stubbed. This drives
 # drift-install.sh itself end to end (install, disable-incompatible-settings.sh,
@@ -21,7 +21,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-INSTALLER_SCRIPT="${REPO_ROOT}/.build/drift-install.sh"
+VERSION="$(grep '"Version"' "${REPO_ROOT}/drift/metadata.json" | grep -o '[0-9][0-9.]*')"
+INSTALLER_SCRIPT="${REPO_ROOT}/.build/drift-install_${VERSION//./_}.sh"
 
 if [[ ! -x "${INSTALLER_SCRIPT}" ]]; then
     echo "test-installer-integration.sh: ${INSTALLER_SCRIPT} not found — run 'make installer' first" >&2

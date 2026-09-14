@@ -34,7 +34,7 @@ New files under `drift/bin/` (built into the package under `contents/bin/`, same
 At the repo root: a self-extracting installer template, assembled by a new `installer` Makefile target that depends on `package`:
 
 - Template script (e.g. `installer/drift-install.sh.tmpl`) containing all the shell logic below, ending in an `exit` and a `__DRIFT_PAYLOAD__` marker line.
-- `make installer` appends the built `.build/drift_<version>.kwinscript` bytes after the marker into `.build/drift-install.sh`, `chmod +x`.
+- `make installer` appends the built `.build/drift_<version>.kwinscript` bytes after the marker into `.build/drift-install_<version>.sh`, `chmod +x`.
 
 `setup-shortcuts.sh`/`setup-shortcuts-lib.sh` gain backup support: before `find_conflicting_actions` frees a colliding action's shortcut, its current sequence is recorded via `backup_if_absent` into `shortcuts.tsv` before being overwritten.
 

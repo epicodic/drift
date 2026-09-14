@@ -7,7 +7,7 @@ on:
 jobs:
   installer-integration:
     # Runs the actual self-contained installer (installer/drift-install.sh.tmpl,
-    # built as .build/drift-install.sh) against real kwriteconfig6, kreadconfig6,
+    # built as .build/drift-install_<version>.sh) against real kwriteconfig6, kreadconfig6,
     # kpackagetool6, and kglobalaccel tools inside a throwaway ubuntu:26.04 container.
     # Only that release ships kglobalacceld/libkf6config-bin in the plain Ubuntu
     # archive (confirmed against packages.ubuntu.com — noble has neither at all);
