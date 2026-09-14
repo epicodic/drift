@@ -30,7 +30,7 @@ METADATA := $(PKG_DIR)/metadata.json
 
 KWINSCRIPT_ARCHIVE := $(BUILD_DIR)/$(SCRIPT_NAME)_$(subst .,_,$(VERSION)).kwinscript
 INSTALLER_TEMPLATE := installer/drift-install.sh.tmpl
-INSTALLER_SCRIPT := $(BUILD_DIR)/drift-install.sh
+INSTALLER_SCRIPT := $(BUILD_DIR)/drift-install_$(subst .,_,$(VERSION)).sh
 
 .PHONY: build npm-install compile ui bin-scripts shaders lint lint-fix test install uninstall package installer clean enable disable restart-kwin help
 
