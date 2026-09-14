@@ -28,7 +28,11 @@ BIN_OUTS := $(patsubst drift/bin/%,$(CONTENTS_DIR)/bin/%,$(BIN_SRCS))
 
 METADATA := $(PKG_DIR)/metadata.json
 
-.PHONY: build npm-install compile ui bin-scripts shaders lint lint-fix test install uninstall package clean enable disable restart-kwin help
+KWINSCRIPT_ARCHIVE := $(BUILD_DIR)/$(SCRIPT_NAME)_$(subst .,_,$(VERSION)).kwinscript
+INSTALLER_TEMPLATE := installer/drift-install.sh.tmpl
+INSTALLER_SCRIPT := $(BUILD_DIR)/drift-install_$(subst .,_,$(VERSION)).sh
+
+.PHONY: build npm-install compile ui bin-scripts shaders lint lint-fix test install uninstall package installer clean enable disable restart-kwin help
 
 npm-install: $(NPM_INSTALL_STAMP)
 
@@ -90,8 +94,18 @@ install: build
 uninstall:
 	kpackagetool6 --type=KWin/Script --remove=$(SCRIPT_NAME)
 
-package: build
-	cd $(BUILD_DIR) && zip -r $(SCRIPT_NAME)_$(subst .,_,$(VERSION)).kwinscript ./drift
+$(KWINSCRIPT_ARCHIVE): build
+	cd $(BUILD_DIR) && zip -r $(notdir $(KWINSCRIPT_ARCHIVE)) ./drift
+
+package: $(KWINSCRIPT_ARCHIVE)
+
+installer: $(INSTALLER_SCRIPT)
+
+$(INSTALLER_SCRIPT): $(INSTALLER_TEMPLATE) $(KWINSCRIPT_ARCHIVE) scripts/verify-installer-payload.sh
+	sh -n $(INSTALLER_TEMPLATE)
+	cat $(INSTALLER_TEMPLATE) $(KWINSCRIPT_ARCHIVE) > $@
+	chmod +x $@
+	scripts/verify-installer-payload.sh $@ $(KWINSCRIPT_ARCHIVE)
 
 clean:
 	rm -rf $(BUILD_DIR)
@@ -130,6 +144,7 @@ help:
 	@echo "  install        - Build and install the script via kpackagetool6"
 	@echo "  uninstall      - Uninstall the script"
 	@echo "  package        - Build a KWin script archive for distribution"
+	@echo "  installer      - Build the self-extracting drift-install.sh (kwinscript + installer in one file)"
 	@echo "  clean          - Remove build artifacts"
 	@echo "  enable         - Enable the script in KWin"
 	@echo "  disable        - Disable the script in KWin"

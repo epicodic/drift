@@ -124,9 +124,12 @@ tokenize_busctl_reply() {
 # Parses a raw allShortcutInfos reply (a(ssssssaiai): per action, 6 strings —
 # actionUnique, actionFriendly, componentUnique, componentFriendly, contextUnique,
 # contextFriendly — then activeKeys (ai) then defaultKeys (ai)).
-# - Prints "actionUnique|actionFriendly|componentUnique|componentFriendly" for each
-#   action, other than ones listed in exclude_actions (newline-separated, exact
-#   match), currently holding an *active* grant on target_code.
+# - Prints "actionUnique|actionFriendly|componentUnique|componentFriendly|activeKeys"
+#   for each action, other than ones listed in exclude_actions (newline-separated,
+#   exact match), currently holding an *active* grant on target_code. activeKeys is
+#   the action's full list of active key codes (space-separated, in their original
+#   order) — not just target_code — so a caller can back up and later restore the
+#   exact prior shortcut even when it held more than one active key.
 # - A key appearing only in defaultKeys (already released, or never granted) is not a
 #   conflict.
 # - componentUnique/componentFriendly are included because the conflict may not
@@ -165,8 +168,10 @@ find_conflicting_actions() {
 		active_count="$1"
 		shift 1
 		matched=0
+		active_keys=""
 		i=0
 		while [ "$i" -lt "$active_count" ]; do
+			active_keys="${active_keys:+${active_keys} }$1"
 			[ "$1" = "$target_code" ] && matched=1
 			shift 1
 			i=$((i + 1))
@@ -183,7 +188,10 @@ find_conflicting_actions() {
 		if [ "$matched" -eq 1 ]; then
 			case "${nl}${exclude_actions}${nl}" in
 				*"${nl}${action_unique}${nl}"*) : ;;
-				*) printf '%s|%s|%s|%s\n' "$action_unique" "$action_friendly" "$component_unique" "$component_friendly" ;;
+				*)
+					printf '%s|%s|%s|%s|%s\n' \
+						"$action_unique" "$action_friendly" "$component_unique" "$component_friendly" "$active_keys"
+					;;
 			esac
 		fi
 
