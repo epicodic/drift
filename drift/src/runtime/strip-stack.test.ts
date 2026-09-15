@@ -57,6 +57,7 @@ interface FakeStrip {
     focusRight: ReturnType<typeof vi.fn>;
     focusUp: ReturnType<typeof vi.fn>;
     focusDown: ReturnType<typeof vi.fn>;
+    activateFocused: ReturnType<typeof vi.fn>;
     absorbRight: ReturnType<typeof vi.fn>;
     expel: ReturnType<typeof vi.fn>;
     moveTileUp: ReturnType<typeof vi.fn>;
@@ -96,6 +97,7 @@ function fakeStrip(): FakeStrip {
         focusRight: vi.fn(),
         focusUp: vi.fn(),
         focusDown: vi.fn(),
+        activateFocused: vi.fn(),
         absorbRight: vi.fn(),
         expel: vi.fn(),
         moveTileUp: vi.fn(() => false),
@@ -315,6 +317,15 @@ describe('StripStack strip paging', () => {
         expect(created[0].render).not.toHaveBeenCalled();
     });
 
+    it('stripUp hands real KWin focus to the destination strip, not the strip left behind', () => {
+        const { stack, created } = makeStack();
+
+        stack.stripUp();
+
+        expect(created[1].activateFocused).toHaveBeenCalledTimes(1);
+        expect(created[0].activateFocused).not.toHaveBeenCalled();
+    });
+
     it('stripDown creates strip 1 and makes it active', () => {
         const { stack, created } = makeStack();
 
@@ -324,6 +335,15 @@ describe('StripStack strip paging', () => {
         expect(created).toHaveLength(2);
         expect(created[1].render).toHaveBeenCalled(); // render() now targets strip 1
         expect(created[0].render).not.toHaveBeenCalled();
+    });
+
+    it('stripDown hands real KWin focus to the destination strip, not the strip left behind', () => {
+        const { stack, created } = makeStack();
+
+        stack.stripDown();
+
+        expect(created[1].activateFocused).toHaveBeenCalledTimes(1);
+        expect(created[0].activateFocused).not.toHaveBeenCalled();
     });
 
     it('stripUp after stripDown returns to strip 0', () => {
@@ -679,6 +699,20 @@ describe('StripStack.activateWindow', () => {
         expect(created[1].render).toHaveBeenCalled();
     });
 
+    it("doesn't also activate the target strip's previously-focused column (regression: would steal focus back off `win`)", () => {
+        const { stack, created } = makeStack();
+        stack.stripDown(); // strip 1 active
+        const win = fakeWin('w1');
+        stack.addWindow(win); // lands in strip 1
+        created[1].isEmpty.mockReturnValue(false);
+        stack.stripUp(); // back to strip 0; win is now in an inactive strip
+        created[1].activateFocused.mockClear(); // drop stripDown's/stripUp's own priming calls
+
+        stack.activateWindow(win);
+
+        expect(created[1].activateFocused).not.toHaveBeenCalled();
+    });
+
     it('ignores activation of an unowned window', () => {
         const { stack, created } = makeStack();
 
@@ -930,6 +964,17 @@ describe('StripStack — navigateUp/navigateDown', () => {
         expect(created).toHaveLength(1); // no strip paging happened
     });
 
+    it("doesn't hand off KWin focus again when an in-strip tile move already did (focusUp/focusDown own that)", () => {
+        const { stack, created } = makeStack();
+        created[0].focusUp.mockReturnValue(true);
+        created[0].focusDown.mockReturnValue(true);
+
+        stack.navigateUp();
+        stack.navigateDown();
+
+        expect(created[0].activateFocused).not.toHaveBeenCalled();
+    });
+
     it('pages to the strip above when there is no adjacent tile to focus up to', () => {
         const { stack, created } = makeStack();
         created[0].focusUp.mockReturnValue(false);
@@ -939,6 +984,15 @@ describe('StripStack — navigateUp/navigateDown', () => {
 
         expect(created).toHaveLength(2); // strip 0 and the newly created strip -1
         expect(created[1].render).toHaveBeenCalled();
+    });
+
+    it('hands real KWin focus to the strip paged into when in-strip focus movement is exhausted', () => {
+        const { stack, created } = makeStack();
+        created[0].focusUp.mockReturnValue(false);
+
+        stack.navigateUp();
+
+        expect(created[1].activateFocused).toHaveBeenCalledTimes(1);
     });
 
     it('pages to the strip below when there is no adjacent tile to focus down to', () => {

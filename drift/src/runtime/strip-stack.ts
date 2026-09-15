@@ -226,10 +226,12 @@ export class StripStack {
 
     stripUp(): void {
         this.switchToStrip(this.activeStripIndex - 1);
+        this.activeStrip().activateFocused();
     }
 
     stripDown(): void {
         this.switchToStrip(this.activeStripIndex + 1);
+        this.activeStrip().activateFocused();
     }
 
     moveWindowToStripAbove(): void {
