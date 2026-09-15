@@ -1815,6 +1815,29 @@ describe('Strip — focusUp/focusDown', () => {
     });
 });
 
+describe('Strip — activateFocused', () => {
+    it('hands real KWin focus to the focused column without changing which column is focused', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const left = fakeWindow('left');
+        const right = fakeWindow('right');
+        strip.addWindow(left.adapter);
+        strip.addWindow(right.adapter); // right is now the focused column
+        left.activate.mockClear();
+        right.activate.mockClear();
+
+        strip.activateFocused();
+
+        expect(right.activate).toHaveBeenCalledTimes(1);
+        expect(left.activate).not.toHaveBeenCalled();
+    });
+
+    it('is a no-op on a strip with no focused column', () => {
+        const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+
+        expect(() => strip.activateFocused()).not.toThrow();
+    });
+});
+
 describe('Strip — moveTileUp/moveTileDown', () => {
     it("reorder the focused tile within its column's stack without changing which tile is focused", () => {
         const strip = new Strip(AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());

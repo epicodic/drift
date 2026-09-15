@@ -770,6 +770,14 @@ export class Strip {
         return this.moveTileFocus((column) => column.focusDown());
     }
 
+    /** Hands real KWin focus to the currently focused column's focused tile, without moving
+     * Drift's own notion of what's focused — used when this strip becomes the active strip
+     * via strip paging, where the focused column is already decided and just needs KWin to
+     * actually follow it (docs: strip-paging leaves KWin focus on the old window otherwise). */
+    activateFocused(): void {
+        this.activateColumn(this.grid.focusedColumn());
+    }
+
     private moveTileFocus(move: (column: Column) => boolean): boolean {
         const column = this.grid.focusedColumn();
         if (column === null) {
