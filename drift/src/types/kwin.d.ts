@@ -196,13 +196,18 @@ interface QmlFocusFlashDialog extends QmlObject {
     visible: boolean;
 }
 
-/** The dynamically-created strip-change OSD dialog: a full-screen edge glow plus a large
- * label badge, flashed whenever the active strip actually changes (docs:
- * 2026-09-14-strip-navigation-hints-design). `glowRgb` is plain data (see `StripColor` in
- * `ui/strip-identity.ts`), typed loosely here since this file has no app-specific types. */
+/** The dynamically-created strip-change OSD dialog: a vector chevron frame hugging the screen
+ * edges plus a label badge, flashed whenever the active strip actually changes (docs:
+ * 2026-09-14-strip-navigation-hints-design, 2026-09-15-chevron-frame-osd). `frameColor` and the
+ * `*Points` arrays are plain data (see `StripColor` in `ui/strip-identity.ts` and `Point` in
+ * `ui/chevron-frame.ts`), typed loosely here since this file has no app-specific types. */
 interface QmlStripOsdDialog extends QmlObject {
-    glowRgb: unknown;
-    glowRadius: number;
+    frameColor: unknown;
+    topPoints: unknown;
+    bottomPoints: unknown;
+    leftPoints: unknown;
+    rightPoints: unknown;
+    thickness: number;
     label: string;
     x: number;
     y: number;
