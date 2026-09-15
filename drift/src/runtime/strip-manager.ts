@@ -92,16 +92,28 @@ export class StripManager {
         this.ownerByWindow.delete(win.id);
     }
 
-    /** Routes activation to the strip stack that owns `win`, if any. Returns whether `win`
-     * was actually managed by Drift — used to gate the focus-flash highlight to managed
-     * windows only (docs: 2026-09-05-focus-flash-highlight-design). */
+    /** Routes activation to the strip stack that owns `win`, if any. When `win` itself is
+     * untracked (e.g. a transient dialog KWin redirected focus to), climbs `transientFor()`
+     * to find its tiled ancestor — matching Karousel's ClientManager.findTiledWindowOfClient
+     * — so focusing a window whose child dialog steals focus still scrolls to the right strip.
+     * Returns whether an owning strip stack was found — used to gate the focus-flash highlight
+     * to managed windows only (docs: 2026-09-05-focus-flash-highlight-design). */
     activate(win: WindowAdapter): boolean {
-        const key = this.ownerByWindow.get(win.id);
-        if (key === undefined) {
+        const owned = this.findOwned(win);
+        if (owned === null) {
             return false;
         }
-        this.stacks.get(key)?.activateWindow(win);
+        const key = this.ownerByWindow.get(owned.id);
+        this.stacks.get(key!)?.activateWindow(owned);
         return true;
+    }
+
+    private findOwned(win: WindowAdapter): WindowAdapter | null {
+        if (this.ownerByWindow.has(win.id)) {
+            return win;
+        }
+        const parent = win.transientFor();
+        return parent === null ? null : this.findOwned(parent);
     }
 
     renderActive(): void {

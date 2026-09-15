@@ -73,8 +73,8 @@ function recordingFactory(): { factory: StripStackFactory; created: FakeStripSta
     return { factory, created, createdAreas };
 }
 
-function fakeWin(id: string): WindowAdapter {
-    return { id } as unknown as WindowAdapter;
+function fakeWin(id: string, transientFor: WindowAdapter | null = null): WindowAdapter {
+    return { id, transientFor: () => transientFor } as unknown as WindowAdapter;
 }
 
 function makeManager(activity = 'a', desktop = 'd1') {
@@ -174,6 +174,42 @@ describe('StripManager', () => {
         const { manager, created } = makeManager();
 
         const result = manager.activate(fakeWin('ghost'));
+
+        expect(created).toHaveLength(0);
+        expect(result).toBe(false);
+    });
+
+    it("climbs transientFor to activate the strip stack owning a focused dialog's tiled ancestor", () => {
+        const { manager, created } = makeManager();
+        const parent = fakeWin('w1');
+        manager.addTo('a', 'd1', parent);
+        const dialog = fakeWin('dialog', parent);
+
+        const result = manager.activate(dialog);
+
+        expect(created[0].activateWindow).toHaveBeenCalledWith(parent);
+        expect(result).toBe(true);
+    });
+
+    it('climbs multiple transientFor levels to find the owning strip stack', () => {
+        const { manager, created } = makeManager();
+        const parent = fakeWin('w1');
+        manager.addTo('a', 'd1', parent);
+        const dialog = fakeWin('dialog', parent);
+        const nestedDialog = fakeWin('nested-dialog', dialog);
+
+        const result = manager.activate(nestedDialog);
+
+        expect(created[0].activateWindow).toHaveBeenCalledWith(parent);
+        expect(result).toBe(true);
+    });
+
+    it('reports a transient window with no tiled ancestor as not managed', () => {
+        const { manager, created } = makeManager();
+        const untiledParent = fakeWin('floating-parent');
+        const dialog = fakeWin('dialog', untiledParent);
+
+        const result = manager.activate(dialog);
 
         expect(created).toHaveLength(0);
         expect(result).toBe(false);
