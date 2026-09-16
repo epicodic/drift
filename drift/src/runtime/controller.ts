@@ -8,6 +8,7 @@ import { debug } from '../debug';
 import { createDebugConsole } from '../kwin/debug-console';
 import { createFocusFlashOverlay, type FocusFlashOverlay } from '../kwin/focus-flash-overlay';
 import { createMinimapOverlay, type MinimapOverlay } from '../kwin/minimap-overlay';
+import { createPullIndicatorOverlay, type PullIndicatorOverlay } from '../kwin/pull-indicator-overlay';
 import { createQmlTimer } from '../kwin/qml-timer';
 import { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import { ANIMATION_TICK_MS } from '../viewport/shared-ticker';
@@ -38,6 +39,7 @@ export class Controller {
     private readonly transientLinks: TransientLinks;
     private readonly minimapOverlay: MinimapOverlay;
     private readonly focusFlashOverlay: FocusFlashOverlay;
+    private readonly pullIndicatorOverlay: PullIndicatorOverlay;
     private readonly areaRecheckTimer: { start(intervalMs: number, onTick: () => void): void; stop(): void };
     private area: Rect;
 
@@ -60,6 +62,12 @@ export class Controller {
             settings.focusFlashOpacity,
             settings.focusFlashEnabled,
         );
+        this.pullIndicatorOverlay = createPullIndicatorOverlay(
+            root,
+            ANIMATION_TICK_MS,
+            settings.pullIndicatorOpacity,
+            settings.pullIndicatorEnabled,
+        );
         this.transientLinks = new TransientLinks();
         this.stripManager = new StripManager(
             this.area,
@@ -68,6 +76,7 @@ export class Controller {
             this.workspaceAdapter,
             undefined,
             this.transientLinks,
+            this.pullIndicatorOverlay,
         );
         this.windowManager = new WindowManager(this.stripManager, settings);
         this.areaRecheckTimer = createQmlTimer(root);

@@ -9,6 +9,7 @@ import type { Settings } from '../config/settings';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import type { Timer } from '../viewport/animator';
+import { NOOP_PULL_INDICATOR, type PullIndicatorOverlay } from '../kwin/pull-indicator-overlay';
 import { StripStack } from './strip-stack';
 import { TransientLinks } from './transient-links';
 
@@ -18,6 +19,7 @@ export type StripStackFactory = (
     timer: Timer,
     workspaceAdapter: WorkspaceAdapter,
     transientLinks: TransientLinks,
+    pullIndicator: PullIndicatorOverlay,
 ) => StripStack;
 
 export class StripManager {
@@ -30,15 +32,17 @@ export class StripManager {
         private readonly timer: Timer,
         private readonly workspaceAdapter: WorkspaceAdapter,
         // undefined skips StripStack's own createStrip parameter positionally so it falls back to
-        // its default, while still supplying transientLinks (the parameter after it).
+        // its default, while still supplying transientLinks/pullIndicator (the parameters after it).
         private readonly createStripStack: StripStackFactory = (
             area,
             settings,
             timer,
             workspaceAdapter,
             transientLinks,
-        ) => new StripStack(area, settings, timer, workspaceAdapter, undefined, transientLinks),
+            pullIndicator,
+        ) => new StripStack(area, settings, timer, workspaceAdapter, undefined, transientLinks, pullIndicator),
         private readonly transientLinks: TransientLinks = new TransientLinks(),
+        private readonly pullIndicator: PullIndicatorOverlay = NOOP_PULL_INDICATOR,
     ) {}
 
     keyOf(activity: string, desktop: string): string {
@@ -153,6 +157,7 @@ export class StripManager {
                 this.timer,
                 this.workspaceAdapter,
                 this.transientLinks,
+                this.pullIndicator,
             );
             this.stacks.set(key, stack);
         }

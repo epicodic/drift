@@ -195,6 +195,24 @@ interface QmlFocusFlashDialog extends QmlObject {
     visible: boolean;
 }
 
+/** The dynamically-created pull indicator overlay dialog: a filled circular-segment arc grown
+ * beneath a dragged window's top edge while a pull-to-rearrange gesture is in progress (docs:
+ * 2026-09-16-drag-pull-threshold-indicator-design). `centerX`/`centerY`/`radius` are the
+ * circumcircle `pull-indicator.ts:pullIndicatorCircle` computes, in item-local px; `alpha` is
+ * `pullIndicatorAlpha(...) * pullIndicatorOpacity`. */
+interface QmlPullIndicatorDialog extends QmlObject {
+    centerX: number;
+    centerY: number;
+    radius: number;
+    alpha: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    opacity: number;
+    visible: boolean;
+}
+
 /** Subset of the QML `Qt` object exposed to scripts. */
 interface QtNamespace {
     rect(x: number, y: number, width: number, height: number): QRect;

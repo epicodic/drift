@@ -19,6 +19,7 @@ import { combineStripStackSnapshot, type StripStackMinimapSnapshot } from '../ui
 import { Animator, type Timer } from '../viewport/animator';
 import { DwellTimer } from '../utils/dwell-timer';
 import { ANIMATION_TICK_MS, SharedTicker } from '../viewport/shared-ticker';
+import { NOOP_PULL_INDICATOR, type PullIndicatorOverlay } from '../kwin/pull-indicator-overlay';
 import { Strip, type StripDragHooks } from './strip';
 import { TransientLinks } from './transient-links';
 
@@ -28,6 +29,7 @@ export type StripFactory = (
     timer: Timer,
     workspaceAdapter: WorkspaceAdapter,
     transientLinks: TransientLinks,
+    pullIndicator: PullIndicatorOverlay,
 ) => Strip;
 
 export class StripStack {
@@ -47,9 +49,16 @@ export class StripStack {
         private readonly settings: Settings,
         timer: Timer,
         private readonly workspaceAdapter: WorkspaceAdapter,
-        private readonly createStrip: StripFactory = (area, settings, timer, workspaceAdapter, transientLinks) =>
-            new Strip(area, settings, timer, workspaceAdapter, transientLinks),
+        private readonly createStrip: StripFactory = (
+            area,
+            settings,
+            timer,
+            workspaceAdapter,
+            transientLinks,
+            pullIndicator,
+        ) => new Strip(area, settings, timer, workspaceAdapter, transientLinks, pullIndicator),
         private readonly transientLinks: TransientLinks = new TransientLinks(),
+        private readonly pullIndicator: PullIndicatorOverlay = NOOP_PULL_INDICATOR,
     ) {
         this.ticker = new SharedTicker(timer, ANIMATION_TICK_MS);
         this.verticalAnimator = new Animator(
@@ -283,6 +292,7 @@ export class StripStack {
                 this.ticker.subscribe(),
                 this.workspaceAdapter,
                 this.transientLinks,
+                this.pullIndicator,
             );
             this.strips.set(index, strip);
         }

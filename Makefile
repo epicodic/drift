@@ -17,8 +17,8 @@ GEN_SHORTCUTS_JS := $(BUILD_DIR)/generate-shortcut-bindings.cjs
 MAIN_XML := $(CONTENTS_DIR)/config/main.xml
 SHORTCUT_BINDINGS := $(CONTENTS_DIR)/bin/shortcut-bindings.generated.sh
 
-SHADER_SRC := drift/shaders/focus_glow.frag
-SHADER_QSB := $(CONTENTS_DIR)/shaders/focus_glow.frag.qsb
+SHADER_SRCS := $(shell find drift/shaders -type f -name '*.frag')
+SHADER_QSBS := $(patsubst drift/shaders/%.frag,$(CONTENTS_DIR)/shaders/%.frag.qsb,$(SHADER_SRCS))
 
 UI_SRCS := $(shell find drift/ui -type f -not -name '*.test.*')
 UI_OUTS := $(patsubst drift/ui/%,$(CONTENTS_DIR)/ui/%,$(UI_SRCS))
@@ -65,10 +65,11 @@ ui: $(UI_OUTS)
 
 bin-scripts: $(BIN_OUTS)
 
-$(SHADER_QSB): $(SHADER_SRC) scripts/compile-shaders.sh
-	scripts/compile-shaders.sh $(SHADER_SRC) $(SHADER_QSB)
+$(CONTENTS_DIR)/shaders/%.frag.qsb: drift/shaders/%.frag scripts/compile-shaders.sh
+	@mkdir -p $(dir $@)
+	scripts/compile-shaders.sh $< $@
 
-shaders: $(SHADER_QSB)
+shaders: $(SHADER_QSBS)
 
 $(METADATA): drift/metadata.json
 	@mkdir -p $(dir $@)

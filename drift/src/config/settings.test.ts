@@ -44,8 +44,12 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.dragPanHorizontalTolerancePx).toBe(10);
     });
 
-    it('defaults dragPanFreeDwellMs to 400, matching the other drag dwells', () => {
-        expect(DEFAULT_SETTINGS.dragPanFreeDwellMs).toBe(400);
+    it('defaults pullIndicatorEnabled to true', () => {
+        expect(DEFAULT_SETTINGS.pullIndicatorEnabled).toBe(true);
+    });
+
+    it('defaults pullIndicatorOpacity to 0.5, matching focusFlashOpacity', () => {
+        expect(DEFAULT_SETTINGS.pullIndicatorOpacity).toBe(0.5);
     });
 
     it('defaults the strip-drag edge border to 2px', () => {

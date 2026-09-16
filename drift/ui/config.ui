@@ -324,7 +324,7 @@
                                         <string>Drag-to-Pan</string>
                                     </property>
                                     <property name="toolTip">
-                                        <string>Dragging a window pans the viewport by default. Pull the window down or up and hold it steady to switch to normal reordering, stacking, or moving it to another strip.</string>
+                                        <string>Dragging a window pans the viewport by default. Pull the window down or up past the trigger to switch to normal reordering, stacking, or moving it to another strip.</string>
                                     </property>
                                     <property name="checkable">
                                         <bool>true</bool>
@@ -336,7 +336,7 @@
                                         <item row="0" column="0" colspan="2">
                                             <widget class="QLabel" name="label_dragPanCaption">
                                                 <property name="text">
-                                                    <string>Hold-to-free gesture — pull trigger to switch into rearrange mode:</string>
+                                                    <string>Pull gesture — pull past the trigger to switch into rearrange mode:</string>
                                                 </property>
                                                 <property name="font">
                                                     <font>
@@ -355,7 +355,7 @@
                                         <item row="1" column="1">
                                             <widget class="QSpinBox" name="kcfg_dragPanVerticalTriggerPx">
                                                 <property name="toolTip">
-                                                    <string>Cumulative vertical drag movement, in pixels, before a hold-to-free gesture can start counting</string>
+                                                    <string>Cumulative vertical drag movement, in pixels, that frees the drag into rearrange mode immediately</string>
                                                 </property>
                                                 <property name="suffix">
                                                     <string> px</string>
@@ -381,7 +381,7 @@
                                         <item row="2" column="1">
                                             <widget class="QSpinBox" name="kcfg_dragPanHorizontalTolerancePx">
                                                 <property name="toolTip">
-                                                    <string>Horizontal drift, in pixels, allowed since a hold-to-free gesture started before it's canceled</string>
+                                                    <string>Horizontal drift, in pixels, measured from drag start, that permanently aborts the pull for the rest of the drag</string>
                                                 </property>
                                                 <property name="suffix">
                                                     <string> px</string>
@@ -394,32 +394,6 @@
                                                 </property>
                                                 <property name="value">
                                                     <number>10</number>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                        <item row="3" column="0">
-                                            <widget class="QLabel" name="label_dragPanFreeDwellMs">
-                                                <property name="text">
-                                                    <string>Hold dwell:</string>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                        <item row="3" column="1">
-                                            <widget class="QSpinBox" name="kcfg_dragPanFreeDwellMs">
-                                                <property name="toolTip">
-                                                    <string>How long a hold-to-free gesture must be sustained before the drag is freed into normal reorder/stack/cross-strip-drag behavior</string>
-                                                </property>
-                                                <property name="suffix">
-                                                    <string> ms</string>
-                                                </property>
-                                                <property name="minimum">
-                                                    <number>0</number>
-                                                </property>
-                                                <property name="maximum">
-                                                    <number>2000</number>
-                                                </property>
-                                                <property name="value">
-                                                    <number>400</number>
                                                 </property>
                                             </widget>
                                         </item>
@@ -794,6 +768,53 @@
                                                 </property>
                                                 <property name="value">
                                                     <double>0.50</double>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                    </layout>
+                                </widget>
+                            </item>
+                            <item>
+                                <widget class="QGroupBox" name="kcfg_pullIndicatorEnabled">
+                                    <property name="title">
+                                        <string>Show a pull indicator while dragging</string>
+                                    </property>
+                                    <property name="toolTip">
+                                        <string>Show a filled arc growing beneath the dragged window's top edge as a pull-to-rearrange gesture progresses</string>
+                                    </property>
+                                    <property name="checkable">
+                                        <bool>true</bool>
+                                    </property>
+                                    <property name="checked">
+                                        <bool>true</bool>
+                                    </property>
+                                    <layout class="QFormLayout" name="formLayout_pullIndicator">
+                                        <item row="0" column="0">
+                                            <widget class="QLabel" name="label_pullIndicatorOpacity">
+                                                <property name="text">
+                                                    <string>Opacity:</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item row="0" column="1">
+                                            <widget class="QDoubleSpinBox" name="kcfg_pullIndicatorOpacity">
+                                                <property name="toolTip">
+                                                    <string>Peak opacity of the pull indicator, reached once the pull reaches its trigger</string>
+                                                </property>
+                                                <property name="decimals">
+                                                    <number>2</number>
+                                                </property>
+                                                <property name="minimum">
+                                                    <double>0.0</double>
+                                                </property>
+                                                <property name="maximum">
+                                                    <double>1.0</double>
+                                                </property>
+                                                <property name="singleStep">
+                                                    <double>0.05</double>
+                                                </property>
+                                                <property name="value">
+                                                    <double>0.5</double>
                                                 </property>
                                             </widget>
                                         </item>
