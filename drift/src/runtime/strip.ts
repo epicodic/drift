@@ -38,6 +38,7 @@ import {
 } from './window-events';
 import { TransientLinks } from './transient-links';
 import { SignalManager } from '../utils/signal-manager';
+import { NOOP_PULL_INDICATOR, type PullIndicatorOverlay } from '../kwin/pull-indicator-overlay';
 
 /** The subset of `DragReorderDeps` a caller can supply per-window without knowing about
  * `Grid`/`Viewport`/rendering internals — used by `StripStack` to watch a dragged window's
@@ -99,6 +100,7 @@ export class Strip {
         timer: Timer,
         private readonly workspaceAdapter: WorkspaceAdapter,
         private readonly transientLinks: TransientLinks = new TransientLinks(),
+        private readonly pullIndicator: PullIndicatorOverlay = NOOP_PULL_INDICATOR,
     ) {
         this.area = this.marginedArea(area);
         this.grid = new Grid(Math.max(1, this.area.height), settings.horizontalGap, settings.verticalGap);
@@ -464,14 +466,7 @@ export class Strip {
                     dragPanVerticalTriggerPx: this.settings.dragPanVerticalTriggerPx,
                     dragPanHorizontalTolerancePx: this.settings.dragPanHorizontalTolerancePx,
                     workspace: this.workspaceAdapter,
-                    createPanFreeDwell: (onFire: () => void) =>
-                        new DwellTimer<true>(
-                            this.ticker.subscribe(),
-                            () => Date.now(),
-                            ANIMATION_TICK_MS,
-                            this.settings.dragPanFreeDwellMs,
-                            onFire,
-                        ),
+                    pullIndicator: this.pullIndicator,
                     createStackDwell: (onFire: (key: string) => void) =>
                         new DwellTimer<string>(
                             this.ticker.subscribe(),
