@@ -20,8 +20,8 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.stripDragDwellMs).toBe(400);
     });
 
-    it('defaults the column-stack drag dwell to 400ms', () => {
-        expect(DEFAULT_SETTINGS.columnDragDwellMs).toBe(400);
+    it('defaults the column-stack drag dwell to 200ms', () => {
+        expect(DEFAULT_SETTINGS.columnDragDwellMs).toBe(200);
     });
 
     it('defaults the reorder threshold fraction to 0.85 (near-final-position, not center-crossing)', () => {

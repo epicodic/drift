@@ -49,17 +49,34 @@ On `interactiveMoveResizeFinished`, the order has already settled live; the drag
 
 ## Drag-to-Stack Hover Resolution
 
-Source: [`resolveStackTarget`, `stackTargetIndex`](../drift/src/input/drag-hover.ts) in `drag-hover.ts`, candidates gathered by [`registerDragReorder`](../drift/src/input/drag.ts) in `drag.ts` via `Grid.visibleNeighborColumnIds`/`Column.tileRect`.
+Source: [`resolveStackTarget`, `resolveSlotFromPointer`, `initialPhantomIndex`, `stackTargetIndex`](../drift/src/input/drag-hover.ts) in `drag-hover.ts`, [`Grid.previewLayout`, `insertionIndexForSlots`](../drift/src/core/grid.ts) in `grid.ts`, [`Column.tileRect`](../drift/src/core/column.ts) in `column.ts`, driven by [`registerDragReorder`](../drift/src/input/drag.ts) in `drag.ts`.
 
-Stacking is resolved purely from the dragged window's own geometry — never the cursor position — using the same measurement axis reorder already uses.
-Every tick that reorder does *not* fire, `registerDragReorder` gathers a list of candidate tiles: the dragged tile's own column's other tiles (if it's currently in a multi-tile stack) plus every tile in both immediate neighbor columns.
-`resolveStackTarget(draggedRect, candidates, overlapFraction)` filters those candidates to ones whose horizontal overlap with the dragged window (as a fraction of the *narrower* of the dragged window's and the candidate's own width) clears `overlapFraction` (`settings.stackOverlapFraction`, default `0.5`) — dividing by the narrower width, rather than always the candidate's, so a dragged window that is itself narrower than the candidate can still clear the gate when it's fully contained inside it horizontally.
+Every `frameGeometryChanged` tick after the pull has freed the drag resolves one of three modes from the dragged window's own geometry.
 
-Each gate-passing candidate is then banded purely from the dragged window's own top-left corner y (never its height, so a tall or short dragged window reaches the same band the same way): the corner falling in the candidate's own top 25% resolves to `'above'` (insert before that tile), the bottom 25% resolves to `'below'` (insert after it); the middle 50%, or the corner falling outside the candidate's own y-range entirely, excludes that candidate rather than returning a dead zone. Among the candidates that both clear the gate and band into a direction, the one with the most horizontal overlap wins.
-`stackTargetIndex(target, tiles)` then translates the `{ tileId, direction }` result into a tile-list index for the eventual commit (`Column.insertTileAt`/`Column.moveTile`).
+A **standalone** single-tile column reorders live first (see above).
+Otherwise it previews a slot in whichever immediate neighbor it overlaps most horizontally, provided that overlap clears `settings.stackOverlapFraction` (default `0.5`, measured against the narrower of the two widths).
 
-The resolved target must hold steady — the same `(columnId, tileId, direction)` triple, encoded as one string key — for `columnDragDwellMs` before a preview actually appears, reusing the same `EdgeDwell` dwell timer cross-row drag uses; this applies uniformly whether the candidate is in the dragged tile's own column or a neighbor's, so a drag merely passing across another window on its way elsewhere never flashes a stack preview.
-Because `resolveStackTarget`/`stackTargetIndex` take only already-resolved rects and tile lists, they need no `Grid` or KWin dependency and are directly unit-testable.
+A stack tile still overlapping its committed home column by that fraction is in **home** mode and previews a slot among its siblings.
+
+A stack tile further out than that is in **phantom** mode.
+`Grid.previewLayout` lays the columns out with a phantom column of the tile's width inserted beside home (`initialPhantomIndex`, on the side the window's center is on), and the home column closes up around the hole.
+The phantom then obeys the reorder rule as a preview, moving past a neighbor once the window's edge penetrates `reorderThresholdFraction` of that neighbor's previewed width (`insertionIndexForSlots`).
+A neighbor slot is previewed on top by the same overlap rule a standalone column uses.
+The phantom stays open while a neighbor slot is previewed, so the previewed layout only changes when the phantom index moves.
+Home overlap is measured against the committed rect, never the previewed one, so entering phantom mode cannot flip the decision back.
+
+The vertical slot comes from the pointer's area-relative y, not from the dragged window.
+`resolveSlotFromPointer` finds the target column's tile under the pointer among that column's **committed** tile rects (`Column.tileRect`), positioned at the column's *previewed* x from `Grid.previewLayout`.
+The result is clamped to the first tile above the column and the last tile below it, and resolves `above` in a tile's upper half and `below` from its midline down.
+There is no dead zone.
+Resolving against committed rects, not the previewed gap-opened ones, matters: an armed gap moves the previewed tile rects, so resolving against them would move the very tile the pointer is measured against and could latch the slot in place instead of tracking it, whereas committed rects make `pointerY → slot` a pure function of the pointer for the whole drag.
+`stackTargetIndex(target, tiles)` translates the resolved `{ tileId, direction }` into a tile-list index for the eventual commit (`Column.insertTileAt`/`Column.moveTile`).
+
+The dwell (`DwellTimer`, `settings.columnDragDwellMs`, default `200`) is keyed on the target column or on entering phantom mode, not on the slot.
+Slot and phantom-index changes inside an armed target preview live, and the last armed preview stays on screen while a new key is dwelling.
+
+Release commits whatever is previewed: `Column.moveTile` for a same-column slot, `Strip.commitTileIntoStack` for a neighbor slot, or `Strip.commitTileToStandalone` for the phantom.
+Nothing about a stack tile is committed before release.
 
 ## Focus-Flash Opacity Envelope
 

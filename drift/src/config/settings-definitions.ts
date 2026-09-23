@@ -166,7 +166,7 @@ export const SETTINGS_DEFINITIONS: AnySettingsDefinition[] = [
     { name: 'windowHeightStep', type: 'UInt', default: 80 },
     { name: 'stripDragDwellMs', type: 'UInt', default: 400 },
     { name: 'stripDragEdgeBorderPx', type: 'UInt', default: 2 },
-    { name: 'columnDragDwellMs', type: 'UInt', default: 400 },
+    { name: 'columnDragDwellMs', type: 'UInt', default: 200 },
     { name: 'reorderThresholdFraction', type: 'Double', default: 0.85 },
     { name: 'stackOverlapFraction', type: 'Double', default: 0.5 },
     { name: 'dragPanEnabled', type: 'Bool', default: true },

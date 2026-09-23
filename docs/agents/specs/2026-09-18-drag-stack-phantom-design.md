@@ -25,7 +25,7 @@ Nothing about a stack tile's drag is committed before release.
 
 ### Target model
 
-`resolveDragTarget` (pure, `drag-hover.ts`) returns one of three results.
+The spec's three-way target is realized as the mode decision in drag.ts (standalone, home, phantom) over the pure helpers resolveStackTarget, resolveSlotFromPointer, and initialPhantomIndex in drag-hover.ts, rather than one resolveDragTarget function, because the phantom-aware neighbor rects depend on the mode chosen that tick.
 
 - `{ kind: 'stack', columnId, tileId, direction }` — a slot in a column, own or neighbor.
 - `{ kind: 'phantom', index }` — the dragged tile becomes its own column at grid index `index`.
@@ -56,9 +56,10 @@ With the phantom always present, the previewed layout only changes when the phan
 Home overlap is measured against the committed grid, not the previewed one, for the same reason: entering phantom mode on the left shifts home to the right visually, and measuring against the shifted rect would flip the decision back.
 
 **Vertical slot** — from the pointer, not the window's top edge.
-The target column's tile under the pointer's area-relative y is found among the column's previewed tile rects, clamped to the first tile above the column and the last tile below it.
+The target column's tile under the pointer's area-relative y is found among the column's committed tile rects, positioned at the column's previewed x, clamped to the first tile above the column and the last tile below it.
 Pointer above that tile's midline → `above`, otherwise → `below`.
 There is no dead zone.
+Resolving against committed rects, not the previewed ones, matters for the same stability reason home overlap is measured against the committed home rect: an armed gap moves the previewed tile rects, so resolving against them could flip the decision back and forth at the threshold instead of tracking the pointer.
 The dragged window's height is irrelevant to a stack insertion, so this does not reintroduce the grab-offset problem `2026-09-07-drag-reorder-stack-refinement-design.md` avoided; horizontal resolution stays geometry-based.
 
 ### Cost worth naming
@@ -87,6 +88,10 @@ A `null` target clears the preview immediately, as today.
 The new column's width is the home column's width, matching keyboard `expel`.
 `seedMotionFrom` on release is unchanged, so the dropped window still eases from where it was let go.
 
+### Preview fix
+
+`Column.previewRectsWithGapAt` gained one correction: with `excludeTileId` set (a same-column reorder preview), the trailing neighbor is no longer shrunk, because the excluded tile's own height already funds the gap — shrinking it too used to double-count the gap and collapse the trailing tile toward 0 height.
+
 ## Rendering
 
 `StackPreview` becomes `DragPreview`.
@@ -99,7 +104,7 @@ interface DragPreview {
 }
 ```
 
-`Grid` gains a pure `previewLayout(phantom?)` returning per-column rects, the virtual width, and the offset and width arrays with the phantom inserted at `phantom.index`.
+`Grid` gains a pure `previewLayout(phantom?)` returning per-column rects, the virtual width, and the slot list (offset, width, hidden per position) with the phantom inserted at `phantom.index`.
 Columns at or after the phantom index shift right by `phantom.width + gap`.
 `Strip.render` uses it for every column rect and for `viewport.setContentGeometry`.
 `drag.ts` uses the same call to build neighbor candidate rects and to run the phantom's reorder check, so hover resolution and rendering share one definition of "what is on screen".
@@ -118,7 +123,7 @@ The core math of `insertionIndexForEdges` is extracted into a function over an e
 - Live reorder for single-tile columns, including `reorderThresholdFraction`.
 - Pan, pull-to-free, and the pull indicator.
 - Cross-strip drag via the screen-edge dwell in `StripStack`.
-- `Column.previewRectsWithGapAt`, `Column.previewRectsWithoutTile`, `Column.insertTileAt`, `Column.moveTile`.
+- `Column.previewRectsWithoutTile`, `Column.insertTileAt`, `Column.moveTile`.
 - No modifier-key gestures; still unavailable in the KWin script sandbox.
 
 ## Settings
@@ -130,7 +135,7 @@ No new settings.
 
 ## Edge cases
 
-- **Two-tile home column** — leaving it makes the remaining tile fill the column in the leaving preview; `previewRectsWithoutTile` already does this.
+- **Two-tile home column** — the leaving preview (`previewRectsWithoutTile`) shifts the remaining tile up at its own height, leaving empty space below it; the fill happens on release, when `removeTile` redistributes.
 - **Home column at the grid boundary** — phantom mode on the outer side inserts the phantom at index 0 or at the end; nothing else shifts on that side.
 - **Hidden (minimized) columns** — `previewLayout` treats them exactly as `layoutOffsets` does; the phantom is never hidden.
 - **Window closes mid-drag** — the model was never mutated, so existing `removeWindow` cleanup applies unchanged.
@@ -138,7 +143,7 @@ No new settings.
 
 ## Testing
 
-- `drag-hover.test.ts`: `resolveDragTarget` for both dragged kinds, pointer slot resolution including clamping and the midline boundary, phantom side selection and index movement, neighbor stack target measured against previewed rects.
+- `drag-hover.test.ts`: `resolveStackTarget`, `resolveSlotFromPointer`, and `initialPhantomIndex` for both dragged kinds, pointer slot resolution including clamping and the midline boundary, phantom side selection and index movement, neighbor overlap gate measured against previewed column rects, slot against committed tile rects.
 - `grid.test.ts`: `previewLayout` offsets and virtual width with and without a phantom and with hidden columns, `expelTile`, the extracted insertion-index math on a preview layout.
 - `strip.test.ts`: `commitTileToStandalone` at each index, including the registry and bookkeeping side effects.
 - `drag.ts` stays untested glue, consistent with every prior drag design.

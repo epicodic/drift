@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Grid } from './grid';
+import { Grid, insertionIndexForSlots, visibleNeighborSlot } from './grid';
 
 const HEIGHT = 1080;
 const GAP = 10;
@@ -288,57 +288,6 @@ describe('Grid — visibleNeighborColumnIds', () => {
         grid.hideColumn(b.id);
         expect(grid.visibleNeighborColumnIds(a.id)).toEqual([c.id]);
         expect(grid.visibleNeighborColumnIds(c.id)).toEqual([a.id]);
-    });
-});
-
-describe('Grid — expel direction for drag edges', () => {
-    it('returns null on both sides for the only column until an edge crosses its own boundary', () => {
-        const grid = new Grid(HEIGHT, GAP);
-        const a = grid.addColumn(300); // a: [0,300), no neighbor on either side
-
-        expect(grid.expelDirectionForEdges(a.id, 0, 300)).toBeNull(); // exactly at its own edges -> not crossed
-        expect(grid.expelDirectionForEdges(a.id, -10, 310)).toBe('right'); // right checked first
-    });
-
-    it("returns 'left' once the left edge crosses past a column with no left neighbor", () => {
-        const grid = new Grid(HEIGHT, GAP);
-        const a = grid.addColumn(300); // a: [0,300), no left neighbor
-
-        expect(grid.expelDirectionForEdges(a.id, -1, 300)).toBe('left');
-    });
-
-    it("returns 'right' once the right edge crosses past the rightmost column's own boundary", () => {
-        const grid = new Grid(HEIGHT, GAP);
-        grid.addColumn(300); // a: [0,300)
-        const b = grid.addColumn(500); // b (dragged): [310,810), no right neighbor
-
-        expect(grid.expelDirectionForEdges(b.id, 310, 811)).toBe('right');
-    });
-
-    it("returns 'left' once the left edge crosses past the leftmost column's own boundary", () => {
-        const grid = new Grid(HEIGHT, GAP);
-        const a = grid.addColumn(300); // a (dragged): [0,300), no left neighbor
-        grid.addColumn(500); // b: [310,810)
-
-        expect(grid.expelDirectionForEdges(a.id, -1, 300)).toBe('left');
-    });
-
-    it('returns null when a visible neighbor exists on both sides, regardless of the edges', () => {
-        const grid = new Grid(HEIGHT, GAP);
-        grid.addColumn(300); // a
-        const b = grid.addColumn(500); // b (dragged), has a neighbor on both sides
-        grid.addColumn(200); // c
-
-        expect(grid.expelDirectionForEdges(b.id, -999, 999)).toBeNull();
-    });
-
-    it('ignores a hidden column when checking for a visible neighbor', () => {
-        const grid = new Grid(HEIGHT, GAP);
-        const a = grid.addColumn(300); // a (dragged): [0,300)
-        const hidden = grid.addColumn(500); // hidden — contributes no visible neighbor
-        grid.hideColumn(hidden.id);
-
-        expect(grid.expelDirectionForEdges(a.id, -1, 300)).toBe('left');
     });
 });
 
@@ -714,5 +663,117 @@ describe('Grid — vertical gap', () => {
         grid.setHeight(1820); // doubles the 900 tile-height budget to 1800
 
         expect(column.tiles().map((t) => t.height)).toEqual([900, 900]);
+    });
+});
+
+describe('Grid — previewLayout', () => {
+    it('matches columnRect and virtualWidth when no phantom is given', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        const b = grid.addColumn(500);
+        const layout = grid.previewLayout();
+        expect(layout.slots.map((slot) => slot.columnId)).toEqual([a.id, b.id]);
+        expect(layout.rects.get(a.id)).toEqual(grid.columnRect(a.id));
+        expect(layout.rects.get(b.id)).toEqual(grid.columnRect(b.id));
+        expect(layout.virtualWidth).toBe(grid.virtualWidth());
+    });
+
+    it('inserts a phantom slot at the given index and shifts every later column by its width plus the gap', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300); // [0,300)
+        const b = grid.addColumn(500); // [310,810) without a phantom
+        const layout = grid.previewLayout({ index: 1, width: 200 });
+        expect(layout.slots.map((slot) => slot.columnId)).toEqual([a.id, null, b.id]);
+        expect(layout.slots[1]).toEqual({ columnId: null, offset: 310, width: 200, hidden: false });
+        expect(layout.rects.get(a.id)?.x).toBe(0);
+        expect(layout.rects.get(b.id)?.x).toBe(520); // 310 + 200 + GAP
+        expect(layout.virtualWidth).toBe(1020); // 520 + 500
+    });
+
+    it('places a phantom at index 0 before every column, and at the end after every column', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        const a = grid.addColumn(300);
+        const front = grid.previewLayout({ index: 0, width: 200 });
+        expect(front.slots[0].columnId).toBeNull();
+        expect(front.rects.get(a.id)?.x).toBe(210);
+        const back = grid.previewLayout({ index: 1, width: 200 });
+        expect(back.slots[1]).toEqual({ columnId: null, offset: 310, width: 200, hidden: false });
+        expect(back.virtualWidth).toBe(510);
+    });
+
+    it('lays hidden columns out as 1px slots with no trailing gap, with the phantom after them', () => {
+        const grid = new Grid(HEIGHT, GAP);
+        grid.addColumn(300); // [0,300)
+        const b = grid.addColumn(400); // hidden: 1px wide, no gap after
+        const c = grid.addColumn(200);
+        grid.hideColumn(b.id);
+        // a: 0, then +300 +GAP = 310 -> b (hidden, width 1, no gap) -> 311 -> c, then +200 +GAP
+        const layout = grid.previewLayout({ index: 3, width: 100 });
+        expect(layout.slots.map((slot) => slot.offset)).toEqual([0, 310, 311, 521]);
+        expect(layout.slots[1].hidden).toBe(true);
+        expect(layout.rects.get(b.id)?.width).toBe(400); // rect keeps the real width, as columnRect does
+        expect(layout.rects.get(c.id)?.x).toBe(311);
+    });
+});
+
+describe('Grid — expelTile', () => {
+    it('removes the given (non-focused) tile and gives it a new focused column to the right', () => {
+        const grid = new Grid(1000, 8);
+        const column = grid.addColumn(300);
+        const topId = column.tiles()[0].id;
+        const bottomId = column.addTile();
+        column.setFocusedTile(topId);
+        grid.setFocus(column.id);
+
+        const result = grid.expelTile(column.id, bottomId, 250);
+
+        expect(result).not.toBeNull();
+        expect(column.tiles().map((t) => t.id)).toEqual([topId]);
+        expect(grid.columns().map((c) => c.id)).toEqual([column.id, result!.toColumnId]);
+        expect(grid.focusedColumn()?.id).toBe(result!.toColumnId);
+        expect(grid.column(result!.toColumnId)?.width).toBe(250);
+        expect(grid.column(result!.toColumnId)?.tiles()[0].id).toBe(result!.toTileId);
+    });
+
+    it('returns null (no-op) when the column only has one tile', () => {
+        const grid = new Grid(1000, 8);
+        const column = grid.addColumn(300);
+        expect(grid.expelTile(column.id, column.tiles()[0].id, 250)).toBeNull();
+        expect(grid.columns().map((c) => c.id)).toEqual([column.id]);
+    });
+});
+
+describe('insertionIndexForSlots', () => {
+    const slots = [
+        { columnId: 1, offset: 0, width: 300, hidden: false },
+        { columnId: null, offset: 310, width: 200, hidden: false }, // the phantom, dragged
+        { columnId: 2, offset: 520, width: 500, hidden: false },
+    ];
+
+    it('stays put while neither edge penetrates a neighbor past the threshold', () => {
+        expect(insertionIndexForSlots(slots, 1, 320, 520, 0.85)).toBe(1);
+    });
+
+    it("moves right once the right edge passes the right neighbor's threshold", () => {
+        // right neighbor threshold: 520 + 500 * 0.85 = 945
+        expect(insertionIndexForSlots(slots, 1, 745, 945, 0.85)).toBe(1);
+        expect(insertionIndexForSlots(slots, 1, 746, 946, 0.85)).toBe(2);
+    });
+
+    it("moves left once the left edge passes the left neighbor's threshold", () => {
+        // left neighbor threshold: 0 + 300 * (1 - 0.85) = 45
+        expect(insertionIndexForSlots(slots, 1, 45, 245, 0.85)).toBe(1);
+        expect(insertionIndexForSlots(slots, 1, 44, 244, 0.85)).toBe(0);
+    });
+
+    it('skips hidden slots when looking for a neighbor', () => {
+        const withHidden = [
+            { columnId: 1, offset: 0, width: 300, hidden: false },
+            { columnId: 9, offset: 310, width: 1, hidden: true },
+            { columnId: null, offset: 311, width: 200, hidden: false },
+        ];
+        expect(visibleNeighborSlot(withHidden, 2, -1)).toBe(0);
+        expect(visibleNeighborSlot(withHidden, 2, 1)).toBeNull();
+        expect(insertionIndexForSlots(withHidden, 2, 44, 244, 0.85)).toBe(0);
     });
 });

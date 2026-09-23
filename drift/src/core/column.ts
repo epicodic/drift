@@ -263,7 +263,11 @@ export class Column {
      * (docs: 2026-09-03-drag-to-stack-design). A trailing gap (`index === others.length`,
      * appending after everything) has no later tile to shift down, which would
      * otherwise leave the preview visually unchanged — so that case instead shrinks
-     * the immediately preceding tile by `gapHeight` to make the reserved space visible. */
+     * the immediately preceding tile by `gapHeight` to make the reserved space visible.
+     * That shrink only applies with no `excludeTileId`: when a tile IS excluded (a
+     * same-column reorder preview), its own height already funds the gap, so shrinking
+     * the trailing neighbor too would double-count it and collapse it toward 0
+     * (docs: 2026-09-18-drag-stack-phantom-design). */
     previewRectsWithGapAt(
         index: number,
         gapHeight: number,
@@ -281,7 +285,8 @@ export class Column {
             }
             const tileIndex = cursor++;
             const tile = others[tileIndex];
-            const isTrailingNeighbor = index === others.length && tileIndex === others.length - 1;
+            const isTrailingNeighbor =
+                excludeTileId === undefined && index === others.length && tileIndex === others.length - 1;
             const height = isTrailingNeighbor ? Math.max(0, tile.height - gapHeight - this.rowGap) : tile.height;
             result.set(tile.id, { x: columnRect.x, y, width: columnRect.width, height });
             y += tile.height + this.rowGap;

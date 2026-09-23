@@ -1416,6 +1416,81 @@ describe('Strip — commitTileIntoStack', () => {
     });
 });
 
+describe('Strip — render with a phantom column', () => {
+    it('shifts every column at or after the phantom index right by its width plus the horizontal gap', () => {
+        const strip = new Strip(WIDE_AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const a = fakeWindow('a', { width: 640 });
+        const b = fakeWindow('b', { width: 640 });
+        strip.addWindow(a.adapter);
+        strip.addWindow(b.adapter);
+        const bBefore = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+
+        strip.render(undefined, true, undefined, { phantom: { index: 1, width: 300 } });
+
+        const aAfter = a.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+        const bAfter = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+        expect(aAfter.x).toBe(0);
+        expect(bAfter.x).toBe(bBefore.x + 300 + SETTINGS.horizontalGap);
+    });
+});
+
+describe('Strip — commitTileToStandalone', () => {
+    function stackWithNeighbor(): { strip: Strip; a: FakeWindow; b: FakeWindow; c: FakeWindow } {
+        const strip = new Strip(WIDE_AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const a = fakeWindow('a', { width: 640 });
+        const b = fakeWindow('b', { width: 640 });
+        const c = fakeWindow('c', { width: 640 });
+        strip.addWindow(a.adapter);
+        strip.addWindow(b.adapter);
+        strip.focusLeft();
+        strip.absorbRight(); // column A: [a, b]
+        strip.addWindow(c.adapter); // column C to the right of A
+        return { strip, a, b, c };
+    }
+
+    it('moves the tile into its own column at the given grid index, keeping the source width', () => {
+        const { strip, a, b, c } = stackWithNeighbor();
+        const home = strip.locationOf('b')!;
+
+        strip.commitTileToStandalone(home.columnId, home.tileId, 0); // left of A
+        strip.render();
+
+        const aRect = a.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+        const bRect = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+        const cRect = c.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+        expect(strip.locationOf('b')!.columnId).not.toBe(home.columnId);
+        expect(bRect.x).toBe(0);
+        expect(bRect.width).toBe(640);
+        expect(bRect.height).toBe(WIDE_AREA.height);
+        expect(aRect.x).toBe(640 + SETTINGS.horizontalGap);
+        expect(aRect.height).toBe(WIDE_AREA.height); // a now fills its column
+        expect(cRect.x).toBeGreaterThan(aRect.x);
+    });
+
+    it('can place the new column between its home and the neighbor', () => {
+        const { strip, a, b, c } = stackWithNeighbor();
+        const home = strip.locationOf('b')!;
+
+        strip.commitTileToStandalone(home.columnId, home.tileId, 1);
+        strip.render();
+
+        const aRect = a.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+        const bRect = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+        const cRect = c.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+        expect(aRect.x).toBeLessThan(bRect.x);
+        expect(bRect.x).toBeLessThan(cRect.x);
+    });
+
+    it('is a no-op for a single-tile column', () => {
+        const strip = new Strip(WIDE_AREA, INSTANT_SETTINGS, fakeTimer(), fakeWorkspaceAdapter());
+        const a = fakeWindow('a', { width: 640 });
+        strip.addWindow(a.adapter);
+        const home = strip.locationOf('a')!;
+        strip.commitTileToStandalone(home.columnId, home.tileId, 0);
+        expect(strip.locationOf('a')).toEqual(home);
+    });
+});
+
 describe('Strip — live reorder commit', () => {
     it('commits a real Grid.moveColumn swap, live, once the dragged edge passes reorderThresholdFraction', () => {
         // Regression coverage for docs: 2026-09-04-drag-reorder-stack-priority-design — reorder
@@ -1492,7 +1567,7 @@ describe('Strip — reorder release eases into place', () => {
     });
 
     it("does not corrupt a stack sibling's x when the dragged tile settles back into its own multi-tile column without ever committing a reorder or a stack move", () => {
-        // Regression: lastStackHover === null does NOT imply the released tile's column is
+        // Regression: armedStackTarget === null does NOT imply the released tile's column is
         // standalone — it's also null whenever tickInner never armed a stack target at all
         // (e.g. no candidate ever overlapped vertically, or the dwell never elapsed). In that
         // case location.columnId can still be the tile's original multi-tile stack column, and
@@ -1519,8 +1594,8 @@ describe('Strip — reorder release eases into place', () => {
         b.startDrag();
         // Nudge b 10px right — nowhere near reorderThresholdFraction's swap threshold against
         // C, and b's y never changes, so it never vertically overlaps a (the only same-column
-        // candidate) at all: resolveCurrentTarget resolves null, no stack target is ever armed,
-        // and lastStackHover stays null — yet col A (b's home column) is still a 2-tile stack.
+        // candidate) at all: resolveStackTarget resolves null, no stack target is ever armed,
+        // and armedStackTarget stays null — yet col A (b's home column) is still a 2-tile stack.
         b.setFrameGeometryValue({ x: bRect.x + 10, y: bRect.y, width: bRect.width, height: bRect.height });
         b.triggerFrameGeometryChanged({ x: bRect.x, y: bRect.y, width: bRect.width, height: bRect.height });
 
@@ -1616,11 +1691,10 @@ describe('Strip — stack release eases into place', () => {
             };
 
             b.startDrag();
-            // Dragged up to y=100, its own live screen position — well clear of a's y=0/h=500
-            // top-25% band (topFraction = 100/500 = 0.2 < 0.25), so this resolves to a same-column
-            // target: {columnId: A, tileId: a, direction: 'above'}. Column A has no neighbor
-            // columns at all (col B was absorbed away), so reorder and edge-expel never fire on
-            // this tick, and the only stack candidate resolveCurrentTarget can gather is a's own
+            // The fake workspace's cursor defaults to (0, 0) — the upper half of a's y=0/h=500
+            // tile — so the slot resolves to a same-column target: {columnId: A, tileId: a,
+            // direction: 'above'}. Column A has no neighbor columns at all (col B was absorbed
+            // away), so reorder never fires on this tick, and the only stack candidate is a's own
             // tile — ruling out an accidental cross-column resolution.
             b.setFrameGeometryValue({ x: bRect.x, y: 100, width: bRect.width, height: bRect.height });
             b.triggerFrameGeometryChanged({ x: bRect.x, y: bRect.y, width: bRect.width, height: bRect.height }); // arms the dwell
@@ -1702,12 +1776,12 @@ describe('Strip — stack dwell preview (docs: 2026-09-04-drag-reorder-stack-pri
             a.setFrameGeometry.mockClear();
 
             b.startDrag();
-            // b's own geometry (not the pointer) is what stack resolution measures now: parked
-            // at x=200 it overlaps a's [0,640) rect by 440px — 68.75% of a's width, clearing the
-            // default 50% stackOverlapFraction gate — while its left edge (200) stays short of
-            // the reorder threshold (640 * (1 - 0.85) = 96), so reorder never preempts the stack
-            // check. y=0 keeps its top edge flush with a's, landing in a's top-25% band, which
-            // resolves to direction 'above'.
+            // b's own geometry is what the horizontal overlap gate measures: parked at x=200 it
+            // overlaps a's [0,640) rect by 440px — 68.75% of a's width, clearing the default 50%
+            // stackOverlapFraction gate — while its left edge (200) stays short of the reorder
+            // threshold (640 * (1 - 0.85) = 96), so reorder never preempts the stack check. The
+            // fake workspace's cursor defaults to (0, 0) — the upper half of a's tile — so the
+            // slot resolves to direction 'above'.
             b.setFrameGeometryValue({ x: 200, y: 0, width: 640, height: 1000 });
             b.triggerFrameGeometryChanged({ x: bRealX, y: 0, width: 640, height: 1000 }); // arms the dwell
 
@@ -1729,6 +1803,229 @@ describe('Strip — stack dwell preview (docs: 2026-09-04-drag-reorder-stack-pri
             expect(aCallsAfterFire[aCallsAfterFire.length - 1][0].y).toBeGreaterThan(0);
 
             b.finishDrag();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+});
+
+describe('Strip — phantom column drag (docs: 2026-09-18-drag-stack-phantom-design)', () => {
+    function stackWithNeighbor(
+        timer: ManualTimer,
+        workspaceAdapter: FakeWorkspaceAdapter,
+    ): { strip: Strip; a: FakeWindow; b: FakeWindow; c: FakeWindow } {
+        const strip = new Strip(WIDE_AREA, { ...INSTANT_SETTINGS, columnDragDwellMs: 100 }, timer, workspaceAdapter);
+        const a = fakeWindow('a', { width: 640 });
+        const b = fakeWindow('b', { width: 640 });
+        const c = fakeWindow('c', { width: 640 });
+        strip.addWindow(a.adapter);
+        strip.addWindow(b.adapter);
+        strip.focusLeft();
+        strip.absorbRight(); // column A = [a (y 0..500), b (y 500..1000)] at x=0
+        strip.addWindow(c.adapter); // column C at x = 640 + gap
+        return { strip, a, b, c };
+    }
+
+    it('previews a phantom column beside home once more than half the tile has left it, after the dwell', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const workspaceAdapter = fakeWorkspaceAdapter();
+            const timer = new ManualTimer();
+            const { strip, b, c } = stackWithNeighbor(timer, workspaceAdapter);
+            const cBefore = (c.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect).x;
+
+            b.startDrag();
+            // b at x=400 overlaps its home column [0,640) by 240px = 37.5% < 50%: phantom mode.
+            // Its center (720) is right of home's center (320): phantom index 1, between A and C.
+            b.setFrameGeometryValue({ x: 400, y: 500, width: 640, height: 500 });
+            b.triggerFrameGeometryChanged({ x: 0, y: 500, width: 640, height: 500 });
+
+            // Dwelling: nothing has moved yet.
+            expect((c.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect).x).toBe(cBefore);
+
+            vi.setSystemTime(100);
+            timer.fire(); // 'phantom' dwell elapses
+
+            // C slid right to make room for a 640px phantom plus the gap.
+            expect((c.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect).x).toBe(
+                cBefore + 640 + SETTINGS.horizontalGap,
+            );
+
+            b.finishDrag();
+
+            // Committed: b is its own column between A and C.
+            strip.render();
+            const bRect = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+            const cRect = c.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+            expect(strip.locationOf('b')!.columnId).not.toBe(strip.locationOf('a')!.columnId);
+            expect(bRect.x).toBe(640 + SETTINGS.horizontalGap);
+            expect(bRect.height).toBe(WIDE_AREA.height);
+            expect(cRect.x).toBe(bRect.x + 640 + SETTINGS.horizontalGap);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('does not commit anything when released before the phantom dwell fires', () => {
+        const workspaceAdapter = fakeWorkspaceAdapter();
+        const timer = new ManualTimer();
+        const { strip, b } = stackWithNeighbor(timer, workspaceAdapter);
+        const home = strip.locationOf('b')!.columnId;
+
+        b.startDrag();
+        b.setFrameGeometryValue({ x: 400, y: 500, width: 640, height: 500 });
+        b.triggerFrameGeometryChanged({ x: 0, y: 500, width: 640, height: 500 });
+        b.finishDrag();
+
+        expect(strip.locationOf('b')!.columnId).toBe(home);
+        expect(strip.locationOf('a')!.columnId).toBe(home);
+    });
+
+    it('never expels a tile that drifts one pixel past the grid boundary', () => {
+        const workspaceAdapter = fakeWorkspaceAdapter();
+        const timer = new ManualTimer();
+        const { strip, b } = stackWithNeighbor(timer, workspaceAdapter);
+        const home = strip.locationOf('b')!.columnId;
+
+        b.startDrag();
+        b.setFrameGeometryValue({ x: -1, y: 500, width: 640, height: 500 }); // 99.8% still over home
+        b.triggerFrameGeometryChanged({ x: 0, y: 500, width: 640, height: 500 });
+        timer.fire();
+        b.finishDrag();
+
+        expect(strip.locationOf('b')!.columnId).toBe(home);
+    });
+});
+
+describe('Strip — pointer-resolved stack slot (docs: 2026-09-18-drag-stack-phantom-design)', () => {
+    it('stacks below a full-height neighbor when the pointer is in its lower half', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const workspaceAdapter = fakeWorkspaceAdapter();
+            const timer = new ManualTimer();
+            const strip = new Strip(
+                WIDE_AREA,
+                { ...INSTANT_SETTINGS, columnDragDwellMs: 100 },
+                timer,
+                workspaceAdapter,
+            );
+            const a = fakeWindow('a', { width: 640 });
+            const b = fakeWindow('b', { width: 640 });
+            strip.addWindow(a.adapter);
+            strip.addWindow(b.adapter);
+            const bRealX = (b.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect).x;
+
+            b.startDrag();
+            workspaceAdapter.cursor = { x: 300, y: 900 }; // lower half of a's [0,1000) tile
+            // b's own top edge is flush with a's (y=0) — regardless of the window's top edge, the
+            // slot comes from the pointer, so this must still resolve to 'below'.
+            b.setFrameGeometryValue({ x: 200, y: 0, width: 640, height: 1000 });
+            b.triggerFrameGeometryChanged({ x: bRealX, y: 0, width: 640, height: 1000 });
+            vi.setSystemTime(100);
+            timer.fire();
+
+            const aPreview = a.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+            expect(aPreview.y).toBe(0); // gap opened BELOW a, not above
+            expect(aPreview.height).toBeLessThan(1000);
+
+            b.finishDrag();
+            strip.render();
+            const aRect = a.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+            const bRect = b.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+            expect(bRect.y).toBeGreaterThan(aRect.y);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('moves the previewed slot live when the pointer crosses the midline, without a second dwell', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const workspaceAdapter = fakeWorkspaceAdapter();
+            const timer = new ManualTimer();
+            const strip = new Strip(
+                WIDE_AREA,
+                { ...INSTANT_SETTINGS, columnDragDwellMs: 100 },
+                timer,
+                workspaceAdapter,
+            );
+            const a = fakeWindow('a', { width: 640 });
+            const b = fakeWindow('b', { width: 640 });
+            strip.addWindow(a.adapter);
+            strip.addWindow(b.adapter);
+            const bRealX = (b.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect).x;
+
+            b.startDrag();
+            workspaceAdapter.cursor = { x: 300, y: 100 };
+            b.setFrameGeometryValue({ x: 200, y: 0, width: 640, height: 1000 });
+            b.triggerFrameGeometryChanged({ x: bRealX, y: 0, width: 640, height: 1000 });
+            vi.setSystemTime(100);
+            timer.fire();
+            expect((a.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect).y).toBeGreaterThan(0); // above
+
+            workspaceAdapter.cursor = { x: 300, y: 900 };
+            b.setFrameGeometryValue({ x: 201, y: 0, width: 640, height: 1000 });
+            b.triggerFrameGeometryChanged({ x: 200, y: 0, width: 640, height: 1000 }); // no timer.fire()
+            expect((a.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect).y).toBe(0); // below, live
+
+            b.finishDrag();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+});
+
+describe('Strip — stack preview persistence (docs: 2026-09-18-drag-stack-phantom-design)', () => {
+    it('keeps the last armed column preview, and commits to it, while a different column is still dwelling', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        try {
+            const G = SETTINGS.horizontalGap;
+            const workspaceAdapter = fakeWorkspaceAdapter();
+            const timer = new ManualTimer();
+            const settings = { ...INSTANT_SETTINGS, columnDragDwellMs: 100 };
+            const strip = new Strip(WIDE_AREA, settings, timer, workspaceAdapter);
+            const a = fakeWindow('a', { width: 640 });
+            const b = fakeWindow('b', { width: 640 });
+            const c = fakeWindow('c', { width: 640 });
+            strip.addWindow(a.adapter); // col A = [0, 640)
+            strip.addWindow(b.adapter); // col B = [640 + G, 1280 + G)
+            strip.addWindow(c.adapter); // col C = [1280 + 2G, 1920 + 2G)
+            const bRealX = (b.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect).x;
+
+            workspaceAdapter.cursor = { x: 300, y: 100 }; // upper half of a full-height tile
+
+            b.startDrag();
+            // A overlap = 320/640 = 50% (gate passes); left edge 320 is not < 96 (640 * (1 -
+            // 0.85)), so reorder never fires.
+            b.setFrameGeometryValue({ x: 320, y: 0, width: 640, height: 1000 });
+            b.triggerFrameGeometryChanged({ x: bRealX, y: 0, width: 640, height: 1000 });
+
+            vi.setSystemTime(100);
+            timer.fire(); // 'stack:A' arms and fires
+
+            const aArmed = a.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+            expect(aArmed.y).toBeGreaterThan(0); // entering gap above a
+
+            // Jump to overlapping C instead, without firing the timer again: A overlap drops to 0,
+            // C overlap is 320/640 = 50% (gate passes); right edge 1600 + 2G stays short of the
+            // reorder threshold against C's far neighbor, so reorder never fires either.
+            b.setFrameGeometryValue({ x: 960 + 2 * G, y: 0, width: 640, height: 1000 });
+            b.triggerFrameGeometryChanged({ x: 320, y: 0, width: 640, height: 1000 }); // no timer.fire()
+
+            const aStill = a.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+            expect(aStill.y).toBeGreaterThan(0); // last armed preview PERSISTS
+
+            const cWhileDwelling = c.setFrameGeometry.mock.calls.slice(-1)[0][0] as Rect;
+            expect(cWhileDwelling.y).toBe(0); // C shows no gap while it dwells
+
+            b.finishDrag();
+
+            expect(strip.locationOf('b')!.columnId).toBe(strip.locationOf('a')!.columnId);
+            expect(strip.locationOf('b')!.columnId).not.toBe(strip.locationOf('c')!.columnId);
         } finally {
             vi.useRealTimers();
         }
