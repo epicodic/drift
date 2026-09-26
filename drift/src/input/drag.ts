@@ -1,45 +1,61 @@
-// Turns a window's interactive-move lifecycle into a live column reorder or a live
-// drag-to-stack (docs: 2026-09-07-drag-reorder-stack-refinement-design). Reorder —
-// the dragged window's own edge penetrating a neighbor past `reorderThresholdFraction`
-// of its width (`Grid.insertionIndexForEdges`) — is checked first and, when it fires,
-// commits `Grid.moveColumn` immediately, live. Only when reorder does NOT fire this
-// tick is stacking considered: candidates are gathered purely from the dragged tile's
-// own geometry — its column's siblings plus both immediate neighbor columns' tiles —
-// and resolved by `resolveStackTarget`'s overlap-gate + top-edge-band, dwell-gated by
-// `DwellTimer` exactly like reorder's neighbor used to be, now applied uniformly to
-// same-column and cross-column hovers alike. Stack stays preview-only until release,
-// unlike reorder.
+// Turns a window's interactive-move lifecycle into a live column reorder, a previewed
+// drag-to-stack, or a previewed unstack (docs: 2026-09-18-drag-stack-phantom-design, building
+// on 2026-09-07-drag-reorder-stack-refinement-design). Three modes, decided fresh every tick:
+//
+// - standalone: the dragged window is a single-tile column. Reorder commits live the instant
+//   its own edge penetrates a neighbor past `reorderThresholdFraction` (`Grid.moveColumn`);
+//   otherwise a neighbor stack slot is previewed once horizontal overlap clears
+//   `stackOverlapFraction`.
+// - home: a stack tile still overlapping its own column by `stackOverlapFraction` — previews
+//   a same-column slot.
+// - phantom: a stack tile more than that out of its column — previewed as if it were already a
+//   standalone column (a phantom of its width in the layout; its home closes up around the
+//   hole). The phantom moves past neighbors by the same reorder rule, and a neighbor stack slot
+//   is layered on top by the same overlap rule, exactly like a real standalone column. Nothing
+//   about a stack tile is committed before release.
+//
+// The vertical slot always comes from the pointer's y against the target column's committed
+// tile rects (see `tileCandidates`). The dwell is keyed on the target column (`stack:<id>`) or on
+// entering phantom mode (`phantom`); slot and phantom-index changes inside an armed target
+// preview live, and the last armed preview stays on screen while a new key is dwelling.
 
 import { Column } from '../core/column';
 import { Rect } from '../core/coordinates';
-import { Grid } from '../core/grid';
+import type { DragPreview } from '../core/drag-preview';
+import { Grid, insertionIndexForSlots, visibleNeighborSlot, type PreviewLayout } from '../core/grid';
 import { debug } from '../debug';
 import { toVirtualX } from '../kwin/geometry-sync';
+import type { PullIndicatorOverlay } from '../kwin/pull-indicator-overlay';
 import { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
-import { StackPreview } from '../runtime/strip';
 import { DwellTimer } from '../utils/dwell-timer';
 import { Viewport } from '../viewport/viewport';
-import { resolveStackTarget, stackTargetIndex, StackCandidate, StackTarget } from './drag-hover';
-import { dragPanHolding } from './drag-pan';
+import {
+    horizontalOverlapFraction,
+    initialPhantomIndex,
+    resolveSlotFromPointer,
+    resolveStackTarget,
+    stackTargetIndex,
+    StackCandidate,
+    StackTarget,
+} from './drag-hover';
 
-/** The dragged tile's resolved stack landing spot, ready to commit on release —
- * `columnId`/`slot` identify the target column and tile-list index. */
-interface StackHover {
+const PHANTOM_KEY = 'phantom';
+const STACK_KEY_PREFIX = 'stack:';
+
+type DragMode = 'standalone' | 'home' | 'phantom';
+
+interface TileLocation {
     columnId: number;
-    slot: number;
+    tileId: number;
 }
 
-/** Minimal view of `ColumnRegistry` this module needs — resolving the dragged
- * window's CURRENT column/tile fresh on every tick, rather than closing over a
- * fixed id captured once at connection time. That fixed-id approach was the
- * pre-existing bug: a window that became a stacked tile via `absorbRight` kept a
- * stale connection pointing at its original, since-removed column id, so dragging
- * an already-stacked tile's title bar never worked correctly
- * (docs: 2026-09-03-drag-to-stack-design). */
+/** Minimal view of `ColumnRegistry` this module needs — just enough to resolve the dragged
+ * window's CURRENT column/tile fresh on every tick rather than closing over a fixed id captured
+ * at connection time (docs: 2026-09-03-drag-to-stack-design). drag.ts never mutates the registry
+ * itself; commits go through `DragReorderDeps.commitTileIntoStack`/`commitTileToStandalone`. */
 export interface DragRegistryView {
-    tileOf(windowId: string): { columnId: number; tileId: number } | null;
-    moveWindow(fromColumnId: number, fromTileId: number, toColumnId: number, toTileId: number): void;
+    tileOf(windowId: string): TileLocation | null;
 }
 
 export interface DragReorderDeps {
@@ -47,72 +63,51 @@ export interface DragReorderDeps {
     registry: DragRegistryView;
     viewport: Viewport;
     area: Rect;
-    /** Fraction of a neighbor's width a reorder swap must penetrate before it fires
-     * (`settings.reorderThresholdFraction`) — see `Grid.insertionIndexForEdges`. */
+    /** Fraction of a neighbor's width a reorder (real column or phantom) must penetrate before
+     * it moves past that neighbor (`settings.reorderThresholdFraction`). */
     reorderThresholdFraction: number;
-    /** Minimum horizontal overlap a candidate tile needs before it's considered for
-     * stacking (`settings.stackOverlapFraction`) — see `resolveStackTarget`. */
+    /** Minimum horizontal overlap for a stack target, and the home-column overlap below which a
+     * stack tile enters phantom mode (`settings.stackOverlapFraction`). */
     stackOverlapFraction: number;
-    /** Whether dragging defaults to pan mode with a dwell-to-free gesture, or is fully inert
-     * (`settings.dragPanEnabled`) — see `dragPanHolding` (docs: 2026-09-12-drag-pan-dwell-design). */
+    /** Whether dragging defaults to pan mode with a pull-to-free gesture, or is fully inert
+     * (`settings.dragPanEnabled`) — see the threshold checks in `tickInner` below (docs:
+     * 2026-09-16-drag-pull-threshold-indicator-design). */
     dragPanEnabled: boolean;
-    /** Cumulative vertical pull, in pixels, before a hold can start counting
-     * (`settings.dragPanVerticalTriggerPx`) — see `dragPanHolding`. */
+    /** Cumulative vertical pull, in pixels, that frees the drag immediately — no hold, no dwell
+     * (`settings.dragPanVerticalTriggerPx`). */
     dragPanVerticalTriggerPx: number;
-    /** Horizontal drift, in pixels, allowed since a hold started before it's canceled
-     * (`settings.dragPanHorizontalTolerancePx`) — see `dragPanHolding`. */
+    /** Cumulative horizontal drift, in pixels, measured from drag start, that permanently aborts
+     * the pull for the rest of this drag once reached before the vertical trigger is
+     * (`settings.dragPanHorizontalTolerancePx`). */
     dragPanHorizontalTolerancePx: number;
-    /** Read access to the real pointer position — used to re-seed the dragged window's geometry
-     * to its true cursor-relative position the instant a hold-to-free gesture fires, closing the
-     * gap left by pinning `y` during pan mode in one write instead of leaving KWin's own tracking
-     * to close it incrementally (docs: 2026-09-12-drag-pan-dwell-design). */
+    /** Read access to the real pointer position — re-seeds the dragged window when the pull frees
+     * (docs: 2026-09-12-drag-pan-dwell-design) and resolves the vertical stack slot. */
     workspace: Pick<WorkspaceAdapter, 'cursorPos'>;
-    /** Builds the dwell timer for the pan-to-drag-mode hold gesture, firing `onFire` once held
-     * past `dragPanFreeDwellMs` — one instance per drag-reorder connection, reused across every
-     * drag that window does, same pattern as `createStackDwell` (docs:
-     * 2026-09-12-drag-pan-dwell-design). */
-    createPanFreeDwell(onFire: () => void): DwellTimer<true>;
-    render(excludeWindowId?: string, instant?: boolean, verticalOffsetY?: undefined, stackPreview?: StackPreview): void;
-    /** Builds a dwell timer armed on a resolved stack target's compound key
-     * (`` `${columnId}:${tileId}:${direction}` ``), firing `onFire` once hovered past
-     * `columnDragDwellMs` — one instance per drag-reorder connection, reused across
-     * every drag that window does. Applied uniformly to same-column and cross-column
-     * stack hovers alike (docs: 2026-09-07-drag-reorder-stack-refinement-design). */
+    /** Grows/fades the pull indicator overlay while a pull is in progress — one shared instance
+     * threaded through every drag-reorder connection (docs:
+     * 2026-09-16-drag-pull-threshold-indicator-design). */
+    pullIndicator: PullIndicatorOverlay;
+    render(excludeWindowId?: string, instant?: boolean, verticalOffsetY?: undefined, preview?: DragPreview): void;
+    /** Builds a dwell timer keyed on a target column (`stack:<columnId>`) or on entering phantom
+     * mode (`phantom`), firing `onFire` once the key has held past `columnDragDwellMs` — one
+     * instance per drag-reorder connection, reused across every drag that window does. */
     createStackDwell(onFire: (key: string) => void): DwellTimer<string>;
     /** Seeds the dropped window's motion channels at its actual drop rect, so it eases into
-     * its resolved slot across all four dimensions instead of snapping (docs:
-     * 2026-09-08-window-motion-primitive-design). */
+     * its resolved slot instead of snapping (docs: 2026-09-08-window-motion-primitive-design). */
     seedMotionFrom(windowId: string, rect: Partial<Rect>): void;
     commitTileIntoStack(fromColumnId: number, fromTileId: number, toColumnId: number, slot: number): void;
-    /** Strip-crossing hooks (docs: 2026-09-02-cross-row-drag-design) — StripStack supplies
-     * these to watch the pointer's vertical position on every drag tick without a second,
-     * independent signal connection on the same window. All optional; omitted when not
-     * strip-aware (e.g. a Strip used outside a StripStack). */
+    /** Commits a phantom-mode drop: the tile becomes its own column at grid `index`. */
+    commitTileToStandalone(fromColumnId: number, fromTileId: number, index: number): void;
+    /** Strip-crossing hooks (docs: 2026-09-02-cross-row-drag-design). All optional. */
     onDragStarted?(win: WindowAdapter): void;
     onDragTick?(win: WindowAdapter): void;
     onDragFinished?(): void;
-    /** Called once, after the dragged column has settled into its final grid slot on
-     * release — scrolls it back into view if a reorder near the strip's edge pushed that
-     * slot (partially) outside the viewport. Never called mid-drag: doing so would fight
-     * the live KWin interactive move (same rationale as skipping reveal on a mid-drag add,
-     * see `Strip.addWindow`). */
+    /** Called once, after the dragged column has settled into its final grid slot on release. */
     revealFocused(): void;
 }
 
-/** `win`'s own current left/right edges, in virtual x — what reorder measures against
- * a neighbor's center (docs: 2026-09-04-drag-reorder-stack-priority-design). */
-function windowEdgesVirtualX(win: WindowAdapter, area: Rect, viewportOffsetX: number): { left: number; right: number } {
-    const rect = win.frameGeometry();
-    return {
-        left: toVirtualX(rect.x, area, viewportOffsetX),
-        right: toVirtualX(rect.x + rect.width, area, viewportOffsetX),
-    };
-}
-
-/** `win`'s own current rect, in virtual x / area-relative y — the same coordinate
- * space `Grid.columnRect`/`Column.tileRect` already produce, so it can be compared
- * directly against a candidate tile's rect (docs:
- * 2026-09-07-drag-reorder-stack-refinement-design). */
+/** `win`'s own current rect, in virtual x / area-relative y — the same coordinate space
+ * `Grid.previewLayout`/`Column.tileRect` produce, so it compares directly against them. */
 function windowRectVirtual(win: WindowAdapter, area: Rect, viewportOffsetX: number): Rect {
     const rect = win.frameGeometry();
     return {
@@ -124,10 +119,8 @@ function windowRectVirtual(win: WindowAdapter, area: Rect, viewportOffsetX: numb
 }
 
 /** Fetches `columnId`'s `Column`, throwing a descriptive error instead of silently
- * dereferencing null if the registry and grid have desynced — the exact failure mode
- * `DragRegistryView.tileOf`-based location resolution is meant to prevent, but this
- * file is glue code with no direct test coverage, so a clear error here matters more
- * than in tested core code. */
+ * dereferencing null if the registry and grid have desynced — this file is glue code with
+ * no direct unit coverage, so a clear error here matters more than in tested core code. */
 function requireColumn(grid: Grid, columnId: number): Column {
     const column = grid.column(columnId);
     if (column === null) {
@@ -136,13 +129,9 @@ function requireColumn(grid: Grid, columnId: number): Column {
     return column;
 }
 
-/** Wires `win`'s move lifecycle to reorder or stack live, and to settle it on
- * release. `initiallyDragging` seeds the local dragging state for a connection
- * created mid-drag — e.g. when a cross-strip move reparents the window into a new
- * strip while the user is still holding the drag (docs:
- * 2026-09-02-cross-row-drag-design): the new connection never sees
- * `interactiveMoveResizeStarted`, since it already fired once on the connection this
- * one replaces. Returns a disconnect function. */
+/** Wires `win`'s move lifecycle to reorder, stack, or unstack, and to settle it on release.
+ * `initiallyDragging`/`initiallyFreed` seed a connection created mid-drag by a cross-strip
+ * reparent (docs: 2026-09-02-cross-row-drag-design). Returns a disconnect function. */
 export function registerDragReorder(
     win: WindowAdapter,
     deps: DragReorderDeps,
@@ -150,40 +139,57 @@ export function registerDragReorder(
     initiallyFreed = false,
 ): () => void {
     let dragging = initiallyDragging;
-    let lastStackHover: StackHover | null = null;
-    /** Which stack target's compound key (`` `${columnId}:${tileId}:${direction}` ``) the
-     * dwell has actually FIRED for — null while merely hovering, before the dwell elapses.
-     * Only a fired key shows a preview. */
-    let armedStackKey: string | null = null;
-    /** The dragged window's real (screen) y at the start of the current drag — the baseline
-     * `dragPanHolding`'s cumulative `dyTotal` is measured against. Seeded here (not just in
-     * `onInteractiveMoveResizeStarted`) so an `initiallyDragging` connection — created
-     * mid-drag by a cross-strip reparent — has a sane starting value even though it never
-     * sees that signal fire (docs: 2026-09-12-drag-pan-dwell-design). */
+    /** The dragged window's real (screen) y/x at the start of the current drag — the baseline
+     * both the vertical free-threshold and horizontal abort-threshold are measured against
+     * (docs: 2026-09-16-drag-pull-threshold-indicator-design). */
     let startY = win.frameGeometry().y;
-    /** The dragged window's real (screen) x as of the last tick — this tick's raw
-     * horizontal delta (`dxTick`) is measured against it. */
+    let startX = win.frameGeometry().x;
+    /** The dragged window's real (screen) x as of the last tick. */
     let lastX = win.frameGeometry().x;
-    /** `startY` minus the real pointer's y at drag start — lets the freeing moment place the
-     * window at exactly where an un-pinned drag would have put it (`cursorPos().y +
-     * grabOffsetY`), instead of leaving KWin's own tracking to close the gap incrementally
-     * (docs: 2026-09-12-drag-pan-dwell-design). */
+    /** `startY` minus the real pointer's y at drag start (docs: 2026-09-12-drag-pan-dwell-design). */
     let grabOffsetY = startY - deps.workspace.cursorPos().y;
-    /** The dragged window's real x when the current hold-to-free gesture started (null while
-     * not holding) — horizontal drift is measured cumulatively from here, not per tick, so
-     * ordinary hand tremor doesn't cancel the hold. */
-    let holdStartX: number | null = null;
-    /** Whether this drag has earned full reorder/stack/cross-strip-drag behavior. Starts at
-     * `initiallyFreed` for a connection created mid-drag by a cross-strip reparent (see
-     * `onEdgeDwellFired` in `strip-stack.ts`, which will thread `initiallyFreed: true` through
-     * this path once wired up — by construction, since cross-strip moves can only ever fire
-     * once already freed); every later genuinely new drag on this same window/connection starts
-     * unfree again, same as `dragging` always starts fresh rather than reusing `initiallyDragging`. */
+    /** Whether this drag has earned full reorder/stack/cross-strip-drag behavior. */
     let freed = initiallyFreed;
-    /** Re-entrancy guard: `win.setFrameGeometry` below fires `onFrameGeometryChanged`
-     * synchronously, before the call returns, which would otherwise re-enter `tickInner`
-     * mid-tick and corrupt `lastX`/the hold state (docs: 2026-09-12-drag-pan-dwell-design). */
+    /** Latches once cumulative horizontal drift exceeds `dragPanHorizontalTolerancePx` before
+     * the pull frees (docs: 2026-09-16-drag-pull-threshold-indicator-design). */
+    let pullAborted = false;
+    /** Re-entrancy guard: `win.setFrameGeometry` fires `onFrameGeometryChanged` synchronously. */
     let applyingPin = false;
+
+    /** Which of the three modes the last tick resolved; a change clears every armed target. */
+    let mode: DragMode | null = null;
+    /** Grid index the phantom occupies while in phantom mode, null otherwise. */
+    let phantomIndex: number | null = null;
+    /** Whether the `phantom` dwell key has fired for the current phantom-mode stint. */
+    let phantomArmed = false;
+    /** Column whose `stack:` dwell key has fired — the only column an entering preview shows for. */
+    let armedStackColumnId: number | null = null;
+    /** The last slot previewed in `armedStackColumnId`; what release commits. */
+    let armedStackTarget: StackTarget | null = null;
+
+    const resetTargets = (): void => {
+        mode = null;
+        phantomIndex = null;
+        phantomArmed = false;
+        armedStackColumnId = null;
+        armedStackTarget = null;
+    };
+
+    const setMode = (next: DragMode): void => {
+        if (mode === next) {
+            return;
+        }
+        // A fresh mode starts with a clean dwell: DwellTimer ignores re-arming the key it last
+        // fired until it has seen null once.
+        stackDwell.update(null);
+        mode = next;
+        armedStackColumnId = null;
+        armedStackTarget = null;
+        if (next !== 'phantom') {
+            phantomIndex = null;
+            phantomArmed = false;
+        }
+    };
 
     const disconnectStarted = win.onInteractiveMoveResizeStarted(() => {
         dragging = win.isInteractiveMove();
@@ -191,156 +197,139 @@ export function registerDragReorder(
         if (dragging) {
             const rect = win.frameGeometry();
             startY = rect.y;
+            startX = rect.x;
             lastX = rect.x;
             grabOffsetY = startY - deps.workspace.cursorPos().y;
-            holdStartX = null;
             freed = false;
+            pullAborted = false;
+            resetTargets();
             deps.onDragStarted?.(win);
         }
     });
 
-    /** Current column/tile the dragged window is registered under. Null only if the
-     * window has already been removed from the registry mid-drag (e.g. it closed). */
-    const currentLocation = (): { columnId: number; tileId: number } | null => deps.registry.tileOf(win.id);
+    const currentLocation = (): TileLocation | null => deps.registry.tileOf(win.id);
 
-    /** Expels a stack tile into its own standalone column the first time a drag
-     * carries it into a reorder swap — reorder operates on standalone columns, which
-     * a stack tile is not. Placement doesn't need to be exact here: subsequent ticks
-     * converge it over the next tick or two, the same way a mid-drag strip-reparent
-     * already tolerates a short convergence window (docs: 2026-09-03-drag-to-stack-design). */
-    const expelToStandaloneColumn = (columnId: number, tileId: number): number => {
-        const column = requireColumn(deps.grid, columnId);
-        column.removeTile(tileId);
-        const newColumn = deps.grid.addColumn(win.frameGeometry().width);
-        deps.registry.moveWindow(columnId, tileId, newColumn.id, newColumn.tiles()[0].id);
-        return newColumn.id;
-    };
-
-    /** Resolves the standalone column id a reorder swap should operate on for
-     * `location` — the tile's own column if it's already standalone (single-tile), or a
-     * freshly expelled one otherwise. */
-    const resolveReorderColumn = (location: { columnId: number; tileId: number }): number => {
-        const homeColumn = requireColumn(deps.grid, location.columnId);
-        return homeColumn.tileCount() === 1
-            ? location.columnId
-            : expelToStandaloneColumn(location.columnId, location.tileId);
-    };
-
-    /** Renders a live stack-entry preview for `target`, and remembers the resulting
-     * `{columnId, slot}` as `lastStackHover` for the eventual release commit. Shared by
-     * same-column and cross-column hover alike — both resolve a target the same way, via
-     * `resolveStackTarget`. */
-    const renderStackPreview = (location: { columnId: number; tileId: number }, target: StackTarget): void => {
+    const enteringFor = (location: TileLocation, target: StackTarget): NonNullable<DragPreview['entering']> => {
         const targetColumn = requireColumn(deps.grid, target.columnId);
         const sameColumn = target.columnId === location.columnId;
         const targetTiles = sameColumn
             ? targetColumn.tiles().filter((tile) => tile.id !== location.tileId)
             : targetColumn.tiles();
-        const slot = stackTargetIndex(target, targetTiles);
-        lastStackHover = { columnId: target.columnId, slot };
+        const index = stackTargetIndex(target, targetTiles);
         if (sameColumn) {
-            // Same-column reorder commits via Column.moveTile, which never redistributes
-            // height — so the dragged tile's own current height is already what it will
-            // actually end up at. Using anything else here would fight what's about to happen.
-            deps.render(win.id, false, undefined, {
-                enteringColumnId: target.columnId,
-                enteringIndex: slot,
-                enteringGapHeight: win.frameGeometry().height,
-                enteringExcludeTileId: location.tileId,
-            });
-            return;
+            // Column.moveTile never redistributes height, so the tile's own current height is
+            // exactly what it will end up at.
+            return {
+                columnId: target.columnId,
+                index,
+                gapHeight: win.frameGeometry().height,
+                excludeTileId: location.tileId,
+            };
         }
-        // Cross-column: the eventual commit (Column.insertTileAt) evenly redistributes the
-        // target column's total height across its existing tiles PLUS the incoming one — so
-        // approximate that here instead of using the dragged window's own current height
-        // (docs: 2026-09-03-drag-to-stack-design).
-        const homeColumn = requireColumn(deps.grid, location.columnId);
-        const targetTotalHeight = targetTiles.reduce((sum, tile) => sum + tile.height, 0);
-        const gapHeight = targetTotalHeight / (targetTiles.length + 1);
-        const stackPreview: StackPreview = {
-            enteringColumnId: target.columnId,
-            enteringIndex: slot,
-            enteringGapHeight: gapHeight,
-        };
-        if (homeColumn.tileCount() > 1) {
-            stackPreview.leavingColumnId = location.columnId;
-            stackPreview.leavingTileId = location.tileId;
-        }
-        deps.render(win.id, false, undefined, stackPreview);
+        // Column.insertTileAt evenly redistributes the target's total height across its tiles
+        // plus the incoming one — approximate that (docs: 2026-09-03-drag-to-stack-design).
+        const totalHeight = targetTiles.reduce((sum, tile) => sum + tile.height, 0);
+        return { columnId: target.columnId, index, gapHeight: totalHeight / (targetTiles.length + 1) };
     };
 
-    /** Gathers this tick's stack candidates from the dragged window's own geometry alone —
-     * its home column's siblings (if it's currently in a multi-tile column) plus both
-     * immediate neighbor columns' tiles — and resolves a target from them. No pointer
-     * position involved at all (docs: 2026-09-07-drag-reorder-stack-refinement-design). */
-    const resolveCurrentTarget = (location: { columnId: number; tileId: number }): StackTarget | null => {
-        const draggedRect = windowRectVirtual(win, deps.area, deps.viewport.offset());
-        const homeColumn = requireColumn(deps.grid, location.columnId);
+    /** The preview currently on screen: the phantom + leaving pair once phantom mode has armed,
+     * plus the entering gap for the armed stack target, if any. */
+    const currentPreview = (location: TileLocation): DragPreview | undefined => {
+        const preview: DragPreview = {};
+        if (phantomIndex !== null && phantomArmed) {
+            preview.phantom = { index: phantomIndex, width: win.frameGeometry().width };
+            preview.leaving = { columnId: location.columnId, tileId: location.tileId };
+        }
+        if (armedStackTarget !== null) {
+            preview.entering = enteringFor(location, armedStackTarget);
+        }
+        return preview.phantom === undefined && preview.entering === undefined ? undefined : preview;
+    };
+
+    /** `column`'s tiles as stack candidates. `columnRect` comes from the PREVIEWED layout, so
+     * the horizontal overlap gate sees each column where it is actually drawn; the tile rects
+     * inside it are the COMMITTED ones on purpose. Resolving the vertical slot against the
+     * gap-opened preview instead would be self-referential: opening a gap above a tile pushes
+     * that tile (and its midline) down past the pointer, so `above` could never flip to
+     * `below` again. Same stability rule the home-overlap check follows
+     * (docs: 2026-09-18-drag-stack-phantom-design). */
+    const tileCandidates = (column: Column, columnRect: Rect, excludeTileId?: number): StackCandidate[] => {
         const candidates: StackCandidate[] = [];
-        if (homeColumn.tileCount() > 1) {
-            const homeRect = deps.grid.columnRect(location.columnId);
-            for (const tile of homeColumn.tiles()) {
-                if (tile.id === location.tileId) {
-                    continue;
-                }
-                candidates.push({
-                    columnId: location.columnId,
-                    tileId: tile.id,
-                    rect: homeColumn.tileRect(tile.id, homeRect),
-                });
+        for (const tile of column.tiles()) {
+            if (tile.id === excludeTileId) {
+                continue;
             }
+            candidates.push({ columnId: column.id, tileId: tile.id, rect: column.tileRect(tile.id, columnRect) });
         }
-        for (const neighborId of deps.grid.visibleNeighborColumnIds(location.columnId)) {
-            const neighborColumn = requireColumn(deps.grid, neighborId);
-            const neighborRect = deps.grid.columnRect(neighborId);
-            for (const tile of neighborColumn.tiles()) {
-                candidates.push({
-                    columnId: neighborId,
-                    tileId: tile.id,
-                    rect: neighborColumn.tileRect(tile.id, neighborRect),
-                });
-            }
-        }
-        return resolveStackTarget(draggedRect, candidates, deps.stackOverlapFraction);
+        return candidates;
     };
 
-    // Fires once the hold-to-free gesture (dragPanHolding) has held steady past
-    // dragPanFreeDwellMs. Re-seeds the window to its true pointer-relative position — closing
-    // the gap `y`-pinning left behind in one write — then lets tickInner's normal reorder/stack
-    // logic take over from the very next tick (docs: 2026-09-12-drag-pan-dwell-design).
-    const panFreeDwell = deps.createPanFreeDwell(() => {
+    /** Candidates from the visible slots immediately left and right of `slotIndex`, skipping
+     * the dragged tile's own column (`excludeColumnId`), which the home mode handles. */
+    const neighborCandidates = (
+        layout: PreviewLayout,
+        slotIndex: number,
+        excludeColumnId: number,
+    ): StackCandidate[] => {
+        const candidates: StackCandidate[] = [];
+        for (const step of [-1, 1] as const) {
+            const neighborIndex = visibleNeighborSlot(layout.slots, slotIndex, step);
+            if (neighborIndex === null) {
+                continue;
+            }
+            const columnId = layout.slots[neighborIndex].columnId;
+            const rect = columnId === null ? undefined : layout.rects.get(columnId);
+            if (columnId === null || columnId === excludeColumnId || rect === undefined) {
+                continue;
+            }
+            // An explicit loop, not `push(...)`: spread syntax is unsupported by KWin's JS engine.
+            for (const candidate of tileCandidates(requireColumn(deps.grid, columnId), rect)) {
+                candidates.push(candidate);
+            }
+        }
+        return candidates;
+    };
+
+    const stackDwell = deps.createStackDwell((key) => {
+        if (key === PHANTOM_KEY) {
+            phantomArmed = true;
+        } else {
+            armedStackColumnId = Number(key.slice(STACK_KEY_PREFIX.length));
+            armedStackTarget = null;
+        }
+        tick(); // re-resolve against the window's CURRENT geometry and render the newly armed preview
+    });
+
+    /** Feeds this tick's stack target to the dwell and renders. `baseKey` is what the dwell
+     * holds when no stack target is hovered: `phantom` in phantom mode, else null (clear). */
+    const settleStackTarget = (location: TileLocation, target: StackTarget | null, baseKey: string | null): void => {
+        if (target === null) {
+            armedStackColumnId = null;
+            armedStackTarget = null;
+            stackDwell.update(baseKey);
+        } else {
+            stackDwell.update(`${STACK_KEY_PREFIX}${target.columnId}`);
+            if (armedStackColumnId === target.columnId) {
+                armedStackTarget = target; // slot changes preview live once the column is armed
+            }
+            // else: a different column is dwelling; the last armed entering preview stays on screen
+        }
+        deps.render(win.id, false, undefined, currentPreview(location));
+    };
+
+    /** Frees the drag from pan mode (docs: 2026-09-16-drag-pull-threshold-indicator-design). */
+    const freeFromPan = (): void => {
         freed = true;
+        deps.pullIndicator.hide();
         const raw = win.frameGeometry();
         const cursor = deps.workspace.cursorPos();
         applyingPin = true;
         win.setFrameGeometry({ x: raw.x, y: cursor.y + grabOffsetY, width: raw.width, height: raw.height });
         applyingPin = false;
-    });
-
-    // Fires once the resolved stack target has held steady past columnDragDwellMs.
-    // Recomputes fresh against the window's CURRENT geometry rather than whatever it was
-    // when the dwell armed — the dwell's own timer tick is independent of
-    // frameGeometryChanged, so a few more pixels of drag may have happened since.
-    const stackDwell = deps.createStackDwell((key) => {
-        const location = currentLocation();
-        if (location === null) {
-            return;
-        }
-        const target = resolveCurrentTarget(location);
-        if (target === null) {
-            return;
-        }
-        const currentKey = `${target.columnId}:${target.tileId}:${target.direction}`;
-        if (currentKey !== key) {
-            return; // moved on before the dwell fired; the next regular tick will reconcile
-        }
-        armedStackKey = key;
-        renderStackPreview(location, target);
-    });
+    };
 
     const tickInner = (): void => {
         if (applyingPin) {
-            // Re-entrant call caused by our own win.setFrameGeometry below — ignore it.
             return;
         }
         const location = currentLocation();
@@ -349,31 +338,30 @@ export function registerDragReorder(
             return;
         }
 
-        // Pan step: while dragPanEnabled and not yet freed, the drag is pinned pan-only —
-        // y stays at startY, x's movement redirects into the viewport instead of the window's
-        // virtual position, and reorder/edge-expel/stack below never runs at all (the early
-        // return, not just the offset math, is what makes that true — docs:
-        // 2026-09-12-drag-pan-dwell-design). Gating on `deps.dragPanEnabled && !freed` together
-        // (not `freed` alone) matters: `freed` never becomes true when the feature is disabled,
-        // so gating on it alone would wrongly keep this block — and reorder/stack below —
-        // blocked forever whenever dragPanEnabled is false.
+        // Pan step: while dragPanEnabled and not yet freed, the drag is pinned pan-only — y stays
+        // at startY, x's movement redirects into the viewport, and none of the mode logic below
+        // runs (docs: 2026-09-16-drag-pull-threshold-indicator-design). Gating on
+        // `deps.dragPanEnabled && !freed` together (not `freed` alone) matters: `freed` never
+        // becomes true when the feature is disabled, so gating on it alone would wrongly keep
+        // this block — and reorder/stack below — blocked forever whenever dragPanEnabled is false.
         if (deps.dragPanEnabled && !freed) {
             const raw = win.frameGeometry();
             const dyTotal = Math.abs(raw.y - startY);
-            const driftSinceHoldStartPx = holdStartX === null ? 0 : raw.x - holdStartX;
-            if (
-                dragPanHolding(
-                    dyTotal,
-                    driftSinceHoldStartPx,
-                    deps.dragPanVerticalTriggerPx,
-                    deps.dragPanHorizontalTolerancePx,
-                )
-            ) {
-                holdStartX ??= raw.x;
-                panFreeDwell.update(true);
-            } else {
-                holdStartX = null;
-                panFreeDwell.update(null);
+            const dxTotal = Math.abs(raw.x - startX);
+
+            if (!pullAborted && dyTotal >= deps.dragPanVerticalTriggerPx) {
+                freeFromPan();
+                // Every other tickInner exit path ends by calling deps.render(...) — this one
+                // must too, consistent with that invariant.
+                deps.render(win.id, false);
+                return;
+            }
+
+            if (!pullAborted && dxTotal >= deps.dragPanHorizontalTolerancePx) {
+                pullAborted = true;
+                deps.pullIndicator.fadeOut();
+            } else if (!pullAborted) {
+                deps.pullIndicator.update(win, startY, dyTotal, deps.dragPanVerticalTriggerPx);
             }
 
             const dxTick = raw.x - lastX;
@@ -392,105 +380,116 @@ export function registerDragReorder(
             return;
         }
 
-        const winEdges = windowEdgesVirtualX(win, deps.area, deps.viewport.offset());
+        const draggedRect = windowRectVirtual(win, deps.area, deps.viewport.offset());
+        const pointerY = deps.workspace.cursorPos().y - deps.area.y;
         const homeColumn = requireColumn(deps.grid, location.columnId);
         const homeIndex = deps.grid.indexOf(location.columnId);
-
-        const raw = win.frameGeometry();
+        const leftEdge = draggedRect.x;
+        const rightEdge = draggedRect.x + draggedRect.width;
         debug(
-            `drag tick: win=${win.id} loc=col${location.columnId}/tile${location.tileId} ` +
-                `winEdges=(${winEdges.left.toFixed(0)},${winEdges.right.toFixed(0)}) ` +
-                `raw=(${raw.x.toFixed(0)},${raw.y.toFixed(0)},${raw.width.toFixed(0)},${raw.height.toFixed(0)}) ` +
-                `viewportOffset=${deps.viewport.offset().toFixed(0)}`,
+            `drag tick: win=${win.id} loc=col${location.columnId}/tile${location.tileId} mode=${mode} ` +
+                `rect=(${leftEdge.toFixed(0)},${draggedRect.y.toFixed(0)},${draggedRect.width.toFixed(0)},` +
+                `${draggedRect.height.toFixed(0)}) pointerY=${pointerY.toFixed(0)} phantom=${phantomIndex}`,
         );
 
-        // Reorder: checked first, live — the dragged column's own edge penetrating a
-        // neighbor past reorderThresholdFraction of its width.
-        const reorderIndex = deps.grid.insertionIndexForEdges(
-            location.columnId,
-            winEdges.left,
-            winEdges.right,
-            deps.reorderThresholdFraction,
-        );
-        if (reorderIndex !== homeIndex) {
-            debug(`drag tick: reorder triggered col${location.columnId} idx${homeIndex}->${reorderIndex}`);
-            stackDwell.update(null);
-            armedStackKey = null;
-            lastStackHover = null;
-            const columnId = resolveReorderColumn(location);
-            // Recompute fresh: expulsion may have appended a new column, shifting indices.
-            const finalIndex = deps.grid.insertionIndexForEdges(
-                columnId,
-                winEdges.left,
-                winEdges.right,
+        if (homeColumn.tileCount() === 1) {
+            // Standalone column: live reorder first, exactly as before.
+            setMode('standalone');
+            const reorderIndex = deps.grid.insertionIndexForEdges(
+                location.columnId,
+                leftEdge,
+                rightEdge,
                 deps.reorderThresholdFraction,
             );
-            deps.grid.moveColumn(columnId, finalIndex);
-            deps.render(win.id, false);
-            return;
-        }
-
-        // Reorder didn't fire: edge-expel a multi-tile column's own tile past the grid's
-        // outer boundary, on a side with no neighbor to reorder against at all.
-        if (homeColumn.tileCount() > 1) {
-            const expelDirection = deps.grid.expelDirectionForEdges(location.columnId, winEdges.left, winEdges.right);
-            if (expelDirection !== null) {
-                debug(`drag tick: edge-expel triggered col${location.columnId} dir=${expelDirection}`);
+            if (reorderIndex !== homeIndex) {
+                debug(`drag tick: reorder triggered col${location.columnId} idx${homeIndex}->${reorderIndex}`);
+                armedStackColumnId = null;
+                armedStackTarget = null;
                 stackDwell.update(null);
-                armedStackKey = null;
-                lastStackHover = null;
-                const newColumnId = expelToStandaloneColumn(location.columnId, location.tileId);
-                const homeIndexAfterExpel = deps.grid.indexOf(location.columnId);
-                deps.grid.moveColumn(
-                    newColumnId,
-                    expelDirection === 'left' ? homeIndexAfterExpel : homeIndexAfterExpel + 1,
-                );
+                deps.grid.moveColumn(location.columnId, reorderIndex);
                 deps.render(win.id, false);
                 return;
             }
+            const layout = deps.grid.previewLayout();
+            const target = resolveStackTarget(
+                draggedRect,
+                pointerY,
+                neighborCandidates(layout, homeIndex, location.columnId),
+                deps.stackOverlapFraction,
+            );
+            settleStackTarget(location, target, null);
+            return;
         }
 
-        // Stack: same mechanism whether the winning candidate is a sibling in the dragged
-        // tile's own column or a tile in an immediate neighbor.
-        const target = resolveCurrentTarget(location);
-        if (target === null) {
-            stackDwell.update(null);
-            armedStackKey = null;
-            lastStackHover = null;
-            deps.render(win.id, false);
+        // Stack tile. Home overlap is measured against the COMMITTED home rect on purpose: in
+        // phantom mode the home column may be drawn shifted, and measuring against the shifted
+        // rect would flip the decision back and forth at the threshold.
+        const homeRect = deps.grid.columnRect(location.columnId);
+        if (horizontalOverlapFraction(draggedRect, homeRect) >= deps.stackOverlapFraction) {
+            setMode('home');
+            const siblings = tileCandidates(homeColumn, homeRect, location.tileId);
+            const slot = resolveSlotFromPointer(pointerY, siblings);
+            settleStackTarget(
+                location,
+                slot === null ? null : { columnId: location.columnId, tileId: slot.tileId, direction: slot.direction },
+                null,
+            );
             return;
         }
-        const key = `${target.columnId}:${target.tileId}:${target.direction}`;
-        stackDwell.update(key);
-        if (armedStackKey !== key) {
-            // Not armed for this target yet — dwell still counting, no preview.
-            lastStackHover = null;
-            deps.render(win.id, false);
+
+        setMode('phantom');
+        if (phantomIndex === null) {
+            phantomIndex = initialPhantomIndex(draggedRect, homeRect, homeIndex);
+            debug(`drag tick: phantom mode entered at index ${phantomIndex}`);
+        }
+        const phantomWidth = draggedRect.width;
+        let layout = deps.grid.previewLayout({ index: phantomIndex, width: phantomWidth });
+        const movedIndex = insertionIndexForSlots(
+            layout.slots,
+            phantomIndex,
+            leftEdge,
+            rightEdge,
+            deps.reorderThresholdFraction,
+        );
+        if (movedIndex !== phantomIndex) {
+            debug(`drag tick: phantom reorder ${phantomIndex}->${movedIndex}`);
+            phantomIndex = movedIndex;
+            layout = deps.grid.previewLayout({ index: phantomIndex, width: phantomWidth });
+            // Like live reorder, moving past a neighbor drops any stack target hovered in it.
+            armedStackColumnId = null;
+            armedStackTarget = null;
+        }
+        if (!phantomArmed) {
+            stackDwell.update(PHANTOM_KEY);
+            deps.render(win.id, false, undefined, currentPreview(location));
             return;
         }
-        renderStackPreview(location, target);
+        const target = resolveStackTarget(
+            draggedRect,
+            pointerY,
+            neighborCandidates(layout, phantomIndex, location.columnId),
+            deps.stackOverlapFraction,
+        );
+        settleStackTarget(location, target, PHANTOM_KEY);
     };
 
     // TEMPORARY DEBUG INSTRUMENTATION: writes to the OSD debug console (enable
-    // debugConsoleEnabled in the settings dialog's Debug tab) to diagnose reports of
-    // drag behavior mismatching expectations. Remove once no further live-testing rounds are needed.
-    const tick = (): void => {
+    // debugConsoleEnabled in the settings dialog's Debug tab). Remove once no further
+    // live-testing rounds are needed.
+    function tick(): void {
         try {
             tickInner();
         } catch (error) {
             debug(`drag tick ERROR: ${error instanceof Error ? `${error.message}\n${error.stack}` : String(error)}`);
         }
-    };
+    }
 
     const disconnectGeometryChanged = win.onFrameGeometryChanged(() => {
         if (!dragging) {
             return;
         }
         tick();
-        // Cross-strip moves (StripStack.updateEdgeWatch, the only thing wired to onDragTick)
-        // must be structurally impossible during active panning, not just unlikely — same
-        // disabled-or-freed condition as the pin block in tickInner, and for the same reason:
-        // freed never becomes true when the feature is disabled (docs:
+        // Cross-strip moves must be structurally impossible during active panning (docs:
         // 2026-09-12-drag-pan-dwell-design).
         if (!deps.dragPanEnabled || freed) {
             deps.onDragTick?.(win);
@@ -504,33 +503,43 @@ export function registerDragReorder(
         }
         dragging = false;
         stackDwell.stop();
-        panFreeDwell.stop();
-        armedStackKey = null;
+        deps.pullIndicator.hide();
         const location = currentLocation();
+        const targetLabel =
+            armedStackTarget === null
+                ? 'none'
+                : `${armedStackTarget.columnId}:${armedStackTarget.tileId}:${armedStackTarget.direction}`;
+        const locLabel = location ? `col${location.columnId}/tile${location.tileId}` : 'null';
         debug(
-            `drag finished: win=${win.id} loc=${location ? `col${location.columnId}/tile${location.tileId}` : 'null'}`,
+            `drag finished: win=${win.id} loc=${locLabel} stackTarget=${targetLabel} ` +
+                `phantom=${phantomIndex}/${phantomArmed}`,
         );
         if (location === null) {
+            resetTargets();
             deps.onDragFinished?.();
             return;
         }
-        // The window's own actual position/size right at release — the animation's intended
-        // starting point, converted to the same virtual-x/area-relative-y coordinate space
-        // Grid/Column already produce (docs: 2026-09-08-window-motion-primitive-design).
+        // The window's own actual rect right at release is the animation's starting point
+        // (docs: 2026-09-08-window-motion-primitive-design).
         deps.seedMotionFrom(win.id, windowRectVirtual(win, deps.area, deps.viewport.offset()));
-        if (lastStackHover !== null) {
-            if (lastStackHover.columnId === location.columnId) {
-                requireColumn(deps.grid, location.columnId).moveTile(location.tileId, lastStackHover.slot);
+        if (armedStackTarget !== null) {
+            const target = armedStackTarget;
+            const targetColumn = requireColumn(deps.grid, target.columnId);
+            if (target.columnId === location.columnId) {
+                const others = targetColumn.tiles().filter((tile) => tile.id !== location.tileId);
+                targetColumn.moveTile(location.tileId, stackTargetIndex(target, others));
             } else {
                 deps.commitTileIntoStack(
                     location.columnId,
                     location.tileId,
-                    lastStackHover.columnId,
-                    lastStackHover.slot,
+                    target.columnId,
+                    stackTargetIndex(target, targetColumn.tiles()),
                 );
             }
+        } else if (phantomIndex !== null && phantomArmed) {
+            deps.commitTileToStandalone(location.columnId, location.tileId, phantomIndex);
         }
-        lastStackHover = null;
+        resetTargets();
         deps.render();
         deps.revealFocused();
         deps.onDragFinished?.();
@@ -545,9 +554,8 @@ export function registerDragReorder(
             );
             dragging = false;
             stackDwell.stop();
-            panFreeDwell.stop();
-            armedStackKey = null;
-            lastStackHover = null;
+            deps.pullIndicator.hide();
+            resetTargets();
             deps.onDragFinished?.();
         }
     });
@@ -557,6 +565,11 @@ export function registerDragReorder(
         disconnectGeometryChanged();
         disconnectFinished();
         stackDwell.stop();
-        panFreeDwell.stop();
+        // Guarded on `dragging`: every wireTile connection in a strip shares the same overlay
+        // instance, so an unrelated window's teardown mid-drag must not hide another window's
+        // live indicator (docs: 2026-09-16-drag-pull-threshold-indicator-design).
+        if (dragging) {
+            deps.pullIndicator.hide();
+        }
     };
 }

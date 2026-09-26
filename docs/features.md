@@ -81,14 +81,12 @@ Implementation: [`2026-09-03-vertical-tiling-design.md`](agents/specs/2026-09-03
 <!-- MEDIA: docs/media/drag-to-stack.gif -->
 <p align="center"><img src="media/drag-to-stack.gif" alt="Dragging a window into a column to stack it" width="720"></p>
 
-Absorb/expel is keyboard-only; drag-to-stack is the mouse equivalent. Each target column is split into zones: the
-outer quarter on either side keeps triggering ordinary drag-to-reorder, while the middle half is a **stack
-zone** — hovering it live-previews the dragged window landing at a specific vertical slot in that column's stack,
-resolved from where you're hovering. Releasing commits whatever is currently previewed. The same hover-resolution
-logic covers all four directions: standalone → stack, stack → standalone (expel-by-drag), stack → a *different*
-stack, and reordering within one stack.
+Absorb/expel is keyboard-only; drag-to-stack is the mouse equivalent.
+Drag a window more than halfway over a neighbor column and, after a short dwell, that column opens a gap at the slot your pointer is over — upper half of a tile stacks above it, lower half below it — and the gap follows the pointer live.
+Drag a stacked tile more than halfway out of its column and it is previewed as a column of its own: its old column closes up and the neighbors slide over to make room, and from there it reorders and stacks exactly like any other column.
+Releasing commits whatever is previewed; nothing about a stacked tile changes before you let go.
 Implementation: [algorithms.md § Drag-to-Stack Hover Resolution](algorithms.md#drag-to-stack-hover-resolution) and
-[`2026-09-03-drag-to-stack-design.md`](agents/specs/2026-09-03-drag-to-stack-design.md).
+[`2026-09-18-drag-stack-phantom-design.md`](agents/specs/2026-09-18-drag-stack-phantom-design.md).
 
 ## Multi-Monitor & Workspaces
 

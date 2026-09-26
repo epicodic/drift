@@ -422,12 +422,28 @@ describe('Column — tile stack', () => {
         const bottomId = column.addTile();
         const columnRect = { x: 0, y: 0, width: 300, height: 900 };
 
-        // Same-stack reorder preview: move "top" to slot 1 (after bottom), excluding it from the base list.
-        // Trailing gap: the base list is [bottom] only, so bottom is the tile shrunk to reserve space.
+        // Same-stack reorder preview: move "top" to slot 1 (after bottom), excluding it from the
+        // base list. Trailing gap: the base list is [bottom] only, but excludeTileId is set, so
+        // bottom's own height is left untouched — topId's own height already funds the gap.
         const preview = column.previewRectsWithGapAt(1, 450, columnRect, topId);
 
         expect(preview.has(topId)).toBe(false);
-        expect(preview.get(bottomId)).toEqual({ x: 0, y: 0, width: 300, height: 0 });
+        expect(preview.get(bottomId)).toEqual({ x: 0, y: 0, width: 300, height: 450 });
+    });
+
+    it('previewRectsWithGapAt does not shrink the remaining tile when excludeTileId already funds the gap', () => {
+        // Same-column reorder preview: excluding the tile being moved already frees exactly its
+        // own height for the gap, so the trailing-neighbor shrink (meant for a cross-column drop,
+        // where no tile has been excluded) must not also apply here — that double-counts the gap
+        // and used to collapse the remaining tile to 0 height (docs: 2026-09-18-drag-stack-phantom-design).
+        const column = new Column(1, 300, 1000);
+        const topId = column.tiles()[0].id;
+        const bottomId = column.addTile(); // top=500, bottom=500
+        const columnRect = { x: 0, y: 0, width: 300, height: 1000 };
+
+        const preview = column.previewRectsWithGapAt(1, 500, columnRect, bottomId);
+
+        expect(preview.get(topId)).toEqual({ x: 0, y: 0, width: 300, height: 500 });
     });
 
     it('previewRectsWithoutTile closes the gap by shifting later tiles up, without redistributing height', () => {

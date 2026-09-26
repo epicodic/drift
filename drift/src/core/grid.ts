@@ -16,6 +16,74 @@ export interface GridDebugState {
     columns: { id: number; width: number; hidden: boolean; tileCount: number }[];
 }
 
+/** A column-sized hole in the layout standing in for a dragged stack tile: previewed as if the
+ * tile were already a standalone column at `index`, so the columns after it slide over to make
+ * room (docs: 2026-09-18-drag-stack-phantom-design). */
+export interface PhantomColumn {
+    /** The insertion position in the column order, as `moveColumn` takes it; must be in `[0, columns().length]`. */
+    index: number;
+    width: number;
+}
+
+/** One position in a laid-out column order — a real column (`columnId`) or the phantom (`null`).
+ * `width` is the layout width (hidden columns take `HIDDEN_COLUMN_WIDTH`), matching what
+ * `insertionIndexForSlots` thresholds against. */
+export interface LayoutSlot {
+    columnId: number | null;
+    offset: number;
+    width: number;
+    hidden: boolean;
+}
+
+/** The horizontal layout `Strip.render` shows: every slot in order, each real column's rect (at
+ * its real width, like `columnRect`), and the resulting virtual width. */
+export interface PreviewLayout {
+    slots: LayoutSlot[];
+    rects: Map<number, Rect>;
+    virtualWidth: number;
+}
+
+/** Index of the nearest non-hidden slot from `index` in direction `step`, or null at the edge. */
+export function visibleNeighborSlot(slots: readonly LayoutSlot[], index: number, step: 1 | -1): number | null {
+    for (let i = index + step; i >= 0 && i < slots.length; i += step) {
+        if (!slots[i].hidden) {
+            return i;
+        }
+    }
+    return null;
+}
+
+/** Where the slot at `index` should move given the dragged window's own edges: the right
+ * neighbor's index once `rightEdgeVirtualX` penetrates `thresholdFraction` of that neighbor's
+ * width, the left neighbor's index symmetrically, else `index` itself. Pure over a slot list so
+ * it serves both a real column (`Grid.insertionIndexForEdges`) and a phantom in a preview layout
+ * (docs: 2026-09-07-drag-reorder-stack-refinement-design, 2026-09-18-drag-stack-phantom-design). */
+export function insertionIndexForSlots(
+    slots: readonly LayoutSlot[],
+    index: number,
+    leftEdgeVirtualX: number,
+    rightEdgeVirtualX: number,
+    thresholdFraction: number,
+): number {
+    const rightIndex = visibleNeighborSlot(slots, index, 1);
+    if (
+        rightIndex !== null &&
+        rightEdgeVirtualX > slots[rightIndex].offset + slots[rightIndex].width * thresholdFraction
+    ) {
+        return rightIndex;
+    }
+    const leftIndex = visibleNeighborSlot(slots, index, -1);
+    // `offset + width - width * f`, not `offset + width * (1 - f)`: `1 - 0.85` is inexact in
+    // IEEE 754, so 300 * (1 - 0.85) is 45.00000000000001 and misfires on an exact-integer edge.
+    if (
+        leftIndex !== null &&
+        leftEdgeVirtualX < slots[leftIndex].offset + slots[leftIndex].width - slots[leftIndex].width * thresholdFraction
+    ) {
+        return leftIndex;
+    }
+    return index;
+}
+
 export class Grid {
     private readonly ordered: Column[] = [];
     private focusedColumnId: number | null = null;
@@ -137,24 +205,59 @@ export class Grid {
     }
 
     virtualWidth(): number {
-        if (this.ordered.length === 0) {
-            return 0;
-        }
-        const lastIndex = this.ordered.length - 1;
-        return this.layoutOffsets()[lastIndex] + this.layoutWidths()[lastIndex] - this.originX;
+        return this.previewLayout().virtualWidth;
     }
 
     contentLeft(): number {
         return this.originX;
     }
 
-    /** Also well-defined for a hidden column: its 1px-slot offset (see `layoutOffsets`)
+    /** Also well-defined for a hidden column: its 1px-slot offset (see `previewLayout`)
      * paired with its real (unshrunk) width — lets `Strip.render()` keep a minimized
      * window's real on-screen x tracking the viewport instead of freezing it. */
     columnRect(id: number): Rect {
-        const column = this.requireColumn(id);
-        const offset = this.layoutOffsets()[this.indexOf(id)];
-        return columnRect(offset, column.width, this.height);
+        this.requireColumn(id);
+        const rect = this.previewLayout().rects.get(id);
+        if (rect === undefined) {
+            throw new Error(`Column ${id} has no layout rect`);
+        }
+        return rect;
+    }
+
+    /** Lays every column out in order, with `phantom` inserted at `phantom.index` when given —
+     * the columns at or after that index shift right by `phantom.width + gap`. Pure: the grid
+     * itself is untouched. Every other layout query on this class is derived from it. */
+    previewLayout(phantom?: PhantomColumn): PreviewLayout {
+        const entries: { columnId: number | null; width: number; realWidth: number; hidden: boolean }[] =
+            this.ordered.map((column) => ({
+                columnId: column.id,
+                width: column.hidden ? HIDDEN_COLUMN_WIDTH : column.width,
+                realWidth: column.width,
+                hidden: column.hidden,
+            }));
+        if (phantom !== undefined) {
+            entries.splice(phantom.index, 0, {
+                columnId: null,
+                width: phantom.width,
+                realWidth: phantom.width,
+                hidden: false,
+            });
+        }
+        const slots: LayoutSlot[] = [];
+        const rects = new Map<number, Rect>();
+        let cursor = this.originX;
+        entries.forEach((entry, index) => {
+            slots.push({ columnId: entry.columnId, offset: cursor, width: entry.width, hidden: entry.hidden });
+            if (entry.columnId !== null) {
+                rects.set(entry.columnId, columnRect(cursor, entry.realWidth, this.height));
+            }
+            cursor += entry.width;
+            if (!entry.hidden && index < entries.length - 1) {
+                cursor += this.gap;
+            }
+        });
+        const last = slots[slots.length - 1];
+        return { slots, rects, virtualWidth: last === undefined ? 0 : last.offset + last.width - this.originX };
     }
 
     /** Target `moveColumn` index for the dragged column `excludeId`, judged by its
@@ -174,16 +277,13 @@ export class Grid {
         rightEdgeVirtualX: number,
         thresholdFraction: number,
     ): number {
-        const index = this.requireIndex(excludeId);
-        const rightIndex = this.visibleNeighborIndex(index, 1);
-        if (rightIndex !== null && rightEdgeVirtualX > this.thresholdAt(rightIndex, thresholdFraction)) {
-            return rightIndex;
-        }
-        const leftIndex = this.visibleNeighborIndex(index, -1);
-        if (leftIndex !== null && leftEdgeVirtualX < this.thresholdAt(leftIndex, 1 - thresholdFraction)) {
-            return leftIndex;
-        }
-        return index;
+        return insertionIndexForSlots(
+            this.previewLayout().slots,
+            this.requireIndex(excludeId),
+            leftEdgeVirtualX,
+            rightEdgeVirtualX,
+            thresholdFraction,
+        );
     }
 
     /** Ids of `columnId`'s immediate visible left/right neighbors (skipping hidden
@@ -193,41 +293,17 @@ export class Grid {
      * without a pointer-position column lookup (docs:
      * 2026-09-07-drag-reorder-stack-refinement-design). */
     visibleNeighborColumnIds(columnId: number): number[] {
+        const slots = this.previewLayout().slots;
         const index = this.requireIndex(columnId);
         const ids: number[] = [];
-        const leftIndex = this.visibleNeighborIndex(index, -1);
-        if (leftIndex !== null) {
-            ids.push(this.ordered[leftIndex].id);
-        }
-        const rightIndex = this.visibleNeighborIndex(index, 1);
-        if (rightIndex !== null) {
-            ids.push(this.ordered[rightIndex].id);
+        for (const step of [-1, 1] as const) {
+            const neighbor = visibleNeighborSlot(slots, index, step);
+            const id = neighbor === null ? null : slots[neighbor].columnId;
+            if (id !== null) {
+                ids.push(id);
+            }
         }
         return ids;
-    }
-
-    /** Drag-to-stack's equivalent of `insertionIndexForEdges` for a stacked tile dragged
-     * toward open space rather than toward a real neighbor: whether `columnId`'s own
-     * dragged edge has crossed past its own outer boundary on a side where it has no
-     * visible neighbor to reorder against at all. There is no neighbor center to cross
-     * on that side, so the column's own edge is the threshold instead. Checked right
-     * side first, then left, mirroring `insertionIndexForEdges`'s own priority. Returns
-     * null when a visible neighbor exists on both sides, or neither edge has crossed. */
-    expelDirectionForEdges(
-        columnId: number,
-        leftEdgeVirtualX: number,
-        rightEdgeVirtualX: number,
-    ): 'left' | 'right' | null {
-        const index = this.requireIndex(columnId);
-        const offsets = this.layoutOffsets();
-        const widths = this.layoutWidths();
-        if (this.visibleNeighborIndex(index, 1) === null && rightEdgeVirtualX > offsets[index] + widths[index]) {
-            return 'right';
-        }
-        if (this.visibleNeighborIndex(index, -1) === null && leftEdgeVirtualX < offsets[index]) {
-            return 'left';
-        }
-        return null;
     }
 
     indexOf(id: number): number {
@@ -245,7 +321,7 @@ export class Grid {
      * already holds more than one tile (docs: 2026-09-03-vertical-tiling-design). */
     absorbColumnRight(columnId: number): { fromColumnId: number; fromTileId: number; toTileId: number } | null {
         const index = this.requireIndex(columnId);
-        const rightIndex = this.visibleNeighborIndex(index, 1);
+        const rightIndex = visibleNeighborSlot(this.previewLayout().slots, index, 1);
         if (rightIndex === null) {
             return null;
         }
@@ -281,21 +357,32 @@ export class Grid {
         return toColumn.insertTileAt(slot);
     }
 
-    /** Expel: remove `columnId`'s focused tile and give it a brand-new column
-     * immediately to its right, at `newColumnWidth`, focused. Null (no-op) if
-     * `columnId` only has one tile — there's nothing to expel. */
-    expelFocusedTile(
+    /** Moves `tileId` out of `columnId` into a brand-new standalone column of `newColumnWidth`,
+     * inserted after the focused column and focused (see `addColumn`). Returns null (no-op) for a
+     * single-tile column. The caller positions the new column with `moveColumn` if it belongs
+     * somewhere else (docs: 2026-09-18-drag-stack-phantom-design). */
+    expelTile(
         columnId: number,
+        tileId: number,
         newColumnWidth: number,
-    ): { fromTileId: number; toColumnId: number; toTileId: number } | null {
+    ): { toColumnId: number; toTileId: number } | null {
         const column = this.requireColumn(columnId);
         if (column.tileCount() <= 1) {
             return null;
         }
-        const fromTileId = column.focusedTileId;
-        column.removeTile(fromTileId);
+        column.removeTile(tileId);
         const newColumn = this.addColumn(newColumnWidth);
-        return { fromTileId, toColumnId: newColumn.id, toTileId: newColumn.tiles()[0].id };
+        return { toColumnId: newColumn.id, toTileId: newColumn.tiles()[0].id };
+    }
+
+    /** `expelTile` applied to `columnId`'s focused tile, also reporting which tile moved. */
+    expelFocusedTile(
+        columnId: number,
+        newColumnWidth: number,
+    ): { fromTileId: number; toColumnId: number; toTileId: number } | null {
+        const fromTileId = this.requireColumn(columnId).focusedTileId;
+        const result = this.expelTile(columnId, fromTileId, newColumnWidth);
+        return result === null ? null : { fromTileId, toColumnId: result.toColumnId, toTileId: result.toTileId };
     }
 
     /** Raw internal state for the debug console (docs §8) — not used by layout logic. */
@@ -311,45 +398,6 @@ export class Grid {
                 tileCount: column.tileCount(),
             })),
         };
-    }
-
-    /** Widths for layout calculations: visible columns use their width, hidden use HIDDEN_COLUMN_WIDTH. */
-    private layoutWidths(): number[] {
-        return this.ordered.map((column) => (column.hidden ? HIDDEN_COLUMN_WIDTH : column.width));
-    }
-
-    /** Offset of every column (visible or hidden). The gap only follows a VISIBLE column,
-     * so a run of hidden columns fits inside the single surrounding gap instead of
-     * bracketing itself with a gap on both sides. */
-    private layoutOffsets(): number[] {
-        const offsets: number[] = [];
-        let cursor = this.originX;
-        this.ordered.forEach((column, index) => {
-            offsets.push(cursor);
-            cursor += column.hidden ? HIDDEN_COLUMN_WIDTH : column.width;
-            if (!column.hidden && index < this.ordered.length - 1) {
-                cursor += this.gap;
-            }
-        });
-        return offsets;
-    }
-
-    /** Real x position `fraction` of the way across the column at `index`, measured from its
-     * own left offset. `fraction = 0.5` reproduces the old fixed center-crossing threshold
-     * (docs: 2026-09-07-drag-reorder-stack-refinement-design). */
-    private thresholdAt(index: number, fraction: number): number {
-        return this.layoutOffsets()[index] + this.layoutWidths()[index] * fraction;
-    }
-
-    /** Index of the nearest VISIBLE column strictly in direction `step` (+1 right,
-     * -1 left) from `index`, skipping hidden columns, or null if there is none. */
-    private visibleNeighborIndex(index: number, step: 1 | -1): number | null {
-        for (let i = index + step; i >= 0 && i < this.ordered.length; i += step) {
-            if (!this.ordered[i].hidden) {
-                return i;
-            }
-        }
-        return null;
     }
 
     /** Nearest visible column at or after `index`, else nearest visible before it, else null. */

@@ -20,8 +20,8 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.stripDragDwellMs).toBe(400);
     });
 
-    it('defaults the column-stack drag dwell to 400ms', () => {
-        expect(DEFAULT_SETTINGS.columnDragDwellMs).toBe(400);
+    it('defaults the column-stack drag dwell to 200ms', () => {
+        expect(DEFAULT_SETTINGS.columnDragDwellMs).toBe(200);
     });
 
     it('defaults the reorder threshold fraction to 0.85 (near-final-position, not center-crossing)', () => {
@@ -44,8 +44,12 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.dragPanHorizontalTolerancePx).toBe(10);
     });
 
-    it('defaults dragPanFreeDwellMs to 400, matching the other drag dwells', () => {
-        expect(DEFAULT_SETTINGS.dragPanFreeDwellMs).toBe(400);
+    it('defaults pullIndicatorEnabled to true', () => {
+        expect(DEFAULT_SETTINGS.pullIndicatorEnabled).toBe(true);
+    });
+
+    it('defaults pullIndicatorOpacity to 0.5, matching focusFlashOpacity', () => {
+        expect(DEFAULT_SETTINGS.pullIndicatorOpacity).toBe(0.5);
     });
 
     it('defaults the strip-drag edge border to 2px', () => {

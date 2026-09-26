@@ -1,135 +1,123 @@
 import { describe, expect, it } from 'vitest';
 import { Rect } from '../core/coordinates';
-import { resolveStackTarget, stackTargetIndex, StackCandidate } from './drag-hover';
+import {
+    horizontalOverlapFraction,
+    initialPhantomIndex,
+    resolveSlotFromPointer,
+    resolveStackTarget,
+    stackTargetIndex,
+    StackCandidate,
+} from './drag-hover';
 
 function rect(x: number, y: number, width: number, height: number): Rect {
     return { x, y, width, height };
 }
 
+describe('horizontalOverlapFraction', () => {
+    it('is 0 without overlap', () => {
+        expect(horizontalOverlapFraction(rect(0, 0, 300, 100), rect(300, 0, 300, 100))).toBe(0);
+    });
+
+    it('divides by the narrower width so a narrow window fully inside a wide one is 1', () => {
+        expect(horizontalOverlapFraction(rect(100, 0, 50, 100), rect(0, 0, 300, 100))).toBe(1);
+        expect(horizontalOverlapFraction(rect(0, 0, 300, 100), rect(100, 0, 50, 100))).toBe(1);
+    });
+
+    it('is the overlapped fraction for equal widths', () => {
+        expect(horizontalOverlapFraction(rect(150, 0, 300, 100), rect(0, 0, 300, 100))).toBe(0.5);
+    });
+});
+
+describe('resolveSlotFromPointer', () => {
+    const tiles: StackCandidate[] = [
+        { columnId: 1, tileId: 10, rect: rect(0, 0, 300, 400) },
+        { columnId: 1, tileId: 20, rect: rect(0, 400, 300, 600) },
+    ];
+
+    it('returns null for an empty tile list', () => {
+        expect(resolveSlotFromPointer(100, [])).toBeNull();
+    });
+
+    it("resolves 'above' in the upper half of the tile under the pointer", () => {
+        expect(resolveSlotFromPointer(199, tiles)).toEqual({ tileId: 10, direction: 'above' });
+        expect(resolveSlotFromPointer(600, tiles)).toEqual({ tileId: 20, direction: 'above' });
+    });
+
+    it("resolves 'below' from the midline down", () => {
+        expect(resolveSlotFromPointer(200, tiles)).toEqual({ tileId: 10, direction: 'below' });
+        expect(resolveSlotFromPointer(399, tiles)).toEqual({ tileId: 10, direction: 'below' });
+        expect(resolveSlotFromPointer(950, tiles)).toEqual({ tileId: 20, direction: 'below' });
+    });
+
+    it('clamps a pointer above the first tile to above it, and below the last tile to below it', () => {
+        expect(resolveSlotFromPointer(-50, tiles)).toEqual({ tileId: 10, direction: 'above' });
+        expect(resolveSlotFromPointer(5000, tiles)).toEqual({ tileId: 20, direction: 'below' });
+    });
+
+    it('treats a pointer in the gap between two tiles as above the lower one', () => {
+        const gapped: StackCandidate[] = [
+            { columnId: 1, tileId: 10, rect: rect(0, 0, 300, 400) },
+            { columnId: 1, tileId: 20, rect: rect(0, 500, 300, 400) },
+        ];
+        expect(resolveSlotFromPointer(450, gapped)).toEqual({ tileId: 20, direction: 'above' });
+    });
+});
+
 describe('resolveStackTarget', () => {
-    it('returns null when there are no candidates', () => {
-        expect(resolveStackTarget(rect(0, 0, 300, 200), [], 0.5)).toBeNull();
+    it('returns null without candidates', () => {
+        expect(resolveStackTarget(rect(0, 0, 300, 200), 100, [], 0.5)).toBeNull();
     });
 
-    it('returns null when the only candidate fails the horizontal overlap gate', () => {
-        // candidate spans x=[300,600) (width 300); dragged window spans x=[0,300+299]=
-        // [0,299], leaving essentially zero horizontal overlap.
+    it('returns null when no column clears the overlap gate', () => {
         const candidates: StackCandidate[] = [{ columnId: 1, tileId: 10, rect: rect(300, 0, 300, 1000) }];
-        expect(resolveStackTarget(rect(0, 400, 299, 100), candidates, 0.5)).toBeNull();
+        expect(resolveStackTarget(rect(0, 0, 299, 200), 100, candidates, 0.5)).toBeNull();
     });
 
-    it("resolves 'above' when the dragged window's top edge is in the candidate's top quarter", () => {
-        // candidate: y=[0,1000). Top-quarter boundary is y=250. Dragged top edge at y=100.
-        const candidates: StackCandidate[] = [{ columnId: 1, tileId: 10, rect: rect(0, 0, 300, 1000) }];
-        expect(resolveStackTarget(rect(0, 100, 300, 200), candidates, 0.5)).toEqual({
-            columnId: 1,
-            tileId: 10,
-            direction: 'above',
-        });
-    });
-
-    it("resolves 'below' when the dragged window's top edge is in the candidate's bottom quarter", () => {
-        // candidate: y=[0,1000). Bottom-quarter boundary is y=750. Dragged top edge at y=900.
-        const candidates: StackCandidate[] = [{ columnId: 1, tileId: 10, rect: rect(0, 0, 300, 1000) }];
-        expect(resolveStackTarget(rect(0, 900, 300, 200), candidates, 0.5)).toEqual({
-            columnId: 1,
-            tileId: 10,
+    it('picks the column with the most overlap and the slot from the pointer', () => {
+        const candidates: StackCandidate[] = [
+            { columnId: 1, tileId: 10, rect: rect(0, 0, 300, 1000) },
+            { columnId: 2, tileId: 20, rect: rect(310, 0, 300, 500) },
+            { columnId: 2, tileId: 21, rect: rect(310, 500, 300, 500) },
+        ];
+        // dragged [200,500): 100px over column 1, 190px over column 2
+        expect(resolveStackTarget(rect(200, 0, 300, 200), 900, candidates, 0.5)).toEqual({
+            columnId: 2,
+            tileId: 21,
             direction: 'below',
         });
     });
 
-    it("returns null when the dragged window's top edge is in the candidate's middle dead zone", () => {
-        // candidate: y=[0,1000). Middle band is (250,750). Dragged top edge at y=500.
+    it("ignores the dragged window's own height and top edge entirely", () => {
         const candidates: StackCandidate[] = [{ columnId: 1, tileId: 10, rect: rect(0, 0, 300, 1000) }];
-        expect(resolveStackTarget(rect(0, 500, 300, 200), candidates, 0.5)).toBeNull();
+        const tall = resolveStackTarget(rect(0, 900, 300, 5000), 100, candidates, 0.5);
+        const short = resolveStackTarget(rect(0, 0, 300, 10), 100, candidates, 0.5);
+        expect(tall).toEqual(short);
+        expect(tall?.direction).toBe('above');
+    });
+});
+
+describe('initialPhantomIndex', () => {
+    const home = rect(1000, 0, 400, 1000); // center 1200
+
+    it("takes the home index when the dragged center is left of the home column's center", () => {
+        expect(initialPhantomIndex(rect(700, 0, 400, 1000), home, 3)).toBe(3); // center 900
     });
 
-    it("returns null when the dragged window's top edge is exactly at the top-quarter boundary", () => {
-        // candidate: y=[0,1000). Top-quarter boundary is y=250. The comparison is strict
-        // (topFraction < 0.25), so topFraction === 0.25 falls in the dead zone, not 'above'.
-        const candidates: StackCandidate[] = [{ columnId: 1, tileId: 10, rect: rect(0, 0, 300, 1000) }];
-        expect(resolveStackTarget(rect(0, 250, 300, 200), candidates, 0.5)).toBeNull();
-    });
-
-    it("returns null when the dragged window's top edge is exactly at the bottom-quarter boundary", () => {
-        // candidate: y=[0,1000). Bottom-quarter boundary is y=750. The comparison is strict
-        // (topFraction > 0.75), so topFraction === 0.75 falls in the dead zone, not 'below'.
-        const candidates: StackCandidate[] = [{ columnId: 1, tileId: 10, rect: rect(0, 0, 300, 1000) }];
-        expect(resolveStackTarget(rect(0, 750, 300, 200), candidates, 0.5)).toBeNull();
-    });
-
-    it("returns null when the dragged window's top-left corner is above the candidate's own range", () => {
-        // candidate: y=[200,1000). Dragged top edge at y=100, above the candidate entirely,
-        // even though the two rects still vertically overlap (dragged spans y=[100,300)).
-        const candidates: StackCandidate[] = [{ columnId: 1, tileId: 10, rect: rect(0, 200, 300, 800) }];
-        expect(resolveStackTarget(rect(0, 100, 300, 200), candidates, 0.5)).toBeNull();
-    });
-
-    it("returns null when the dragged window's top-left corner is below the candidate's own range", () => {
-        // candidate: y=[0,500). Dragged top edge at y=600, below the candidate entirely.
-        const candidates: StackCandidate[] = [{ columnId: 1, tileId: 10, rect: rect(0, 0, 300, 500) }];
-        expect(resolveStackTarget(rect(0, 600, 300, 200), candidates, 0.5)).toBeNull();
-    });
-
-    it('picks whichever gate-passing candidate the top-left corner actually bands into', () => {
-        const candidates: StackCandidate[] = [
-            // dragged top-left corner (y=100) is in this one's middle dead zone (y=[50,150)) -> excluded.
-            { columnId: 1, tileId: 10, rect: rect(0, 0, 300, 200) },
-            // dragged top-left corner (y=100) is in this one's top quarter (y=[50,125)) -> 'above'.
-            { columnId: 1, tileId: 20, rect: rect(0, 50, 300, 300) },
-        ];
-        const target = resolveStackTarget(rect(0, 100, 300, 200), candidates, 0.5);
-        expect(target).toEqual({ columnId: 1, tileId: 20, direction: 'above' });
-    });
-
-    it('picks the gate-passing candidate over one with insufficient horizontal overlap', () => {
-        const candidates: StackCandidate[] = [
-            // banded correctly (top-left corner in its top quarter), but only 10% horizontal overlap.
-            { columnId: 1, tileId: 10, rect: rect(270, 0, 300, 1000) },
-            // fully within the dragged window horizontally, also banded correctly.
-            { columnId: 2, tileId: 20, rect: rect(0, 50, 300, 300) },
-        ];
-        const target = resolveStackTarget(rect(0, 100, 300, 200), candidates, 0.5);
-        expect(target?.tileId).toBe(20);
-    });
-
-    it('when multiple candidates band into a direction, the one with the most horizontal overlap wins', () => {
-        const candidates: StackCandidate[] = [
-            // dragged x=[0,300) vs target x=[150,450) -> overlap 150, exactly 50% -> at the gate.
-            { columnId: 1, tileId: 10, rect: rect(150, 0, 300, 1000) },
-            // fully within the dragged window horizontally -> 100% horizontal overlap, wins.
-            { columnId: 2, tileId: 20, rect: rect(0, 0, 300, 1000) },
-        ];
-        const target = resolveStackTarget(rect(0, 100, 300, 1000), candidates, 0.5);
-        expect(target?.tileId).toBe(20);
-    });
-
-    it('clears the horizontal gate when a narrow dragged window is fully contained in a wide candidate', () => {
-        // dragged width 50, fully inside the candidate's width 300 -> overlap is capped at the
-        // dragged window's own width, so the fraction is measured against min(dragged, target)
-        // width, not always the candidate's width.
-        const candidates: StackCandidate[] = [{ columnId: 1, tileId: 10, rect: rect(0, 0, 300, 1000) }];
-        expect(resolveStackTarget(rect(100, 100, 50, 200), candidates, 0.5)).toEqual({
-            columnId: 1,
-            tileId: 10,
-            direction: 'above',
-        });
+    it('takes the next index when the dragged center is at or right of it', () => {
+        expect(initialPhantomIndex(rect(1000, 0, 400, 1000), home, 3)).toBe(4); // center 1200
+        expect(initialPhantomIndex(rect(1300, 0, 400, 1000), home, 3)).toBe(4);
     });
 });
 
 describe('stackTargetIndex', () => {
-    it("resolves 'above' to the candidate tile's own index", () => {
-        const tiles = [{ id: 10 }, { id: 20 }, { id: 30 }];
+    const tiles = [{ id: 10 }, { id: 20 }, { id: 30 }];
+
+    it("maps 'above' to the tile's own index", () => {
         expect(stackTargetIndex({ columnId: 1, tileId: 20, direction: 'above' }, tiles)).toBe(1);
     });
 
-    it("resolves 'below' to one past the candidate tile's own index", () => {
-        const tiles = [{ id: 10 }, { id: 20 }, { id: 30 }];
+    it("maps 'below' to the index after the tile", () => {
         expect(stackTargetIndex({ columnId: 1, tileId: 20, direction: 'below' }, tiles)).toBe(2);
-    });
-
-    it("resolves 'below' the last tile to an append index", () => {
-        const tiles = [{ id: 10 }, { id: 20 }];
-        expect(stackTargetIndex({ columnId: 1, tileId: 20, direction: 'below' }, tiles)).toBe(2);
+        expect(stackTargetIndex({ columnId: 1, tileId: 30, direction: 'below' }, tiles)).toBe(3);
     });
 });

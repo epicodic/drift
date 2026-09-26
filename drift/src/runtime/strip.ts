@@ -6,6 +6,7 @@
 import { Rect, shrinkRect } from '../core/coordinates';
 import { formatDebugState } from '../core/debug-format';
 import type { Column } from '../core/column';
+import { previewTileRects, type DragPreview } from '../core/drag-preview';
 import { Grid } from '../core/grid';
 import type { ColumnAlign } from '../core/window-rules';
 import type { Settings } from '../config/settings';
@@ -38,27 +39,12 @@ import {
 } from './window-events';
 import { TransientLinks } from './transient-links';
 import { SignalManager } from '../utils/signal-manager';
+import { NOOP_PULL_INDICATOR, type PullIndicatorOverlay } from '../kwin/pull-indicator-overlay';
 
 /** The subset of `DragReorderDeps` a caller can supply per-window without knowing about
  * `Grid`/`Viewport`/rendering internals — used by `StripStack` to watch a dragged window's
  * vertical position (docs: 2026-09-02-cross-row-drag-design). */
 export type StripDragHooks = Pick<DragReorderDeps, 'onDragStarted' | 'onDragTick' | 'onDragFinished'>;
-
-/** Optional live-drag stack preview passed to `render()`: which tile rects to compute
- * from a hypothetical layout instead of the committed one. `enteringColumnId`/
- * `enteringIndex`/`enteringGapHeight` describe the column opening a gap for the dragged
- * tile; `leavingColumnId`/`leavingTileId` (only set for a cross-column drag whose source
- * is itself a multi-tile stack) describe the column closing the gap the dragged tile is
- * leaving. Exported for `src/input/drag.ts` to reference when wiring real drag signals
- * (docs: 2026-09-03-drag-to-stack-design). */
-export interface StackPreview {
-    enteringColumnId: number;
-    enteringIndex: number;
-    enteringGapHeight: number;
-    enteringExcludeTileId?: number;
-    leavingColumnId?: number;
-    leavingTileId?: number;
-}
 
 export class Strip {
     // Always the margin-inset content rect (see `marginedArea`), never the raw work area —
@@ -99,6 +85,7 @@ export class Strip {
         timer: Timer,
         private readonly workspaceAdapter: WorkspaceAdapter,
         private readonly transientLinks: TransientLinks = new TransientLinks(),
+        private readonly pullIndicator: PullIndicatorOverlay = NOOP_PULL_INDICATOR,
     ) {
         this.area = this.marginedArea(area);
         this.grid = new Grid(Math.max(1, this.area.height), settings.horizontalGap, settings.verticalGap);
@@ -153,16 +140,17 @@ export class Strip {
      * snapping back to y=0 on the next unrelated internal render() (docs:
      * 2026-09-01-row-navigation-design).
      *
-     * `stackPreview` (see `StackPreview`): optional live-drag stack preview. The dragged
-     * tile's own window keeps being excluded from geometry sync via `excludeWindowId`,
-     * unchanged (docs: 2026-09-03-drag-to-stack-design). */
-    render(excludeWindowId?: string, instant = false, verticalOffsetY?: number, stackPreview?: StackPreview): void {
+     * `preview` (see `DragPreview`): the live drag's phantom/leaving/entering preview; the
+     * dragged tile's own window keeps being excluded via `excludeWindowId` (docs:
+     * 2026-09-18-drag-stack-phantom-design). */
+    render(excludeWindowId?: string, instant = false, verticalOffsetY?: number, preview?: DragPreview): void {
         if (verticalOffsetY !== undefined) {
             this.verticalOffsetY = verticalOffsetY;
         }
-        this.viewport.setContentGeometry(this.grid.contentLeft(), this.grid.virtualWidth());
+        const layout = this.grid.previewLayout(preview?.phantom);
+        this.viewport.setContentGeometry(this.grid.contentLeft(), layout.virtualWidth);
         for (const column of this.grid.columns()) {
-            const columnRect = this.grid.columnRect(column.id);
+            const columnRect = layout.rects.get(column.id) ?? this.grid.columnRect(column.id);
             if (column.hidden) {
                 for (const tile of column.tiles()) {
                     const win = this.registry.get(column.id, tile.id);
@@ -185,17 +173,7 @@ export class Strip {
                 }
                 continue;
             }
-            const previewRects =
-                stackPreview && column.id === stackPreview.enteringColumnId
-                    ? column.previewRectsWithGapAt(
-                          stackPreview.enteringIndex,
-                          stackPreview.enteringGapHeight,
-                          columnRect,
-                          stackPreview.enteringExcludeTileId,
-                      )
-                    : stackPreview && column.id === stackPreview.leavingColumnId
-                      ? column.previewRectsWithoutTile(stackPreview.leavingTileId!, columnRect)
-                      : null;
+            const previewRects = previewTileRects(column, columnRect, preview);
             for (const tile of column.tiles()) {
                 const key = this.tileKey(column.id, tile.id);
                 if (this.fullScreenTiles.has(key) || this.minimizedTiles.has(key)) {
@@ -205,7 +183,7 @@ export class Strip {
                 if (!win || win.id === excludeWindowId) {
                     continue;
                 }
-                const targetRect = previewRects?.get(tile.id) ?? column.tileRect(tile.id, columnRect);
+                const targetRect = previewRects.get(tile.id) ?? column.tileRect(tile.id, columnRect);
                 let x: number;
                 let y: number;
                 let width: number;
@@ -241,15 +219,13 @@ export class Strip {
             this.tileWidthMotion.isAnimating() ||
             this.tileHeightMotion.isAnimating()
         ) {
-            // Preserve excludeWindowId and stackPreview: a live drag-reorder must keep skipping
+            // Preserve excludeWindowId and preview: a live drag-reorder must keep skipping
             // the dragged window's own geometry across continuation ticks, not just the first,
             // and a live stack-hover preview must not flicker back to committed rects for one
             // frame while a column-position animation is still in flight. verticalOffsetY is
             // intentionally still omitted here — it's sticky via `this.verticalOffsetY` (see
             // render()'s own doc comment), so omitting it is safe.
-            this.motionTimer.start(ANIMATION_TICK_MS, () =>
-                this.render(excludeWindowId, false, undefined, stackPreview),
-            );
+            this.motionTimer.start(ANIMATION_TICK_MS, () => this.render(excludeWindowId, false, undefined, preview));
         } else {
             this.motionTimer.stop();
         }
@@ -456,22 +432,15 @@ export class Strip {
                         excludeWindowId?: string,
                         instant?: boolean,
                         verticalOffsetY?: undefined,
-                        stackPreview?: StackPreview,
-                    ) => this.render(excludeWindowId, instant, verticalOffsetY, stackPreview),
+                        preview?: DragPreview,
+                    ) => this.render(excludeWindowId, instant, verticalOffsetY, preview),
                     reorderThresholdFraction: this.settings.reorderThresholdFraction,
                     stackOverlapFraction: this.settings.stackOverlapFraction,
                     dragPanEnabled: this.settings.dragPanEnabled,
                     dragPanVerticalTriggerPx: this.settings.dragPanVerticalTriggerPx,
                     dragPanHorizontalTolerancePx: this.settings.dragPanHorizontalTolerancePx,
                     workspace: this.workspaceAdapter,
-                    createPanFreeDwell: (onFire: () => void) =>
-                        new DwellTimer<true>(
-                            this.ticker.subscribe(),
-                            () => Date.now(),
-                            ANIMATION_TICK_MS,
-                            this.settings.dragPanFreeDwellMs,
-                            onFire,
-                        ),
+                    pullIndicator: this.pullIndicator,
                     createStackDwell: (onFire: (key: string) => void) =>
                         new DwellTimer<string>(
                             this.ticker.subscribe(),
@@ -483,6 +452,8 @@ export class Strip {
                     seedMotionFrom: (windowId: string, rect: Partial<Rect>) => this.seedMotionFrom(windowId, rect),
                     commitTileIntoStack: (fromColumnId: number, fromTileId: number, toColumnId: number, slot: number) =>
                         this.commitTileIntoStack(fromColumnId, fromTileId, toColumnId, slot),
+                    commitTileToStandalone: (fromColumnId: number, fromTileId: number, index: number) =>
+                        this.commitTileToStandalone(fromColumnId, fromTileId, index),
                     revealFocused: () => this.revealFocused(),
                     // Always stop any in-flight reveal-animation the instant a real drag
                     // starts, regardless of what (if anything) stripDragHooks itself does —
@@ -838,6 +809,25 @@ export class Strip {
     commitTileIntoStack(fromColumnId: number, fromTileId: number, toColumnId: number, slot: number): void {
         const toTileId = this.grid.moveTileIntoColumn(fromColumnId, fromTileId, toColumnId, slot);
         this.registry.moveWindow(fromColumnId, fromTileId, toColumnId, toTileId);
+        this.fullScreenTiles.delete(this.tileKey(fromColumnId, fromTileId));
+        this.minimizedTiles.delete(this.tileKey(fromColumnId, fromTileId));
+    }
+
+    /** Commits a phantom-mode drop: `fromTileId` leaves `fromColumnId` for a brand-new standalone
+     * column of the source column's width at grid `index` — the same mutation keyboard `expel`
+     * performs, positioned where the phantom was previewed (docs:
+     * 2026-09-18-drag-stack-phantom-design). No-op for a single-tile source column. */
+    commitTileToStandalone(fromColumnId: number, fromTileId: number, index: number): void {
+        const fromColumn = this.grid.column(fromColumnId);
+        if (fromColumn === null) {
+            throw new Error(`Unknown column id: ${fromColumnId}`);
+        }
+        const result = this.grid.expelTile(fromColumnId, fromTileId, fromColumn.width);
+        if (result === null) {
+            return;
+        }
+        this.grid.moveColumn(result.toColumnId, index);
+        this.registry.moveWindow(fromColumnId, fromTileId, result.toColumnId, result.toTileId);
         this.fullScreenTiles.delete(this.tileKey(fromColumnId, fromTileId));
         this.minimizedTiles.delete(this.tileKey(fromColumnId, fromTileId));
     }
