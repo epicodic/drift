@@ -12,7 +12,7 @@ Two ideas prompted this: a per-strip label and a per-strip color, both surfaced 
 - Strips downward from home (`stripDown`, `stripIndex > 0`) are labeled with letters: `"A", "B", "C", …, "Z", "AA", "AB", …`.
 - Every strip, including the home strip, also gets a color: an HSV hue derived from `stripIndex` via golden-ratio-conjugate stepping, so hues stay maximally spread apart regardless of how many strips exist or in which direction.
 - The minimap shows every currently-existing strip's label and color alongside its row.
-- A new, separate OSD appears whenever the active strip actually changes (not on left/right column navigation within a strip). It shows the new active strip's label as a large badge and tints a glow around the whole screen edge in that strip's color.
+- A new, separate OSD appears whenever the active strip actually changes (not on left/right column navigation within a strip). It shows the new active strip's label as a large badge and sweeps a circular-segment arc in from the top and bottom screen edges in that strip's color.
 - Both surfaces derive label and color from the same pure functions, so they always agree.
 
 ## Numbering and color scheme
@@ -84,11 +84,13 @@ New thin overlay class, `StripOsd`, following the exact same shape as `focus-fla
 It drives a fading `opacity` off a timer using the existing `flashOpacity` curve from `src/ui/focus-flash.ts`, rather than a flat auto-hide.
 It exposes `show(label: string, hue: number, screenGeometry: Rect)`.
 
-Reuses the existing `drift/shaders/focus_glow.frag` shader for the inward screen-edge glow — the same shader `focus-flash-overlay.ts` already uses to hug a window's frame — via a `ShaderEffect` with the same uniform set (`glowColor`, `itemSize`, `glow`, `sharpness`, `bleed`).
-The only difference from the focus-flash usage is what the effect is sized to: the active screen's geometry instead of a window's frame, so the glow hugs the screen edge inward rather than a window's border.
-`glowColor` comes from `stripHue(afterIndex)` converted to an RGBA color (fixed saturation/value, decided at implementation time) instead of `Kirigami.Theme.highlightColor`.
-A large centered `Text` badge (the label, tinted by the same color) is layered on top of the same dialog, fading with it.
-Since `focus_glow.frag` is already compiled by the Makefile's `shaders` target, no build wiring changes — Drift builds only that one shader file today, and this reuses it as-is.
+Each of the top and bottom screen edges gets a circular-segment arc, drawn by the same `drift/shaders/pull_indicator.frag` shader and `pullIndicatorCircle` geometry as the drag pull indicator.
+The chord is the full screen width, and the apex sweeps inward to `stripOsdDepth` and back out.
+Opacity rises while the apex moves in and falls while it moves out, both following the `flashOpacity` curve, so depth and opacity stay in lock-step.
+That animation state is the pure `stripOsdArc` function in `src/ui/strip-osd-arc.ts`.
+The bottom arc is the top arc rotated 180 degrees.
+`glowColor` comes from `stripHue(afterIndex)` converted to an RGBA color instead of `Kirigami.Theme.highlightColor`.
+A large `Text` badge (the label, tinted by the same color) is layered on top of the same dialog, fading with it.
 Untested at the unit level, consistent with `minimap-overlay.ts`'s and `focus-flash-overlay.ts`'s own untested status — none of the three is exercisable without a live compositor.
 
 ### `src/runtime/strip-stack.ts`
@@ -127,9 +129,10 @@ No new keybinding wiring is needed.
 New entries in `src/config/settings-definitions.ts`:
 
 - `stripHintsEnabled` (`Bool`, default `true`) — master toggle for the minimap's per-strip label/color chips.
-- `stripOsdEnabled` (`Bool`, default `true`) — master toggle for the OSD (label badge + glow together), independent of `stripHintsEnabled`.
-- `stripOsdDurationMs` (`UInt`, default `500`) — total fade duration, mirroring `focusFlashDurationMs` and plugged into the same `flashOpacity` curve.
-- `stripOsdGlowOpacity` (`Double`, default `0.5`) — peak opacity of the glow, mirroring `focusFlashOpacity`.
+- `stripOsdEnabled` (`Bool`, default `true`) — master toggle for the OSD (label badge + arcs together), independent of `stripHintsEnabled`.
+- `stripOsdDurationMs` (`UInt`, default `500`) — total sweep duration, mirroring `focusFlashDurationMs` and plugged into the same `flashOpacity` curve.
+- `stripOsdDepth` (`UInt`, default `60`) — maximum apex depth of the arcs, in pixels.
+- `stripOsdOpacity` (`Double`, default `0.5`) — peak opacity of the arcs, mirroring `focusFlashOpacity`.
 
 ## Testing
 
@@ -137,7 +140,7 @@ New entries in `src/config/settings-definitions.ts`:
 - `src/ui/minimap.test.ts`: `combineStripStackSnapshot` sets `label`/`hue` per strip matching `strip-identity.ts`.
 - `src/runtime/strip-stack.test.ts`: new `activeIndex()` getter reflects `0` initially and tracks `stripUp`/`stripDown`/`switchToStrip` correctly — this is the piece `Controller` will diff before/after to decide whether to show the OSD.
 - `src/runtime/controller.ts` itself has no test file today (no KWin-glue orchestration file in this codebase does — it's untestable without a live compositor/workspace). The before/after `activeIndex()` diff added to `focusAndShowMinimap` stays untested glue, consistent with the rest of `Controller`.
-- `src/kwin/strip-osd.ts` stays untested, consistent with `minimap-overlay.ts` and `focus-flash-overlay.ts`'s existing approach. The fade curve itself needs no new tests — it reuses the already-tested `flashOpacity` from `src/ui/focus-flash.ts`.
+- `src/kwin/strip-osd.ts` stays untested, consistent with `minimap-overlay.ts` and `focus-flash-overlay.ts`'s existing approach. The arc animation is covered by `src/ui/strip-osd-arc.test.ts`.
 
 ## Explicitly out of scope
 

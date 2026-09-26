@@ -166,16 +166,16 @@ export interface Settings {
     /** Whether the minimap's per-strip label/color chips are shown at all (docs:
      * 2026-09-14-strip-navigation-hints-design). */
     stripHintsEnabled: boolean;
-    /** Whether the strip-change OSD (label badge + screen-edge glow) is shown at all (docs:
+    /** Whether the strip-change OSD (label badge + top/bottom edge arcs) is shown at all (docs:
      * 2026-09-14-strip-navigation-hints-design). */
     stripOsdEnabled: boolean;
-    /** Inward falloff radius of the strip-change OSD's screen-edge glow, in pixels. */
-    stripOsdGlowRadius: number;
+    /** Maximum inward depth of the strip-change OSD's top/bottom arcs' apex, in pixels. */
+    stripOsdDepth: number;
     /** Total duration of the strip-change OSD's fade-in-then-fade-out, in milliseconds. */
     stripOsdDurationMs: number;
-    /** Peak opacity of the strip-change OSD's screen-edge glow at the midpoint of its
+    /** Peak opacity of the strip-change OSD's arcs at the midpoint of their
      * fade-in-then-fade-out. */
-    stripOsdGlowOpacity: number;
+    stripOsdOpacity: number;
     /** Whether an undocked window is kept above still-docked windows (docs:
      * 2026-09-06-manual-undock-redock-design). */
     undockKeepAbove: boolean;

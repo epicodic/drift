@@ -196,18 +196,18 @@ interface QmlFocusFlashDialog extends QmlObject {
     visible: boolean;
 }
 
-/** The dynamically-created strip-change OSD dialog: a vector chevron frame hugging the screen
- * edges plus a label badge, flashed whenever the active strip actually changes (docs:
- * 2026-09-14-strip-navigation-hints-design, 2026-09-15-chevron-frame-osd). `frameColor` and the
- * `*Points` arrays are plain data (see `StripColor` in `ui/strip-identity.ts` and `Point` in
- * `ui/chevron-frame.ts`), typed loosely here since this file has no app-specific types. */
+/** The dynamically-created strip-change OSD dialog: a circular-segment arc on each of the top and
+ * bottom screen edges plus a label badge, flashed whenever the active strip actually changes
+ * (docs: 2026-09-14-strip-navigation-hints-design). `frameColor` is plain data (see `StripColor`
+ * in `ui/strip-identity.ts`), typed loosely here since this file has no app-specific types.
+ * `centerX`/`centerY`/`radius` are `stripOsdArc`'s circumcircle in arc-local px, `arcDepth` its
+ * apex distance from the screen edge. */
 interface QmlStripOsdDialog extends QmlObject {
     frameColor: unknown;
-    topPoints: unknown;
-    bottomPoints: unknown;
-    leftPoints: unknown;
-    rightPoints: unknown;
-    thickness: number;
+    arcDepth: number;
+    centerX: number;
+    centerY: number;
+    radius: number;
     label: string;
     x: number;
     y: number;

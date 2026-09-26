@@ -73,9 +73,9 @@ export class Controller {
         this.stripOsd = createStripOsd(
             root,
             ANIMATION_TICK_MS,
-            settings.stripOsdGlowRadius,
+            settings.stripOsdDepth,
             settings.stripOsdDurationMs,
-            settings.stripOsdGlowOpacity,
+            settings.stripOsdOpacity,
             settings.stripOsdEnabled,
         );
         this.pullIndicatorOverlay = createPullIndicatorOverlay(

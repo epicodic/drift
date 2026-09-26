@@ -790,10 +790,10 @@
                             <item>
                                 <widget class="QGroupBox" name="kcfg_stripOsdEnabled">
                                     <property name="title">
-                                        <string>Flash the screen when the active strip changes</string>
+                                        <string>Flash arcs when the active strip changes</string>
                                     </property>
                                     <property name="toolTip">
-                                        <string>Show a full-screen edge glow and a large label whenever you page to a different strip</string>
+                                        <string>Show arcs sweeping in from the top and bottom screen edges and a large label whenever you page to a different strip</string>
                                     </property>
                                     <property name="checkable">
                                         <bool>true</bool>
@@ -803,16 +803,16 @@
                                     </property>
                                     <layout class="QFormLayout" name="formLayout_stripOsd">
                                         <item row="0" column="0">
-                                            <widget class="QLabel" name="label_stripOsdGlowRadius">
+                                            <widget class="QLabel" name="label_stripOsdDepth">
                                                 <property name="text">
-                                                    <string>Glow radius:</string>
+                                                    <string>Arc depth:</string>
                                                 </property>
                                             </widget>
                                         </item>
                                         <item row="0" column="1">
-                                            <widget class="QSpinBox" name="kcfg_stripOsdGlowRadius">
+                                            <widget class="QSpinBox" name="kcfg_stripOsdDepth">
                                                 <property name="toolTip">
-                                                    <string>Inward falloff radius of the strip-change OSD's screen-edge glow</string>
+                                                    <string>How far the strip-change OSD's arcs sweep inward from the screen edges</string>
                                                 </property>
                                                 <property name="suffix">
                                                     <string> px</string>
@@ -855,16 +855,16 @@
                                             </widget>
                                         </item>
                                         <item row="2" column="0">
-                                            <widget class="QLabel" name="label_stripOsdGlowOpacity">
+                                            <widget class="QLabel" name="label_stripOsdOpacity">
                                                 <property name="text">
                                                     <string>Opacity:</string>
                                                 </property>
                                             </widget>
                                         </item>
                                         <item row="2" column="1">
-                                            <widget class="QDoubleSpinBox" name="kcfg_stripOsdGlowOpacity">
+                                            <widget class="QDoubleSpinBox" name="kcfg_stripOsdOpacity">
                                                 <property name="toolTip">
-                                                    <string>Peak opacity of the strip-change OSD's screen-edge glow</string>
+                                                    <string>Peak opacity of the strip-change OSD's arcs</string>
                                                 </property>
                                                 <property name="decimals">
                                                     <number>2</number>
