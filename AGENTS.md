@@ -6,11 +6,13 @@ and as `CLAUDE.md` via symlink for Claude Code.
 
 ---
 
-## Approval Rules (MANDATORY)
+## Shared Rules
 
-- Never implement a fix or any code change without first informing the user what you are about to do and getting their go-ahead.
-- When debugging, as soon as you believe you know the root cause, stop and discuss it with the user before making any changes.
-- Never commit anything without asking the user first.
+**Read [`.agents/AGENTS.md`](.agents/AGENTS.md) before anything else.**
+It holds the rules shared by all projects: approval rules, reading and writing documentation, `uv` usage, Serena, communication style, private development files (`.devkit/`), and the skills.
+It is private tooling that is linked in locally; if it is missing, ignore this section.
+
+@.agents/AGENTS.md
 
 ---
 
@@ -25,42 +27,6 @@ Source lives entirely under `drift/` (`drift/src` for TypeScript, `drift/ui`, `d
 Grouped Makefile targets require GNU Make 4.3 or newer.
 Use uv for optional Python tooling.
 Use `uv build` to build Python packages, `uv run pytest` to run Python tests, and `uv run ruff check . && uv run ruff format --check . && uv run ty check .` for Python quality checks.
-
-## Serena MCP
-
-Use the Serena MCP server for semantic codebase navigation and refactoring when it is available.
-At the start of a coding task, read Serena's initial instructions and activate the repository as the active Serena project.
-Use Serena's symbol overview, symbol search, declaration, implementation, and reference tools before manually scanning source code.
-Use Serena diagnostics to inspect errors for a touched file or symbol.
-Use Serena's rename and safe-delete tools for symbol refactors so references are updated or checked consistently.
-Use Serena's symbol replacement and insertion tools for structure-aware edits, and its content replacement tools for focused file-level changes.
-Use ordinary file reads and searches for Markdown, YAML, JSON, and other files without language-server symbols.
-Serena currently uses its LSP backend for the `drift` project.
-
-## graphify
-
-For any question about this repo's architecture, structure, components, or how to add/modify/find
-code, your first action should be `graphify query "<question>"` when `graphify-out/graph.json`
-exists. Use `graphify path "<A>" "<B>"` for relationship questions and `graphify explain "<concept>"`
-for focused-concept questions. These return a scoped subgraph, usually much smaller than the full
-report or raw grep output.
-
-Triggers: "how do I…", "where is…", "what does … do", "add/modify a <component>",
-"explain the architecture", or anything that depends on how files or classes relate.
-
-If `graphify-out/wiki/index.md` exists, use it for broad navigation. Read `graphify-out/GRAPH_REPORT.md`
-only for broad architecture review or when query/path/explain do not surface enough context. Only read
-source files when (a) modifying/debugging specific code, (b) the graph lacks the needed detail, or
-(c) the graph is missing or stale.
-
-Type `/graphify` in Copilot Chat to build or update the graph.
-
----
-
-## Writing Documentation
-
-- Write one sentence per line. This is mandatory.
-- Keep pages short. One idea per paragraph.
 
 ---
 
@@ -77,64 +43,4 @@ Keep KWin API access isolated from core logic.
 
 No project copyright-header policy is currently defined.
 Do not add copyright headers to new files unless the project establishes a policy later.
-
-## Archived Documentation
-
-`docs/archive/` holds historical, superseded documents kept for reference.
-Do not use files in `docs/archive/` as a source of truth for current behavior.
-
-
-## Communication Style
-
-Avoid empty filler phrases that add no information. Do not write things like:
-
-- "Now I understand the full picture…"
-- "Now I get it…"
-- "Great, now I have a complete understanding…"
-- "Now that I've reviewed the code…"
-- "I can see what's happening here…"
-
-Jump directly to the relevant content, analysis, or action.
-
-## Skills
-
-Process skills for agentic work live in `.agents/skills/`. Load the relevant skill before starting any non-trivial task.
-Keep this list updated as new skills are added or removed.
-
-| Situation | Skill |
-|-----------|-------|
-| Starting any conversation | `using-skills` |
-| Starting creative or feature work | `brainstorming` |
-| Implementing a feature or fixing a bug | `test-driven-development` |
-| Debugging unexpected behaviour | `systematic-debugging` |
-| Writing an implementation plan | `writing-plans` |
-| Executing a written plan (this session) | `subagent-driven-development` |
-| Executing a written plan (separate session) | `executing-plans` |
-| Receiving code review feedback | `receiving-code-review` |
-| Requesting code review | `requesting-code-review` |
-| About to claim work is complete | `verification-before-completion` |
-| Committing staged changes with a well-formed message | `git-commit` |
-| Writing or updating documentation pages in docs/ | `writing-documentation` |
-| Dispatching parallel agents | `dispatching-parallel-agents` |
-| Creating, updating, or debugging skills | `writing-skills` |
-
-### Skill attribution (MANDATORY)
-
-**CRITICAL — every response that uses one or more skills MUST begin with the following line, before any other content:**
-
-```
-**Used skills:** `<skill1>`, `<skill2>`, …
-```
-
-Example — if you loaded `test-driven-development` and `git-commit`:
-
-```
-**Used skills:** `test-driven-development`, `git-commit`
-```
-
-- This line MUST be the very first line of your response.
-- Do NOT place it after a greeting, summary, or any other text.
-- Omit this line entirely when no skills are used.
-- Before sending your response, verify that this line is present if any skill was loaded.
-
 
