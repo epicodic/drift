@@ -186,6 +186,7 @@ export const SETTINGS_DEFINITIONS: AnySettingsDefinition[] = [
     { name: 'stripOsdDepth', type: 'UInt', default: 60 },
     { name: 'stripOsdDurationMs', type: 'UInt', default: 500 },
     { name: 'stripOsdOpacity', type: 'Double', default: 0.5 },
+    { name: 'stripOsdLabelSizePercent', type: 'UInt', default: 10 },
     { name: 'undockKeepAbove', type: 'Bool', default: true },
     { name: 'debugConsoleEnabled', type: 'Bool', default: false },
     { name: 'shortcutToggleFloating', type: 'String', default: 'Meta+Space', shortcut: { label: 'Toggle Floating' } },

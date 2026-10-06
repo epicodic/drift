@@ -125,6 +125,10 @@ describe('DEFAULT_SETTINGS', () => {
         expect(DEFAULT_SETTINGS.stripOsdDepth).toBe(60);
     });
 
+    it('defaults the strip OSD label size to 10% of the screen height', () => {
+        expect(DEFAULT_SETTINGS.stripOsdLabelSizePercent).toBe(10);
+    });
+
     it('defaults the strip OSD peak opacity to 0.5', () => {
         expect(DEFAULT_SETTINGS.stripOsdOpacity).toBe(0.5);
     });

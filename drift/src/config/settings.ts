@@ -176,6 +176,8 @@ export interface Settings {
     /** Peak opacity of the strip-change OSD's arcs at the midpoint of their
      * fade-in-then-fade-out. */
     stripOsdOpacity: number;
+    /** Height of the strip-change OSD's label glyph, as a percentage of the screen height. */
+    stripOsdLabelSizePercent: number;
     /** Whether an undocked window is kept above still-docked windows (docs:
      * 2026-09-06-manual-undock-redock-design). */
     undockKeepAbove: boolean;

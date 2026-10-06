@@ -1,11 +1,12 @@
-// Two circular-segment arcs on the top and bottom screen edges, flashed whenever the active strip
-// actually changes: each apex sweeps inward while the arc fades in, then back out while it fades
-// away, in the strip's color, next to a large label (docs: 2026-09-14-strip-navigation-hints-design).
-// The shape reuses the drag pull indicator's shader; animation state comes from ui/strip-osd-arc.ts
-// (pure, tested). Built via Qt.createQmlObject, the same pattern as
-// focus-flash-overlay.ts/minimap-overlay.ts.
+// A circular-segment arc on whichever screen edge the active strip just moved toward — top when
+// switching to the strip above, bottom when switching to the strip below — flashed whenever the
+// active strip actually changes: the apex sweeps inward while the arc fades in, then back out
+// while it fades away, in the strip's color, next to a large label (docs:
+// 2026-09-14-strip-navigation-hints-design). The shape reuses the drag pull indicator's shader;
+// animation state comes from ui/strip-osd-arc.ts (pure, tested). Built via Qt.createQmlObject, the
+// same pattern as focus-flash-overlay.ts/minimap-overlay.ts.
 
-import type { Rect } from '../core/coordinates';
+import type { EdgeDirection, Rect } from '../core/coordinates';
 import { stripColor } from '../ui/strip-identity';
 import { stripOsdArc } from '../ui/strip-osd-arc';
 import { createQmlTimer } from './qml-timer';
@@ -22,7 +23,9 @@ PlasmaCore.Dialog {
     property real centerX: 0
     property real centerY: 0
     property real radius: 1
+    property bool topEdge: true
     property string label: ""
+    property int labelPixelSize: 48
     title: "${STRIP_OSD_WINDOW_TITLE}"
     type: PlasmaCore.Dialog.OnScreenDisplay
     backgroundHints: PlasmaCore.Types.NoBackground
@@ -38,6 +41,7 @@ PlasmaCore.Dialog {
         }
         ShaderEffect {
             id: topArc
+            visible: dialog.topEdge
             x: 0
             y: 0
             width: content.width
@@ -51,6 +55,7 @@ PlasmaCore.Dialog {
         }
         ShaderEffect {
             id: bottomArc
+            visible: !dialog.topEdge
             x: 0
             y: content.height - height
             width: content.width
@@ -72,13 +77,13 @@ PlasmaCore.Dialog {
             text: dialog.label
             color: content.frameQColor(1.0)
             font.bold: true
-            font.pixelSize: 48
+            font.pixelSize: dialog.labelPixelSize
         }
     }
 }`;
 
 export interface StripOsd {
-    show(label: string, hue: number, screenGeometry: Rect): void;
+    show(label: string, hue: number, screenGeometry: Rect, direction: EdgeDirection): void;
 }
 
 /** `tickMs` reuses the viewport's own animation clock interval, same as
@@ -90,6 +95,7 @@ export function createStripOsd(
     maxDepth: number,
     durationMs: number,
     peakOpacity: number,
+    labelSizePercent: number,
     enabled: boolean,
 ): StripOsd {
     const dialog = Qt.createQmlObject(STRIP_OSD_QML, parent) as QmlStripOsdDialog;
@@ -99,14 +105,16 @@ export function createStripOsd(
     let startedAt = 0;
 
     return {
-        show(label: string, hue: number, screenGeometry: Rect): void {
+        show(label: string, hue: number, screenGeometry: Rect, direction: EdgeDirection): void {
             if (!enabled) {
                 return;
             }
             const width = Math.round(screenGeometry.width);
             const height = Math.round(screenGeometry.height);
             dialog.frameColor = stripColor(hue);
+            dialog.topEdge = direction === 'above';
             dialog.label = label;
+            dialog.labelPixelSize = Math.max(1, Math.round((height * labelSizePercent) / 100));
             dialog.x = Math.round(screenGeometry.x);
             dialog.y = Math.round(screenGeometry.y);
             dialog.width = width;

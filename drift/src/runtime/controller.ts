@@ -76,6 +76,7 @@ export class Controller {
             settings.stripOsdDepth,
             settings.stripOsdDurationMs,
             settings.stripOsdOpacity,
+            settings.stripOsdLabelSizePercent,
             settings.stripOsdEnabled,
         );
         this.pullIndicatorOverlay = createPullIndicatorOverlay(
@@ -92,8 +93,13 @@ export class Controller {
             this.workspaceAdapter,
             undefined,
             this.transientLinks,
-            (index) =>
-                this.stripOsd.show(stripLabel(index), stripHue(index), this.workspaceAdapter.screenGeometryAtCursor()),
+            (index, direction) =>
+                this.stripOsd.show(
+                    stripLabel(index),
+                    stripHue(index),
+                    this.workspaceAdapter.screenGeometryAtCursor(),
+                    direction,
+                ),
             this.pullIndicatorOverlay,
         );
         this.windowManager = new WindowManager(this.stripManager, settings);

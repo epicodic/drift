@@ -208,7 +208,9 @@ interface QmlStripOsdDialog extends QmlObject {
     centerX: number;
     centerY: number;
     radius: number;
+    topEdge: boolean;
     label: string;
+    labelPixelSize: number;
     x: number;
     y: number;
     width: number;

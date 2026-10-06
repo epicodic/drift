@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '../config/settings';
-import type { Rect } from '../core/coordinates';
+import type { EdgeDirection, Rect } from '../core/coordinates';
 import type { WindowAdapter } from '../kwin/window-adapter';
 import type { WorkspaceAdapter } from '../kwin/workspace-adapter';
 import { stripHue, stripLabel } from '../ui/strip-identity';
@@ -157,7 +157,10 @@ function fakeWin(id: string, rect: Rect = { x: 0, y: 0, width: 400, height: 1000
     return { id, setSkipTaskbar: vi.fn(), frameGeometry: () => rect } as unknown as WindowAdapter;
 }
 
-function makeStack(settingsOverride: Partial<typeof SETTINGS> = {}, onActiveIndexChanged?: (index: number) => void) {
+function makeStack(
+    settingsOverride: Partial<typeof SETTINGS> = {},
+    onActiveIndexChanged?: (index: number, direction: EdgeDirection) => void,
+) {
     const { factory, created } = recordingFactory();
     const timer = fakeTimer();
     const workspaceAdapter = fakeWorkspaceAdapter();
@@ -391,15 +394,15 @@ describe('StripStack strip paging', () => {
         expect(stack.activeIndex()).toBe(1);
     });
 
-    it('calls onActiveIndexChanged with the new index whenever the active strip changes', () => {
+    it('calls onActiveIndexChanged with the new index and direction whenever the active strip changes', () => {
         const onActiveIndexChanged = vi.fn();
         const { stack } = makeStack({}, onActiveIndexChanged);
 
         stack.stripDown();
-        expect(onActiveIndexChanged).toHaveBeenCalledWith(1);
+        expect(onActiveIndexChanged).toHaveBeenCalledWith(1, 'below');
 
         stack.stripUp();
-        expect(onActiveIndexChanged).toHaveBeenCalledWith(0);
+        expect(onActiveIndexChanged).toHaveBeenCalledWith(0, 'above');
     });
 
     it('animates the vertical transition, rendering both the outgoing and incoming strip on each tick', () => {

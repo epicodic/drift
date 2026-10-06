@@ -58,7 +58,7 @@ export class StripStack {
             pullIndicator,
         ) => new Strip(area, settings, timer, workspaceAdapter, transientLinks, pullIndicator),
         private readonly transientLinks: TransientLinks = new TransientLinks(),
-        private readonly onActiveIndexChanged: (index: number) => void = () => {},
+        private readonly onActiveIndexChanged: (index: number, direction: EdgeDirection) => void = () => {},
         private readonly pullIndicator: PullIndicatorOverlay = NOOP_PULL_INDICATOR,
     ) {
         this.ticker = new SharedTicker(timer, ANIMATION_TICK_MS);
@@ -314,7 +314,7 @@ export class StripStack {
         }
         this.strip(newIndex); // ensure the target strip exists before anything below touches it
         this.activeStripIndex = newIndex;
-        this.onActiveIndexChanged(newIndex);
+        this.onActiveIndexChanged(newIndex, newIndex > oldIndex ? 'below' : 'above');
         const fromCameraY = this.verticalAnimator.isAnimating() ? this.cameraY : oldIndex * this.area.height;
         // Prime the incoming strip's remembered offset to its pre-transition resting position
         // immediately, synchronously — before any other code (e.g. addWindow, called right

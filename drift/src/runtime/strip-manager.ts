@@ -3,7 +3,7 @@
 // activeStripStack() follows the workspace's current activity/desktop; strip stacks are
 // created lazily and pruned when their activity or desktop disappears.
 
-import type { Rect } from '../core/coordinates';
+import type { EdgeDirection, Rect } from '../core/coordinates';
 import type { WindowRuleOverrides } from '../core/window-rules';
 import type { Settings } from '../config/settings';
 import type { WindowAdapter } from '../kwin/window-adapter';
@@ -19,7 +19,7 @@ export type StripStackFactory = (
     timer: Timer,
     workspaceAdapter: WorkspaceAdapter,
     transientLinks: TransientLinks,
-    onActiveIndexChanged: (index: number) => void,
+    onActiveIndexChanged: (index: number, direction: EdgeDirection) => void,
     pullIndicator: PullIndicatorOverlay,
 ) => StripStack;
 
@@ -54,7 +54,7 @@ export class StripManager {
                 pullIndicator,
             ),
         private readonly transientLinks: TransientLinks = new TransientLinks(),
-        private readonly onActiveIndexChanged: (index: number) => void = () => {},
+        private readonly onActiveIndexChanged: (index: number, direction: EdgeDirection) => void = () => {},
         private readonly pullIndicator: PullIndicatorOverlay = NOOP_PULL_INDICATOR,
     ) {}
 
