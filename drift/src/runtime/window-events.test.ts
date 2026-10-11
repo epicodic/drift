@@ -40,7 +40,6 @@ function fakeDeps(overrides: Partial<WindowEventDeps> = {}): WindowEventDeps {
         revealFocused: vi.fn(),
         isFullScreenGeometry: () => false,
         seedMotionFromCurrentGeometry: vi.fn(),
-        alignViewportToWindow: vi.fn(),
         ...overrides,
     };
 }
@@ -108,20 +107,6 @@ describe('onWindowGeometryChanged', () => {
         onWindowGeometryChanged(win, { x: 300, y: 0, width: 800, height: 600 }, deps);
 
         expect(deps.seedMotionFromCurrentGeometry).toHaveBeenCalledWith(win);
-    });
-
-    it('aligns the viewport to the window before re-laying out neighbors, so a stale restored x never leaves an overlap and a gap', () => {
-        const calls: string[] = [];
-        const deps = fakeDeps({
-            alignViewportToWindow: vi.fn(() => void calls.push('align')),
-            render: () => void calls.push('render'),
-        });
-        const win = fakeWindow('w1', { x: 700, y: 0, width: 800, height: 600 });
-
-        onWindowGeometryChanged(win, { x: 0, y: 0, width: 1920, height: 1080 }, deps);
-
-        expect(deps.alignViewportToWindow).toHaveBeenCalledWith(win);
-        expect(calls).toEqual(['align', 'render']);
     });
 
     it('skips the resize if the geometry already covers the output (entering fullscreen)', () => {

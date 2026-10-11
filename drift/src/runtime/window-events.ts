@@ -47,9 +47,6 @@ export interface WindowEventDeps {
      * untouched, so a later unrelated render() doesn't see a stale pre-jump target and visibly
      * snap the window back before re-animating it forward. */
     seedMotionFromCurrentGeometry(win: WindowAdapter): void;
-    /** Pans the camera instantly (cancelling any in-flight pan) so the strip's layout places
-     * `win`'s column exactly where the window's real frame currently is. */
-    alignViewportToWindow(win: WindowAdapter): void;
 }
 
 export function onWindowGeometryChanged(win: WindowAdapter, oldReal: Rect, deps: WindowEventDeps): void {
@@ -119,16 +116,10 @@ export function onWindowGeometryChanged(win: WindowAdapter, oldReal: Rect, deps:
             `new=(${newReal.x.toFixed(0)},${newReal.y.toFixed(0)},${newReal.width.toFixed(0)},${newReal.height.toFixed(0)})`,
     );
     deps.resizeColumn(columnId, Math.round(newReal.width), 'right');
-    // The compositor owns this window's frame (maximize / quick-tile / snap / restore), so Drift
-    // never moves it. A restore puts the window back at its *saved* absolute x, which is stale
-    // once the viewport has panned since (e.g. the reveal after a maximize) — left alone, the
-    // layout would put the neighbors where the window used to be, overlapping it on one side
-    // with a gap on the other. Instead move the camera so the layout lines up with the window.
-    deps.alignViewportToWindow(win);
-    // Exclude the window itself: the compositor already placed it, so Drift must not also
-    // animate its frame geometry on top — doing so fought the compositor's own animation and
-    // could leave the window not fully maximized or visibly shifted (reported bug). Only
-    // neighbors are re-laid out against the window's real position.
+    // Exclude the window itself: the compositor already placed it (this is its own maximize/
+    // quick-tile/snap transition), so Drift must not also animate its frame geometry on top —
+    // doing so fought the compositor's own animation and could leave the window not fully
+    // maximized or visibly shifted (reported bug). Only neighbors pushed by the resize animate.
     deps.render(win.id);
     // The excluded tile's motion channels didn't track this jump, so resync them to the window's
     // real post-jump geometry now — otherwise the next unrelated render() sees a stale pre-jump

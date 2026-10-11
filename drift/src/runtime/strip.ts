@@ -266,19 +266,6 @@ export class Strip {
         });
     }
 
-    /** Moves the camera instantly so `win`'s column lands exactly on the window's current real
-     * x — for frames the compositor placed (restore from maximize / quick-tile / snap) that
-     * Drift must not move, so the rest of the layout is aligned to the window instead. */
-    alignViewportToWindow(win: WindowAdapter): void {
-        const location = this.registry.tileOf(win.id);
-        if (location === null) {
-            return;
-        }
-        const columnRect = this.grid.columnRect(location.columnId);
-        this.animator.stop();
-        this.viewport.setOffset(columnRect.x - (win.frameGeometry().x - this.area.x));
-    }
-
     /** Which (column, tile) a window is currently registered under — used by drag
      * wiring to resolve the dragged window's live location on every tick instead of
      * a fixed id captured once (docs: 2026-09-03-drag-to-stack-design). */
@@ -1027,7 +1014,6 @@ export class Strip {
             revealFocused: () => this.revealFocused(),
             isFullScreenGeometry: (win) => this.workspaceAdapter.isFullScreenGeometry(win),
             seedMotionFromCurrentGeometry: (win) => this.seedMotionFromCurrentGeometry(win),
-            alignViewportToWindow: (win) => this.alignViewportToWindow(win),
         };
     }
 }
