@@ -47,6 +47,9 @@ export interface WindowEventDeps {
      * untouched, so a later unrelated render() doesn't see a stale pre-jump target and visibly
      * snap the window back before re-animating it forward. */
     seedMotionFromCurrentGeometry(win: WindowAdapter): void;
+    /** Pans the camera instantly (cancelling any in-flight pan) so the layout places `win`'s
+     * column exactly where the window's real frame currently is. */
+    alignViewportToWindow(win: WindowAdapter): void;
 }
 
 export function onWindowGeometryChanged(win: WindowAdapter, oldReal: Rect, deps: WindowEventDeps): void {
@@ -116,6 +119,15 @@ export function onWindowGeometryChanged(win: WindowAdapter, oldReal: Rect, deps:
             `new=(${newReal.x.toFixed(0)},${newReal.y.toFixed(0)},${newReal.width.toFixed(0)},${newReal.height.toFixed(0)})`,
     );
     deps.resizeColumn(columnId, Math.round(newReal.width), 'right');
+    if (Math.round(newReal.width) < Math.round(oldReal.width)) {
+        // A shrinking jump is a restore (from maximize / quick-tile / snap): the compositor puts
+        // the window back at its *saved* absolute x, but the camera has panned since (e.g. the
+        // reveal after the maximize), so the layout would put the neighbors where the window used
+        // to be — overlapping it on one side with a gap on the other. Drift never moves the
+        // window; it moves the camera so the layout lines up with it (returning the view to
+        // where it was before the maximize). Growing jumps keep the camera untouched.
+        deps.alignViewportToWindow(win);
+    }
     // Exclude the window itself: the compositor already placed it (this is its own maximize/
     // quick-tile/snap transition), so Drift must not also animate its frame geometry on top —
     // doing so fought the compositor's own animation and could leave the window not fully

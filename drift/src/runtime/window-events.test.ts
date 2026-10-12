@@ -40,6 +40,7 @@ function fakeDeps(overrides: Partial<WindowEventDeps> = {}): WindowEventDeps {
         revealFocused: vi.fn(),
         isFullScreenGeometry: () => false,
         seedMotionFromCurrentGeometry: vi.fn(),
+        alignViewportToWindow: vi.fn(),
         ...overrides,
     };
 }
@@ -107,6 +108,29 @@ describe('onWindowGeometryChanged', () => {
         onWindowGeometryChanged(win, { x: 300, y: 0, width: 800, height: 600 }, deps);
 
         expect(deps.seedMotionFromCurrentGeometry).toHaveBeenCalledWith(win);
+    });
+
+    it('aligns the viewport to the window before re-laying out neighbors on a shrinking jump (restore), so a stale restored x never leaves an overlap and a gap', () => {
+        const calls: string[] = [];
+        const deps = fakeDeps({
+            alignViewportToWindow: vi.fn(() => void calls.push('align')),
+            render: vi.fn(() => void calls.push('render')),
+        });
+        const win = fakeWindow('w1', { x: 692, y: 0, width: 1968, height: 1384 });
+
+        onWindowGeometryChanged(win, { x: 8, y: 0, width: 5120, height: 1384 }, deps);
+
+        expect(deps.alignViewportToWindow).toHaveBeenCalledWith(win);
+        expect(calls).toEqual(['align', 'render']);
+    });
+
+    it('leaves the viewport untouched on a growing jump (maximize)', () => {
+        const deps = fakeDeps();
+        const win = fakeWindow('w1', { x: 0, y: 0, width: 1920, height: 1080 });
+
+        onWindowGeometryChanged(win, { x: 300, y: 0, width: 800, height: 600 }, deps);
+
+        expect(deps.alignViewportToWindow).not.toHaveBeenCalled();
     });
 
     it('skips the resize if the geometry already covers the output (entering fullscreen)', () => {
